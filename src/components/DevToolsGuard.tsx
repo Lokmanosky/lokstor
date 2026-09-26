@@ -11,6 +11,14 @@ import { Scissors, Copy, Clipboard } from 'lucide-react';
 
 interface MenuPos { x: number; y: number }
 
+function isEditableTarget(el: EventTarget | null): boolean {
+  if (!el || !(el instanceof Element)) return false;
+  const tag = (el as HTMLElement).tagName;
+  const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
+  const isContentEditable = (el as HTMLElement).isContentEditable;
+  return isInput || isContentEditable;
+}
+
 export default function DevToolsGuard() {
   const [menu, setMenu] = useState<MenuPos | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -31,17 +39,24 @@ export default function DevToolsGuard() {
     if (!isProd) return;
 
     const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
+      // Only intercept when inside an editable element
+      if (isEditableTarget(e.target)) {
+        e.preventDefault();
 
-      // Determine safe position so menu doesn't overflow viewport
-      const menuW = 160;
-      const menuH = 130;
-      let x = e.clientX;
-      let y = e.clientY;
-      if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
-      if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+        const menuW = 160;
+        const menuH = 130;
+        let x = e.clientX;
+        let y = e.clientY;
+        if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
+        if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
 
-      setMenu({ x, y });
+        setMenu({ x, y });
+      }
+      // Everywhere else: block the browser menu (existing behavior)
+      else {
+        e.preventDefault();
+        setMenu(null);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -84,6 +99,8 @@ export default function DevToolsGuard() {
         const end = el.selectionEnd ?? el.value.length;
         el.value = el.value.slice(0, start) + text + el.value.slice(end);
         el.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        document.execCommand('paste');
       }
     } catch {
       document.execCommand('paste');
@@ -91,7 +108,6 @@ export default function DevToolsGuard() {
     setMenu(null);
   }, []);
 
-  // In dev, render nothing
   if (!isProd) return null;
 
   return (
@@ -101,7 +117,7 @@ export default function DevToolsGuard() {
           ref={menuRef}
           onClick={(e) => e.stopPropagation()}
           style={{ position: 'fixed', top: menu.y, left: menu.x, zIndex: 99999 }}
-          className="w-40 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden text-sm select-none animate-in fade-in zoom-in-95 duration-100"
+          className="w-40 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden text-sm select-none"
         >
           <button
             onClick={handleCut}
