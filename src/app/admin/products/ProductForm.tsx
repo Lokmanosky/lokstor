@@ -70,15 +70,21 @@ export default function ProductForm({ productId }: ProductFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     setImageUploading(true);
+    setError('');
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (data.url) set('imageUrl', data.url);
-      else setError('فشل رفع الصورة: ' + (data.error || ''));
-    } catch {
-      setError('خطأ أثناء رفع الصورة');
+      // Upload directly from browser using Firebase Storage Client SDK
+      const { storage } = await import('@/lib/firebase');
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `images/products/product_${Date.now()}.${ext}`;
+      const fileRef = ref(storage, path);
+
+      await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' });
+      const url = await getDownloadURL(fileRef);
+      set('imageUrl', url);
+    } catch (err: any) {
+      setError('فشل رفع الصورة: ' + (err?.message || 'تحقق من إعدادات Firebase Storage'));
     } finally {
       setImageUploading(false);
     }
