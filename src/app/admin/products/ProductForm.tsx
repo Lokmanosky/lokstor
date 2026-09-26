@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { Product } from '@/types';
-import { Save, ArrowRight, Upload, Loader2, X, Plus } from 'lucide-react';
+import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2 } from 'lucide-react';
 
 interface ProductFormProps {
-  productId?: string; // undefined = new product
+  productId?: string;
 }
 
 export default function ProductForm({ productId }: ProductFormProps) {
@@ -30,11 +30,13 @@ export default function ProductForm({ productId }: ProductFormProps) {
     status: 'published',
     stock: 0,
     stockLinks: [],
+    fileUrl: '',
     fileType: '',
     features: [],
   });
 
-  const [stockLinksText, setStockLinksText] = useState('');
+  // Each stockLink item is its own string — completely isolated
+  const [stockItems, setStockItems] = useState<string[]>(['']);
   const [featuresText, setFeaturesText] = useState('');
 
   useEffect(() => {
@@ -43,7 +45,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       if (snap.exists()) {
         const data = snap.data() as Product;
         setForm({ ...data, id: snap.id });
-        setStockLinksText((data.stockLinks || []).join('\n'));
+        const links = data.stockLinks || [];
+        setStockItems(links.length > 0 ? links : ['']);
         setFeaturesText((data.features || []).join('\n'));
       }
       setLoading(false);
@@ -53,6 +56,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const set = (field: keyof Product, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
+  // ── stockItems helpers ──────────────────────────────────────────────────────
+  const addStockItem = () => setStockItems(prev => [...prev, '']);
+
+  const removeStockItem = (idx: number) =>
+    setStockItems(prev => prev.filter((_, i) => i !== idx));
+
+  const updateStockItem = (idx: number, value: string) =>
+    setStockItems(prev => prev.map((item, i) => i === idx ? value : item));
+
+  // ── Image upload ────────────────────────────────────────────────────────────
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -64,28 +77,30 @@ export default function ProductForm({ productId }: ProductFormProps) {
       const data = await res.json();
       if (data.url) set('imageUrl', data.url);
       else setError('فشل رفع الصورة: ' + (data.error || ''));
-    } catch (err: any) {
+    } catch {
       setError('خطأ أثناء رفع الصورة');
     } finally {
       setImageUploading(false);
     }
   };
 
+  // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!form.name?.trim()) { setError('اسم المنتج مطلوب'); return; }
-    if (!form.price || form.price < 0) { setError('السعر يجب أن يكون قيمة صحيحة'); return; }
+    if (form.price === undefined || form.price < 0) { setError('السعر يجب أن يكون قيمة صحيحة'); return; }
 
     setSaving(true);
     setError('');
 
-    const stockLinks = stockLinksText.split('\n').map(s => s.trim()).filter(Boolean);
+    // Only non-empty items
+    const stockLinks = stockItems.map(s => s.trim()).filter(Boolean);
     const features = featuresText.split('\n').map(s => s.trim()).filter(Boolean);
 
     const payload: Partial<Product> = {
       ...form,
       stockLinks,
       features,
-      stock: stockLinks.length || Number(form.stock) || 0,
+      stock: stockLinks.length,   // stock = actual count of isolated items
       updatedAt: Date.now(),
     };
 
@@ -114,6 +129,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const labelCls = "block text-sm font-medium text-[var(--admin-text)] mb-1.5";
   const inputCls = "w-full px-3 py-2 rounded-md border border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-primary)] placeholder:text-[var(--admin-text-muted)]";
 
+  const filledCount = stockItems.filter(s => s.trim()).length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -137,6 +154,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT — Main Info */}
         <div className="lg:col-span-2 space-y-4">
+
+          {/* Basic Info */}
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">المعلومات الأساسية</h2>
 
@@ -184,24 +203,76 @@ export default function ProductForm({ productId }: ProductFormProps) {
             </div>
           </div>
 
-          {/* Stock Links */}
-          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">محتوى المخزون (stockLinks)</h2>
-            <p className="text-xs text-[var(--admin-text-muted)]">كل سطر = وحدة واحدة يُسلَّم للعميل بعد الدفع. يمكن أن يكون رابطاً، ايميل + كلمة مرور، كود تفعيل، أي نص.</p>
-            <textarea
-              className={inputCls + ' h-36 resize-none font-mono text-xs'}
-              value={stockLinksText}
-              onChange={e => setStockLinksText(e.target.value)}
-              placeholder={"مثال:\nhttps://example.com/file.pdf\n\nأو:\nEmail: user@gmail.com\nPassword: abc123!\n\nأو:\nكود التفعيل: ABCD-1234-EFGH"}
-            />
-            <p className="text-xs text-[var(--admin-text-muted)]">المخزون الحالي: {stockLinksText.split('\n').filter(s => s.trim()).length} وحدة</p>
+          {/* ── Stock Items — Each item is isolated ──────────────────────────── */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--admin-border)] pb-2">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--admin-text)]">وحدات المخزون</h2>
+                <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                  كل وحدة = حقل مستقل معزول — يُسلَّم للعميل واحدة فقط بعد الدفع
+                </p>
+              </div>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[var(--admin-primary)]/10 text-[var(--admin-primary)]">
+                {filledCount} وحدة
+              </span>
+            </div>
+
+            {/* Individual items */}
+            <div className="space-y-2">
+              {stockItems.map((item, idx) => (
+                <div key={idx} className="flex items-start gap-2">
+                  <span className="flex-shrink-0 w-6 h-9 flex items-center justify-center text-xs text-[var(--admin-text-muted)] font-mono mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <textarea
+                    rows={2}
+                    className={inputCls + ' resize-none font-mono text-xs flex-1'}
+                    value={item}
+                    onChange={e => updateStockItem(idx, e.target.value)}
+                    placeholder={
+                      idx === 0
+                        ? 'مثال: Email: user@gmail.com\nPassword: abc123!'
+                        : `الوحدة ${idx + 1}...`
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeStockItem(idx)}
+                    disabled={stockItems.length === 1}
+                    className="flex-shrink-0 mt-1 p-1.5 rounded text-[var(--admin-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="حذف هذه الوحدة"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add new item */}
+            <button
+              type="button"
+              onClick={addStockItem}
+              className="flex items-center gap-2 px-4 py-2 rounded-md border border-dashed border-[var(--admin-border)] text-sm text-[var(--admin-text-muted)] hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)] transition-colors w-full justify-center"
+            >
+              <Plus className="w-4 h-4" />
+              <span>إضافة وحدة جديدة</span>
+            </button>
+
+            <p className="text-[11px] text-[var(--admin-text-muted)] bg-amber-500/5 border border-amber-500/20 rounded-md p-2.5">
+              ⚠️ كل وحدة معزولة — الكود يأخذ الوحدة <strong>الأولى</strong> فقط عند كل عملية شراء ثم يحذفها من القائمة.
+            </p>
           </div>
 
           {/* Features */}
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-3">
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">مميزات المنتج</h2>
             <p className="text-xs text-[var(--admin-text-muted)]">كل سطر = ميزة تظهر في صفحة المنتج</p>
-            <textarea className={inputCls + ' h-28 resize-none text-xs'} value={featuresText} onChange={e => setFeaturesText(e.target.value)} placeholder={"مثال:\nتصميم احترافي قابل للتخصيص\nصيغة PDF و Word\nضمان استرداد المال"} />
+            <textarea
+              className={inputCls + ' h-24 resize-none text-xs'}
+              value={featuresText}
+              onChange={e => setFeaturesText(e.target.value)}
+              placeholder={"تصميم احترافي قابل للتخصيص\nصيغة PDF و Word\nضمان استرداد المال"}
+            />
           </div>
         </div>
 
@@ -210,7 +281,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">صورة المنتج</h2>
 
-            {/* Image Preview */}
             <div className="aspect-square w-full rounded-lg border-2 border-dashed border-[var(--admin-border)] overflow-hidden flex items-center justify-center bg-[var(--admin-bg)]">
               {form.imageUrl ? (
                 <img src={form.imageUrl.replace(/^"+|"+$/g, '').trim()} alt="صورة المنتج" className="w-full h-full object-cover" />
@@ -222,30 +292,26 @@ export default function ProductForm({ productId }: ProductFormProps) {
               )}
             </div>
 
-            {/* Upload Button */}
-            <label className="block w-full">
-              <span className="flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-[var(--admin-border)] text-sm text-[var(--admin-text)] cursor-pointer hover:bg-[var(--admin-hover)] transition-colors">
+            <label className="block w-full cursor-pointer">
+              <span className="flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-[var(--admin-border)] text-sm text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors">
                 {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                 <span>{imageUploading ? 'جاري الرفع...' : 'رفع صورة'}</span>
               </span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
             </label>
 
-            {/* Manual URL */}
             <div>
-              <label className={labelCls}>أو أدخل رابط الصورة</label>
+              <label className={labelCls}>أو رابط الصورة</label>
               <input className={inputCls} value={form.imageUrl || ''} onChange={e => set('imageUrl', e.target.value)} placeholder="https://..." />
             </div>
           </div>
 
-          {/* File URL */}
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-3">
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">رابط الملف (fileUrl)</h2>
-            <p className="text-xs text-[var(--admin-text-muted)]">رابط الملف الرقمي — يُستخدم إذا كان المنتج ملفاً واحداً (ليس من نوع stockLinks)</p>
+            <p className="text-xs text-[var(--admin-text-muted)]">للملفات المرفوعة على Firebase Storage مباشرةً</p>
             <input className={inputCls} value={form.fileUrl || ''} onChange={e => set('fileUrl', e.target.value)} placeholder="https://storage.googleapis.com/..." />
           </div>
 
-          {/* Save */}
           <button
             onClick={handleSave}
             disabled={saving}
