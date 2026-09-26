@@ -145,19 +145,32 @@ export default function AdminPage() {
 
       // Upload file to Firebase Storage if selected
       if (selectedImage) {
-        setSaveError('جاري رفع الصورة...');
-        const uploadForm = new FormData();
-        uploadForm.append('file', selectedImage);
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: uploadForm,
+        setSaveError('جاري ضغط الصورة وحفظها...');
+        // Compress image using canvas and store as base64 in Firestore
+        const compressedBase64: string = await new Promise((resolve, reject) => {
+          const img = new Image();
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            img.onload = () => {
+              const MAX = 800;
+              let w = img.width, h = img.height;
+              if (w > MAX || h > MAX) {
+                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                else { w = Math.round(w * MAX / h); h = MAX; }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext('2d')!;
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.75));
+            };
+            img.onerror = reject;
+            img.src = e.target!.result as string;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedImage);
         });
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json();
-          throw new Error('فشل رفع الصورة: ' + (errData.error || uploadRes.statusText));
-        }
-        const { url } = await uploadRes.json();
-        finalImageUrl = url;
+        finalImageUrl = compressedBase64;
       }
 
       setSaveError('جاري معالجة الروابط...');
