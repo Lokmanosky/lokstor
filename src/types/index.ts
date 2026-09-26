@@ -25,6 +25,7 @@ export interface Order {
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
   status: 'pending' | 'paid' | 'failed';
+  amount?: number | string; // alias for productPrice from Chargily
   downloadToken?: string;
   downloadUrl?: string;
   downloadExpiresAt?: number;

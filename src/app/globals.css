@@ -48,3 +48,27 @@ body {
   box-shadow: 0 6px 28px rgba(16, 185, 129, 0.5);
   transform: translateY(-2px);
 }
+
+:root {
+  --admin-bg: #FAFAF8;
+  --admin-card: #FFFFFF;
+  --admin-border: #E5E5E0;
+  --admin-text: #1C1C19;
+  --admin-text-muted: #73736F;
+  --admin-primary: #3D5A45;
+  --admin-danger: #D34336;
+  --admin-sidebar: #F4F4F2;
+  --admin-hover: #F0F0EB;
+}
+
+[data-theme='dark'] {
+  --admin-bg: #16181C;
+  --admin-card: #1D1F24;
+  --admin-border: #2C2E33;
+  --admin-text: #F3F4F6;
+  --admin-text-muted: #9CA3AF;
+  --admin-primary: #527A5D;
+  --admin-danger: #E85A4F;
+  --admin-sidebar: #131417;
+  --admin-hover: #25272D;
+}
