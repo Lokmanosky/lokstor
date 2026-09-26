@@ -34,7 +34,17 @@ export default function HomePage() {
     loadProducts();
   }, []);
 
-  const categories = ['الكل', 'كتب إلكترونية', 'قوالب برمجية', 'كورسات فيديو'];
+  const categories = [
+    'الكل',
+    'منتجات رقمية',
+    'كتب ومستندات PDF',
+    'قوالب برمجية وسكربتات',
+    'كورسات ودروس فيديو',
+    'تصاميم وملفات گرافيك',
+    'حسابات واشتراكات رقمية',
+    'أدوات وتطبيقات',
+    'أخرى',
+  ];
 
   const filteredProducts = products.filter((p) => {
     const matchesCategory = selectedCategory === 'الكل' || p.category === selectedCategory;

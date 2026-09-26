@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [newProdName, setNewProdName] = useState<string>('');
   const [newProdDesc, setNewProdDesc] = useState<string>('');
   const [newProdPrice, setNewProdPrice] = useState<number>(1000);
-  const [newProdCategory, setNewProdCategory] = useState<string>('كتب إلكترونية');
+  const [newProdCategory, setNewProdCategory] = useState<string>('منتجات رقمية');
   const [newProdFileType, setNewProdFileType] = useState<string>('PDF');
   const [newProdImageUrl, setNewProdImageUrl] = useState<string>('');
   const [newProdFeatures, setNewProdFeatures] = useState<string>('');
@@ -403,9 +403,14 @@ export default function AdminPage() {
                     onChange={(e) => setNewProdCategory(e.target.value)}
                     className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white"
                   >
-                    <option value="كتب إلكترونية">كتب إلكترونية</option>
-                    <option value="قوالب برمجية">قوالب برمجية</option>
-                    <option value="كورسات فيديو">كورسات فيديو</option>
+                    <option value="منتجات رقمية">منتجات رقمية</option>
+                    <option value="كتب ومستندات PDF">كتب ومستندات PDF</option>
+                    <option value="قوالب برمجية وسكربتات">قوالب برمجية وسكربتات</option>
+                    <option value="كورسات ودروس فيديو">كورسات ودروس فيديو</option>
+                    <option value="تصاميم وملفات گرافيك">تصاميم وملفات گرافيك</option>
+                    <option value="حسابات واشتراكات رقمية">حسابات واشتراكات رقمية</option>
+                    <option value="أدوات وتطبيقات">أدوات وتطبيقات</option>
+                    <option value="أخرى">أخرى</option>
                   </select>
                 </div>
               </div>
