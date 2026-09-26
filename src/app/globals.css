@@ -73,16 +73,16 @@ body {
 }
 
 :root {
-  --store-bg: #F2F2EF;
-  --store-card: #FFFFFF;
-  --store-card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --store-card-hover-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.07);
-  --store-border: #E2E2DD;
-  --store-text: #1A1A17;
-  --store-text-muted: #475569;
-  --store-hover: #EAEAE6;
+  --store-bg: #f8fafc;
+  --store-card: #ffffff;
+  --store-card-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+  --store-card-hover-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --store-border: #cbd5e1;
+  --store-text: #0f172a;
+  --store-text-muted: #334155;
+  --store-hover: #f1f5f9;
   --store-primary: #059669;
-  --store-header-bg: rgba(242,242,239,0.92);
+  --store-header-bg: rgba(248, 250, 252, 0.95);
 }
 
 .dark {
