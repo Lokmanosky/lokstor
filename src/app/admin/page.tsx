@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { auth, db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Product, Order } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { Lock, LogOut, Plus, Trash2, Edit, Package, ShoppingCart, Upload, FileText, Image as ImageIcon, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -146,29 +145,19 @@ export default function AdminPage() {
 
       // Upload file to Firebase Storage if selected
       if (selectedImage) {
-        setSaveError('جاري تحويل ومعالجة الصورة...');
-        const cleanName = selectedImage.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const imageRef = ref(storage, `images/products/${Date.now()}_${cleanName}`);
-        
-        // Convert to Base64 to bypass Next.js File/Blob fetch hanging bugs
-        const base64: string = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(selectedImage);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = (error) => reject(error);
+        setSaveError('جاري رفع الصورة...');
+        const uploadForm = new FormData();
+        uploadForm.append('file', selectedImage);
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadForm,
         });
-
-        setSaveError('جاري رفع الصورة إلى التخزين الآمن...');
-        
-        const uploadPromise = uploadString(imageRef, base64, 'data_url');
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("استغرق رفع الصورة وقتاً طويلاً جداً. يرجى التأكد من اتصالك بالإنترنت.")), 20000)
-        );
-        
-        await Promise.race([uploadPromise, timeoutPromise]);
-        
-        setSaveError('جاري جلب رابط الصورة...');
-        finalImageUrl = await getDownloadURL(imageRef);
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
+          throw new Error('فشل رفع الصورة: ' + (errData.error || uploadRes.statusText));
+        }
+        const { url } = await uploadRes.json();
+        finalImageUrl = url;
       }
 
       setSaveError('جاري معالجة الروابط...');
