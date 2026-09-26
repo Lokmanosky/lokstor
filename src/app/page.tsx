@@ -146,7 +146,7 @@ function HomePageContent() {
                 <div key={product.id} className={`group store-card rounded-xl overflow-hidden`}>
                   <Link href={`/product/${product.id}`} className="block">
                     <div className="aspect-[4/3] bg-[var(--store-card)] relative overflow-hidden">
-                      <img src={product.imageUrl || product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute top-3 right-3 flex flex-col gap-2">
                         <span className="bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-md">
                           {product.type === 'digital' ? t('badge.digital') : t('badge.sub')}
@@ -170,7 +170,7 @@ function HomePageContent() {
                               id: product.id,
                               name: product.name,
                               price: product.price,
-                              imageUrl: product.imageUrl || product.image || "",
+                              imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''),
                               quantity: 1,
                               type: product.type
                             });

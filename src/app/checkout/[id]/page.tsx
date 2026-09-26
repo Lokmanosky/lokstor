@@ -134,7 +134,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
           <div className="flex items-center gap-4">
             <img
-              src={product.imageUrl}
+              src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
               alt={product.name}
               className="w-16 h-16 rounded-xl object-cover bg-slate-900 border border-slate-800"
             />

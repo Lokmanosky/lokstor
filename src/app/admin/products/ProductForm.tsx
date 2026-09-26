@@ -26,6 +26,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     price: 0,
     currency: 'dzd',
     imageUrl: '',
+    image: '',
     category: '',
     status: 'published',
     stock: 0,
@@ -44,11 +45,21 @@ export default function ProductForm({ productId }: ProductFormProps) {
     getDoc(doc(db, 'products', productId)).then(snap => {
       if (snap.exists()) {
         const data = snap.data() as Product;
-        setForm({ ...data, id: snap.id });
+        const cleanImage = ((data.imageUrl || data.image || '') as string).replace(/^"+|"+$/g, '').trim();
+        setForm({
+          ...data,
+          id: snap.id,
+          imageUrl: cleanImage,
+          image: cleanImage,
+        });
         const links = data.stockLinks || [];
         setStockItems(links.length > 0 ? links : ['']);
         setFeaturesText((data.features || []).join('\n'));
       }
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setError('فشل جلب بيانات المنتج');
       setLoading(false);
     });
   }, [productId, isEdit]);
@@ -65,35 +76,68 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const updateStockItem = (idx: number, value: string) =>
     setStockItems(prev => prev.map((item, i) => i === idx ? value : item));
 
-  // ── Image upload: convert to base64, store directly in Firestore ─────────────
+  // ── Image upload: compress with canvas, store directly in Firestore ─────────
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (file.size > 800 * 1024) {
-      setError('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 800KB');
-      return;
-    }
 
     setImageUploading(true);
     setError('');
 
     const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      // Store base64 directly in Firestore — no Firebase Storage needed
-      set('imageUrl', base64);
-      set('image', base64);
-      setImageUploading(false);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          const maxDim = 1000;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const base64 = canvas.toDataURL('image/jpeg', 0.82);
+            set('imageUrl', base64);
+            set('image', base64);
+          } else {
+            const rawBase64 = event.target?.result as string;
+            set('imageUrl', rawBase64);
+            set('image', rawBase64);
+          }
+        } catch {
+          const rawBase64 = event.target?.result as string;
+          set('imageUrl', rawBase64);
+          set('image', rawBase64);
+        } finally {
+          setImageUploading(false);
+        }
+      };
+      img.onerror = () => {
+        setError('فشل معالجة ملف الصورة');
+        setImageUploading(false);
+      };
+      img.src = event.target?.result as string;
     };
     reader.onerror = () => {
-      setError('فشل قراءة الصورة');
+      setError('فشل قراءة ملف الصورة');
       setImageUploading(false);
     };
     reader.readAsDataURL(file);
   };
 
-  // ── Save ────────────────────────────────────────────────────────────────────
+  // ── Save directly to Cloud Firestore Database ───────────────────────────────
   const handleSave = async () => {
     if (!form.name?.trim()) { setError('اسم المنتج مطلوب'); return; }
     if (form.price === undefined || form.price < 0) { setError('السعر يجب أن يكون قيمة صحيحة'); return; }
@@ -104,9 +148,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
     // Only non-empty items
     const stockLinks = stockItems.map(s => s.trim()).filter(Boolean);
     const features = featuresText.split('\n').map(s => s.trim()).filter(Boolean);
+    const cleanImg = ((form.imageUrl || form.image || '') as string).replace(/^"+|"+$/g, '').trim();
 
     const payload: Partial<Product> = {
       ...form,
+      name: form.name.trim(),
+      description: form.description || '',
+      price: Number(form.price),
+      currency: 'dzd',
+      imageUrl: cleanImg,
+      image: cleanImg,
       stockLinks,
       features,
       stock: stockLinks.length,   // stock = actual count of isolated items
@@ -121,7 +172,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
       }
       router.push('/admin/products');
     } catch (err: any) {
-      setError('فشل الحفظ: ' + err.message);
+      setError('فشل الحفظ في قاعدة البيانات: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -290,9 +341,20 @@ export default function ProductForm({ productId }: ProductFormProps) {
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">صورة المنتج</h2>
 
-            <div className="aspect-square w-full rounded-lg border-2 border-dashed border-[var(--admin-border)] overflow-hidden flex items-center justify-center bg-[var(--admin-bg)]">
+            <div className="aspect-square w-full rounded-lg border-2 border-dashed border-[var(--admin-border)] overflow-hidden flex items-center justify-center bg-[var(--admin-bg)] relative group">
               {form.imageUrl ? (
-                <img src={form.imageUrl.replace(/^"+|"+$/g, '').trim()} alt="صورة المنتج" className="w-full h-full object-cover" />
+                <>
+                  <img src={form.imageUrl.replace(/^"+|"+$/g, '').trim()} alt="صورة المنتج" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => { set('imageUrl', ''); set('image', ''); }}
+                    className="absolute top-2 left-2 px-2 py-1 rounded bg-red-600/90 hover:bg-red-600 text-white text-xs flex items-center gap-1 shadow transition"
+                    title="حذف الصورة"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>إزالة</span>
+                  </button>
+                </>
               ) : (
                 <div className="text-center text-[var(--admin-text-muted)] text-xs p-4">
                   <Upload className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -304,21 +366,29 @@ export default function ProductForm({ productId }: ProductFormProps) {
             <label className="block w-full cursor-pointer">
               <span className="flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-[var(--admin-border)] text-sm text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors">
                 {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                <span>{imageUploading ? 'جاري الرفع...' : 'رفع صورة'}</span>
+                <span>{imageUploading ? 'جاري المعالجة...' : 'رفع صورة من الحاسوب'}</span>
               </span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
             </label>
 
             <div>
-              <label className={labelCls}>أو رابط الصورة</label>
-              <input className={inputCls} value={form.imageUrl || ''} onChange={e => set('imageUrl', e.target.value)} placeholder="https://..." />
+              <label className={labelCls}>أو رابط الصورة (URL)</label>
+              <input
+                className={inputCls}
+                value={form.imageUrl || ''}
+                onChange={e => {
+                  set('imageUrl', e.target.value);
+                  set('image', e.target.value);
+                }}
+                placeholder="https://..."
+              />
             </div>
           </div>
 
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-3">
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">رابط الملف (fileUrl)</h2>
-            <p className="text-xs text-[var(--admin-text-muted)]">للملفات المرفوعة على Firebase Storage مباشرةً</p>
-            <input className={inputCls} value={form.fileUrl || ''} onChange={e => set('fileUrl', e.target.value)} placeholder="https://storage.googleapis.com/..." />
+            <p className="text-xs text-[var(--admin-text-muted)]">رابط التحميل المباشر للمنتج الرقمي</p>
+            <input className={inputCls} value={form.fileUrl || ''} onChange={e => set('fileUrl', e.target.value)} placeholder="https://..." />
           </div>
 
           <button
@@ -327,7 +397,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
             className="w-full flex items-center justify-center gap-2 py-3 rounded-md bg-[var(--admin-primary)] text-[var(--admin-bg)] font-semibold text-sm hover:opacity-90 disabled:opacity-60 transition"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>{saving ? 'جاري الحفظ...' : isEdit ? 'حفظ التعديلات' : 'إضافة المنتج'}</span>
+            <span>{saving ? 'جاري الحفظ في Firestore...' : isEdit ? 'حفظ التعديلات' : 'إضافة المنتج'}</span>
           </button>
         </div>
       </div>

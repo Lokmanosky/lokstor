@@ -97,7 +97,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       {/* 2. Image */}
       <div className="bg-[var(--store-card)] border border-[var(--store-border)] shadow-sm rounded-3xl overflow-hidden border border-[var(--store-border)] p-2">
         <img
-          src={(product.imageUrl || product.image)?.replace(/^"|"$/g, '')}
+          src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
           alt={product.name}
           className="w-full max-h-[500px] object-cover rounded-2xl"
         />

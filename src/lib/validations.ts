@@ -6,7 +6,7 @@ export const productSchema = z.object({
   description: z.string().max(2000, 'الوصف طويل جداً'),
   price: z.number().min(0, 'السعر يجب أن يكون قيمة موجبة'),
   currency: z.string().default('dzd'),
-  imageUrl: z.string().url('رابط الصورة غير صالح').or(z.literal('')),
+  imageUrl: z.string().optional(),
   image: z.string().optional(),
   fileUrl: z.string().optional(),
   stock: z.number().min(0).optional(),
