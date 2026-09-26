@@ -58,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  if (isLoginPage) return <>{children}</>;
+  
 
   if (!authReady) {
     return (
@@ -68,23 +68,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!authed) return null;
+  if (!authed && !isLoginPage) return null;
 
   return (
     <div className="min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] flex overflow-x-hidden" dir="rtl">
       
       {/* Mobile Backdrop */}
-      {isMobile && sidebarOpen && (
+      {isMobile && sidebarOpen && !isLoginPage && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      <AdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} isMobile={isMobile} />
+      {!isLoginPage && <AdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} isMobile={isMobile} />}
       
-      <div className={`flex-1 flex flex-col transition-all duration-300 w-full md:w-auto ${isMobile ? 'mr-0' : (sidebarOpen ? 'mr-64' : 'mr-16')}`}>
-        <AdminTopBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <div className={`flex-1 flex flex-col transition-all duration-300 w-full md:w-auto ${isMobile || isLoginPage ? 'mr-0' : (sidebarOpen ? 'mr-64' : 'mr-16')}`}>
+        <AdminTopBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isLoginPage={isLoginPage} />
         <main className="flex-1 p-6 overflow-y-auto bg-[var(--admin-bg)]">
           {children}
         </main>

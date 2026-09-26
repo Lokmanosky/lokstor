@@ -28,6 +28,17 @@ function NavBar() {
   const [theme, setTheme] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('light') ? 'light' : 'dark');
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/?q=${encodeURIComponent(searchQuery)}`);
+      setMobileMenuOpen(false);
+    }
+  };
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,14 +127,16 @@ function NavBar() {
 
         {/* Middle (Search Bar) */}
         <div className="flex-1 max-w-md hidden md:block">
-          <div className="relative group">
+          <form onSubmit={handleSearch} className="relative group">
             <input 
               type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("nav.search")} 
-              className="w-full bg-transparent border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-md px-4 py-2 focus:outline-none focus:border-neutral-600 transition-colors placeholder:text-[var(--store-text-muted)]"
+              className="w-full bg-transparent border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-md px-4 py-2 focus:outline-none focus:border-[var(--store-primary)] transition-colors placeholder:text-[var(--store-text-muted)]"
             />
             <Search className="w-4 h-4 text-[var(--store-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
+          </form>
         </div>
 
         {/* Left (Auth, Cart, Settings) */}
@@ -238,10 +251,10 @@ function NavBar() {
           
           <div className="p-4 flex-1 flex flex-col gap-6 overflow-y-auto">
             {/* Search */}
-            <div className="relative">
-              <input type="text" placeholder={t("nav.search")} className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm rounded-md px-4 py-2.5 pr-10 focus:outline-none" />
+            <form onSubmit={handleSearch} className="relative">
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t("nav.search")} className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm rounded-md px-4 py-2.5 pr-10 focus:outline-none focus:border-[var(--store-primary)] transition-colors" />
               <Search className="w-4 h-4 text-[var(--store-text-muted)] absolute right-3 top-1/2 -translate-y-1/2" />
-            </div>
+            </form>
             
             {/* Links */}
             <nav className="flex flex-col gap-4 text-sm font-medium text-[var(--store-text)]">
@@ -457,10 +470,21 @@ function Footer() {
   );
 }
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/?q=${encodeURIComponent(searchQuery)}`);
+      setMobileMenuOpen(false);
+    }
+  };
+
   const isAdmin = pathname?.startsWith('/admin');
 
   return (

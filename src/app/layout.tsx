@@ -4,6 +4,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { CartProvider } from '@/lib/cart-context';
 import { I18nProvider } from '@/lib/i18n-context';
 import { ClientLayout } from './client-layout';
+import DevToolsGuard from '@/components/DevToolsGuard';
 
 export const metadata: Metadata = {
   title: 'Lokstor - متجر المنتجات الرقمية في الجزائر',
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className="h-full">
       <body className="min-h-full flex flex-col bg-[var(--store-bg)] text-[var(--store-text)] antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-300">
+        <DevToolsGuard />
         <I18nProvider>
           <AuthProvider>
             <CartProvider>

@@ -1,25 +1,63 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'; // Wait, it's firestore
-import { getFirestore } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
+import { useCart } from '@/lib/cart-context';
 
-// Mock data until Firestore is fully linked for products
-const MOCK_PRODUCTS = [
-  { id: '1', name: 'قالب سيرة ذاتية احترافي', price: 1500, type: 'digital', image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=500&q=80' },
-  { id: '2', name: 'اشتراك نتفليكس شهر واحد', price: 2500, type: 'subscription', image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&q=80' },
-  { id: '3', name: 'كتاب تعلم البرمجة من الصفر', price: 900, type: 'digital', image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=500&q=80' },
-  { id: '4', name: 'اشتراك سبوتيفاي بريميوم', price: 1200, type: 'subscription', image: 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=500&q=80' },
-];
+import { Suspense } from 'react';
 
-export default function HomePage() {
+function HomePageContent() {
   const [activeTab, setActiveTab] = useState('all');
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const { addItem } = useCart();
+  const searchParams = useSearchParams();
+  const q = searchParams.get('q') || '';
 
-  const filteredProducts = MOCK_PRODUCTS.filter(p => {
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const list: any[] = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        setProducts(list);
+      } catch (e) {
+        console.error("Failed to load products:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProducts();
+  }, []);
+
+  const seedProducts = async () => {
+    setLoading(true);
+    const MOCK_PRODUCTS = [
+      { id: '1', name: 'قالب سيرة ذاتية احترافي', price: 1500, type: 'digital', image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=500&q=80', stock: 0, description: 'قالب سيرة ذاتية مميز واحترافي', status: 'published', createdAt: Date.now() },
+      { id: '2', name: 'اشتراك نتفليكس شهر واحد', price: 2500, type: 'subscription', image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&q=80', stock: 0, description: 'اشتراك نتفليكس رسمي', status: 'published', createdAt: Date.now() - 1000 },
+      { id: '3', name: 'كتاب تعلم البرمجة من الصفر', price: 900, type: 'digital', image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=500&q=80', stock: 0, description: 'كتاب شامل لتعلم البرمجة', status: 'published', createdAt: Date.now() - 2000 },
+      { id: '4', name: 'اشتراك سبوتيفاي بريميوم', price: 1200, type: 'subscription', image: 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=500&q=80', stock: 0, description: 'استمع بدون إعلانات', status: 'published', createdAt: Date.now() - 3000 },
+    ];
+    for (const p of MOCK_PRODUCTS) {
+      const { id, ...data } = p;
+      await setDoc(doc(db, 'products', id), data);
+    }
+    setProducts(MOCK_PRODUCTS);
+    setLoading(false);
+  };
+
+  const filteredProducts = products.filter(p => {
+    // 1. Search Query Match
+    if (q && !p.name.toLowerCase().includes(q.toLowerCase()) && !(p.description || '').toLowerCase().includes(q.toLowerCase())) {
+      return false;
+    }
+    // 2. Tab Match
     if (activeTab === 'all') return true;
     return p.type === activeTab;
   });
@@ -67,52 +105,113 @@ export default function HomePage() {
             onClick={() => setActiveTab('all')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'all' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
           >
-            الكل
+            {t('nav.all')}
           </button>
           <button 
             onClick={() => setActiveTab('digital')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
           >
-            منتجات رقمية
+            {t('nav.digital')}
           </button>
           <button 
             onClick={() => setActiveTab('subscription')}
             className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
           >
-            اشتراكات
+            {t('nav.subs')}
           </button>
         </div>
 
+        {/* Development Seed Button */}
+        {!loading && products.length === 0 && (
+          <div className="text-center py-10">
+            <button onClick={seedProducts} className="px-4 py-2 bg-emerald-500 text-white rounded-md font-medium text-sm">
+              رفع المنتجات إلى قاعدة البيانات (Firestore)
+            </button>
+          </div>
+        )}
+
         {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProducts.map(product => (
-            <div key={product.id} className="group store-card rounded-xl overflow-hidden">
-              <div className="aspect-[4/3] bg-[var(--store-card)] relative overflow-hidden">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute top-3 right-3">
-                  <span className="bg-black/60 backdrop-blur-md border border-white/10 text-[var(--store-text)] text-[10px] font-bold px-2.5 py-1 rounded-md">
-                    {product.type === 'digital' ? t('badge.digital') : t('badge.sub')}
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 space-y-3">
-                <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-1">{product.name}</h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-emerald-400 font-bold text-lg">{product.price}</span>
-                    <span className="text-[var(--store-text-muted)] text-xs font-medium">د.ج</span>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-64 bg-[var(--store-card)] border border-[var(--store-border)] rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredProducts.map(product => {
+              const outOfStock = product.stock <= 0 || (product.stockLinks && product.stockLinks.length === 0);
+              
+              return (
+                <div key={product.id} className={`group store-card rounded-xl overflow-hidden`}>
+                  <Link href={`/product/${product.id}`} className="block">
+                    <div className="aspect-[4/3] bg-[var(--store-card)] relative overflow-hidden">
+                      <img src={product.imageUrl || product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute top-3 right-3 flex flex-col gap-2">
+                        <span className="bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-md">
+                          {product.type === 'digital' ? t('badge.digital') : t('badge.sub')}
+                        </span>
+                      </div>
+
+                    </div>
+                  </Link>
+                  <div className="p-4 space-y-3">
+                    <Link href={`/product/${product.id}`}>
+                      <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-1 hover:text-[var(--store-primary)] transition-colors">{product.name}</h3>
+                    </Link>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[var(--store-primary)] text-lg">{product.price} <span className="text-xs">د.ج</span></span>
+                      
+                      <button 
+                        disabled={outOfStock}
+                        onClick={() => {
+                          if(!outOfStock) {
+                            addItem({
+                              id: product.id,
+                              name: product.name,
+                              price: product.price,
+                              image: product.imageUrl,
+                              quantity: 1,
+                              type: product.type
+                            });
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md font-bold text-xs transition-colors ${
+                          outOfStock 
+                            ? 'bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed'
+                            : 'border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:bg-[var(--store-card)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)]'
+                        }`}
+                      >
+                        {outOfStock ? (
+                          <>
+                            <PackageX className="w-4 h-4" />
+                            <span>نفذ المخزون</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-4 h-4" />
+                            <span>{t('store.addCart')}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <button className="w-full py-2 bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] text-xs font-bold rounded-lg hover:bg-[var(--store-hover)] transition-colors flex items-center justify-center gap-2">
-                  <ShoppingCart className="w-3.5 h-3.5" />
-                  <span>{t('btn.add')}</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
       </section>
     </div>
+  );
+}
+
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen"></div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }
