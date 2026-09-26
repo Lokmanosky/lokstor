@@ -21,6 +21,7 @@ export interface Order {
   productPrice: number;
   currency: string;
   customerName: string;
+  customerPhone?: string;
   customerEmail: string;
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
@@ -36,6 +37,7 @@ export interface Order {
 export interface CreateCheckoutInput {
   productId: string;
   customerName: string;
+  customerPhone?: string;
   customerEmail: string;
 }
 
