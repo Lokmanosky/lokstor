@@ -125,6 +125,11 @@ export default function AdminPage() {
     setShowAddModal(true);
   };
 
+    const handleCancelSave = () => {
+    setIsUploading(false);
+    setSaveError('تم إلغاء الحفظ. يمكنك المحاولة مجدداً.');
+  };
+
   const handleSaveProduct = async (e: React.FormEvent) => {
     setSaveError('');
     e.preventDefault();
@@ -509,12 +514,24 @@ export default function AdminPage() {
 
               <div className="space-y-1 text-xs">
                 <label className="font-semibold text-slate-300 block">صورة المنتج (من الحاسوب)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
-                  className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-300 text-xs"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+                    className="flex-grow p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-300 text-xs"
+                  />
+                  {selectedImage && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(null)}
+                      className="p-2.5 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20"
+                      title="إزالة الصورة المحددة"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {newProdCategory === 'منتجات رقمية' ? (
@@ -577,13 +594,24 @@ export default function AdminPage() {
                   {saveError}
                 </div>
               )}
-              <button
-                type="submit"
-                disabled={isUploading}
-                className="chargily-btn w-full py-3.5 rounded-xl text-slate-950 font-extrabold text-xs"
-              >
-                {isUploading ? 'جاري الحفظ...' : (editingProductId ? 'حفظ التعديلات' : 'حفظ ونشر المنتج الان')}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className={`chargily-btn flex-grow py-3.5 rounded-xl text-slate-950 font-extrabold text-xs ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isUploading ? 'جاري الحفظ...' : (editingProductId ? 'حفظ التعديلات' : 'حفظ ونشر المنتج الان')}
+                </button>
+                {isUploading && (
+                  <button
+                    type="button"
+                    onClick={handleCancelSave}
+                    className="py-3.5 px-4 rounded-xl bg-red-500/10 text-red-400 font-extrabold text-xs border border-red-500/20 hover:bg-red-500/20"
+                  >
+                    إلغاء
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         </div>
