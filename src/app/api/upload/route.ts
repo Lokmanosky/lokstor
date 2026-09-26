@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminStorage, isAdminConfigured } from '@/lib/firebase-admin';
+import { adminStorage } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
-  if (!isAdminConfigured || !adminStorage) {
-    return NextResponse.json({ error: 'Storage not configured' }, { status: 500 });
+  if (!adminStorage) {
+    return NextResponse.json({ error: 'Firebase Storage is not initialized. Check server credentials.' }, { status: 500 });
   }
 
   try {
