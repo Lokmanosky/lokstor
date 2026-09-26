@@ -74,13 +74,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         {/* Right Info Col */}
         <div className="lg:col-span-7 space-y-8">
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-3 py-1 rounded-full font-bold">
                 {product.category || 'منتج رقمي'}
               </span>
               <span className="bg-slate-900 border border-slate-800 text-slate-400 text-xs px-3 py-1 rounded-full font-medium">
                 صيغة: {product.fileType || 'ملف جاهز للتحميل'}
               </span>
+              {product.category === 'منتجات رقمية' && (
+                <span className={`text-xs px-3 py-1 rounded-full font-bold border ${
+                  (product.stockLinks?.length || 0) > 0
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+                }`}>
+                  {(product.stockLinks?.length || 0) > 0 ? `الكمية المتوفرة: ${product.stockLinks?.length}` : 'نفذت الكمية بالكامل'}
+                </span>
+              )}
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
@@ -144,13 +153,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Buy CTA Button */}
-            <Link
-              href={`/checkout/${product.id}`}
-              className="chargily-btn w-full py-4 rounded-2xl text-slate-950 font-black text-base flex items-center justify-center gap-2 shadow-lg"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              <span>متابعة الشراء والدفع الان</span>
-            </Link>
+            {product.category === 'منتجات رقمية' && (product.stockLinks?.length || 0) === 0 ? (
+              <div className="w-full py-4 rounded-2xl bg-slate-800 text-slate-500 font-black text-base flex items-center justify-center gap-2 cursor-not-allowed">
+                <ShoppingBag className="w-5 h-5" />
+                <span>عذراً، نفذت الكمية</span>
+              </div>
+            ) : (
+              <Link
+                href={`/checkout/${product.id}`}
+                className="chargily-btn w-full py-4 rounded-2xl text-slate-950 font-black text-base flex items-center justify-center gap-2 shadow-lg"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                <span>متابعة الشراء والدفع الان</span>
+              </Link>
+            )}
 
             {/* Guarantees */}
             <div className="space-y-3 pt-2 text-xs text-slate-400">

@@ -163,11 +163,22 @@ export default function HomePage() {
                   <div className="absolute top-4 right-4 bg-slate-950/80 backdrop-blur-md text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-full font-bold">
                     {product.fileType || 'ملف رقمي'}
                   </div>
-                  {product.category && (
-                    <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-slate-300 text-xs px-3 py-1.5 rounded-full font-medium">
-                      {product.category}
-                    </div>
-                  )}
+                  <div className="absolute top-4 left-4 flex flex-col items-end gap-2">
+                    {product.category && (
+                      <div className="bg-slate-900/80 backdrop-blur-md text-slate-300 text-xs px-3 py-1.5 rounded-full font-medium shadow-lg">
+                        {product.category}
+                      </div>
+                    )}
+                    {product.category === 'منتجات رقمية' && (
+                      <div className={`backdrop-blur-md text-[10px] px-3 py-1.5 rounded-full font-bold shadow-lg border ${
+                        (product.stockLinks?.length || 0) > 0
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : 'bg-red-500/10 text-red-400 border-red-500/30'
+                      }`}>
+                        {(product.stockLinks?.length || 0) > 0 ? `المتوفر: ${product.stockLinks?.length}` : 'نفذت الكمية'}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Body */}
@@ -210,13 +221,20 @@ export default function HomePage() {
                       >
                         التفاصيل
                       </Link>
-                      <Link
-                        href={`/checkout/${product.id}`}
-                        className="chargily-btn px-4 py-2.5 rounded-xl text-slate-950 font-extrabold text-xs flex items-center gap-1.5"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>شراء الآن</span>
-                      </Link>
+                      {product.category === 'منتجات رقمية' && (product.stockLinks?.length || 0) === 0 ? (
+                        <div className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-extrabold text-xs flex items-center gap-1.5 cursor-not-allowed">
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>شراء الآن</span>
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/checkout/${product.id}`}
+                          className="chargily-btn px-4 py-2.5 rounded-xl text-slate-950 font-extrabold text-xs flex items-center gap-1.5"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>شراء الآن</span>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
