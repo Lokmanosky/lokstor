@@ -33,7 +33,7 @@ export default function AdminPage() {
   const [newProdCategory, setNewProdCategory] = useState<string>('منتجات رقمية');
   const [newProdFileType, setNewProdFileType] = useState<string>('PDF');
   const [newProdFileUrl, setNewProdFileUrl] = useState<string>('');
-  const [newProdStockLinks, setNewProdStockLinks] = useState<string>('');
+  const [newProdStockLinks, setNewProdStockLinks] = useState<string[]>(['']);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [newProdFeatures, setNewProdFeatures] = useState<string>('');
   
@@ -94,6 +94,21 @@ export default function AdminPage() {
     await signOut(auth);
   };
 
+  const handleAddStockLink = () => {
+    setNewProdStockLinks([...newProdStockLinks, '']);
+  };
+
+  const handleStockLinkChange = (index: number, value: string) => {
+    const newLinks = [...newProdStockLinks];
+    newLinks[index] = value;
+    setNewProdStockLinks(newLinks);
+  };
+
+  const handleRemoveStockLink = (index: number) => {
+    const newLinks = newProdStockLinks.filter((_, i) => i !== index);
+    setNewProdStockLinks(newLinks.length > 0 ? newLinks : ['']);
+  };
+
   const openEditModal = (p: Product) => {
     setEditingProductId(p.id);
     setNewProdName(p.name);
@@ -102,7 +117,7 @@ export default function AdminPage() {
     setNewProdCategory(p.category || 'منتجات رقمية');
     setNewProdFileType(p.fileType || 'PDF');
     setNewProdFileUrl(p.fileUrl || '');
-    setNewProdStockLinks(p.stockLinks ? p.stockLinks.join('\n') : '');
+    setNewProdStockLinks(p.stockLinks && p.stockLinks.length > 0 ? p.stockLinks : ['']);
     setNewProdFeatures(p.features ? p.features.join('\n') : '');
     setSelectedImage(null);
     setShowAddModal(true);
@@ -134,7 +149,7 @@ export default function AdminPage() {
         .map((f) => f.trim())
         .filter(Boolean);
 
-      const stockLinksArr = newProdStockLinks.split('\n').map(l => l.trim()).filter(Boolean);
+      const stockLinksArr = newProdStockLinks.map(l => l.trim()).filter(Boolean);
       
       const productPayload: any = {
         name: newProdName,
@@ -169,8 +184,7 @@ export default function AdminPage() {
       setNewProdDesc('');
       setNewProdPrice(1000);
       setNewProdFileUrl('');
-              setNewProdStockLinks('');
-      setNewProdStockLinks('');
+              setNewProdStockLinks(['']);
       setNewProdFeatures('');
       setSelectedImage(null);
       setEditingProductId(null);
@@ -284,8 +298,7 @@ export default function AdminPage() {
               setNewProdCategory('منتجات رقمية');
               setNewProdFileType('PDF');
               setNewProdFileUrl('');
-              setNewProdStockLinks('');
-      setNewProdStockLinks('');
+              setNewProdStockLinks(['']);
               setNewProdFeatures('');
               setSelectedImage(null);
               setShowAddModal(true);
@@ -497,19 +510,35 @@ export default function AdminPage() {
               </div>
 
               {newProdCategory === 'منتجات رقمية' ? (
-                <div className="space-y-1 text-xs">
-                  <label className="font-semibold text-slate-300 block">مخزون الروابط (رابط واحد في كل سطر)</label>
-                  <textarea
-                    rows={4}
-                    placeholder="مثال:
-https://link1.com
-https://link2.com"
-                    value={newProdStockLinks}
-                    onChange={(e) => setNewProdStockLinks(e.target.value)}
-                    className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono text-left"
-                    dir="ltr"
-                  />
-                  <p className="text-[10px] text-emerald-400">سيتم سحب رابط واحد لكل عملية شراء ناجحة.</p>
+                <div className="space-y-2 text-xs">
+                  <label className="font-semibold text-slate-300 block">مخزون الروابط (رابط لكل عملية شراء)</label>
+                  {newProdStockLinks.map((link, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={link}
+                        onChange={(e) => handleStockLinkChange(idx, e.target.value)}
+                        className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono text-left"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStockLink(idx)}
+                        className="p-3 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 hover:bg-red-500/20 flex-shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleAddStockLink}
+                    className="flex items-center justify-center gap-2 w-full p-2.5 mt-2 border border-dashed border-slate-700 text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> إضافة رابط آخر
+                  </button>
+                  <p className="text-[10px] text-emerald-400 mt-1">سيتم سحب رابط واحد تلقائياً لكل مشتري.</p>
                 </div>
               ) : (
                 <div className="space-y-1 text-xs">
