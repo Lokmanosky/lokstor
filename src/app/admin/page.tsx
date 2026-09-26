@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { Order } from '@/types';
-import { Wallet, ShoppingBag, ArrowUpRight, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Wallet, ShoppingBag, TrendingUp, Clock } from 'lucide-react';
 
 export default function AdminOverview() {
   const [stats, setStats] = useState({
@@ -59,10 +60,10 @@ export default function AdminOverview() {
   }, []);
 
   const cards = [
-    { title: 'إجمالي المبيعات', value: `${stats.totalSales.toLocaleString()} د.ج`, icon: Wallet },
-    { title: 'مبيعات اليوم', value: `${stats.todaySales.toLocaleString()} د.ج`, icon: TrendingUp },
-    { title: 'إجمالي الطلبات (مدفوعة)', value: stats.totalOrders.toString(), icon: ShoppingBag },
-    { title: 'طلبات قيد الانتظار', value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0 },
+    { title: 'إجمالي المبيعات', value: `${stats.totalSales.toLocaleString()} د.ج`, icon: Wallet, borderColor: 'border-emerald-500/40', textColor: 'text-emerald-500', href: '/admin/orders' },
+    { title: 'مبيعات اليوم', value: `${stats.todaySales.toLocaleString()} د.ج`, icon: TrendingUp, borderColor: 'border-amber-500/40', textColor: 'text-amber-500', href: '/admin/orders' },
+    { title: 'إجمالي الطلبات (مدفوعة)', value: stats.totalOrders.toString(), icon: ShoppingBag, borderColor: 'border-teal-500/40', textColor: 'text-teal-500', href: '/admin/orders' },
+    { title: 'طلبات قيد الانتظار', value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0, borderColor: 'border-rose-500/40', textColor: 'text-rose-500', href: '/admin/abandoned' },
   ];
 
   return (
@@ -74,20 +75,22 @@ export default function AdminOverview() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
-          <div key={i} className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-4 flex flex-col justify-between shadow-sm">
+          <Link key={i} href={c.href} className="group bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-4 flex flex-col justify-between shadow-sm hover:border-[var(--admin-primary)]/50 transition-colors cursor-pointer">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-medium text-[var(--admin-text-muted)]">{c.title}</span>
-              <div className="p-1.5 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-sm">
-                <c.icon className="w-4 h-4 text-[var(--admin-text)]" />
+              <span className="text-sm font-medium text-[var(--admin-text-muted)] group-hover:text-[var(--admin-text)] transition-colors">{c.title}</span>
+              <div className={`p-1.5 border rounded-sm transition-colors ${c.borderColor}`}>
+                <c.icon className={`w-4 h-4 ${c.textColor}`} />
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-2xl font-semibold text-[var(--admin-text)]">{c.value}</span>
-              {c.alert && (
-                <div className="w-1.5 h-1.5 bg-[var(--admin-danger)] rounded-full animate-pulse" />
-              )}
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-semibold text-[var(--admin-text)]">{c.value}</span>
+                {c.alert && (
+                  <div className="w-1.5 h-1.5 bg-[var(--admin-danger)] rounded-full animate-pulse" />
+                )}
+              </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

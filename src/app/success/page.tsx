@@ -108,7 +108,7 @@ function SuccessContent() {
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
             {isPaid
-              ? 'شكراً لك على ثقتك بـ لوقستور lokstor! ملفك الرقمي أصبح جاهزاً للتحميل الآن.'
+              ? 'شكراً لك على ثقتك بـ Lokstor! ملفك الرقمي أصبح جاهزاً للتحميل الآن.'
               : 'جاري استلام إشعار الدفع النهائي من بوابة Chargily. يرجى تحديث الصفحة أو انتظار تأكيد Webhook.'}
           </p>
         </div>

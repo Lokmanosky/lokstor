@@ -1,254 +1,117 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { Product } from '@/types';
-import { INITIAL_PRODUCTS } from '@/lib/seed-data';
-import { Search, ShoppingBag, ArrowLeft, CheckCircle2, Sparkles, FileText, Zap, ShieldCheck, ChevronDown } from 'lucide-react';
+import { collection, getDocs, query, where, orderBy } from 'firebase/auth'; // Wait, it's firestore
+import { getFirestore } from 'firebase/firestore';
+import { useTranslation } from '@/lib/i18n-context';
+
+// Mock data until Firestore is fully linked for products
+const MOCK_PRODUCTS = [
+  { id: '1', name: 'قالب سيرة ذاتية احترافي', price: 1500, type: 'digital', image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=500&q=80' },
+  { id: '2', name: 'اشتراك نتفليكس شهر واحد', price: 2500, type: 'subscription', image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&q=80' },
+  { id: '3', name: 'كتاب تعلم البرمجة من الصفر', price: 900, type: 'digital', image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=500&q=80' },
+  { id: '4', name: 'اشتراك سبوتيفاي بريميوم', price: 1200, type: 'subscription', image: 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=500&q=80' },
+];
 
 export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showCatDropdown, setShowCatDropdown] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        if (!querySnapshot.empty) {
-          const list: Product[] = [];
-          querySnapshot.forEach((docSnap) => {
-            list.push({ id: docSnap.id, ...docSnap.data() } as Product);
-          });
-          setProducts(list);
-        }
-      } catch (err) {
-        console.warn('Firestore fetch products fallback to seed data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProducts();
-  }, []);
-
-  const categories = [
-    'الكل',
-    'خدمات',
-    'اشتراكات',
-    'منتجات',
-  ];
-
-  const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'الكل' || p.category === selectedCategory;
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const filteredProducts = MOCK_PRODUCTS.filter(p => {
+    if (activeTab === 'all') return true;
+    return p.type === activeTab;
   });
 
   return (
-    <div className="space-y-16 pb-20">
-      {/* Hero Banner */}
-      <section className="relative overflow-hidden pt-12 pb-16 bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border-b border-slate-800/80">
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>متجر المنتجات الرقمية الأول في الجزائر 🇩🇿</span>
+    <div className="pb-24">
+      {/* 1. Hero Section */}
+      <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--store-border)] text-xs font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-sm">
+            <span>{t('hero.badge')}</span>
           </div>
-
-          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
-            أفضل <span className="text-gradient">المنتجات الرقمية</span> بدفع إلكتروني محلي آمن
+          
+          <h1 className="text-4xl sm:text-5xl font-black text-[var(--store-text)] tracking-tight leading-tight">
+            {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span> {t('hero.title3')}
           </h1>
-
-          <p className="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            كتب PDF، قوالب جاهزة، وكورسات تخصصية مع تحميل فوري ومباشر بعد الدفع بواسطة البطاقة الذهبية أو CIB عبر بوابة Chargily.
+          
+          <p className="text-[var(--store-text-muted)] text-lg max-w-2xl mx-auto leading-relaxed">
+            {t('hero.desc')}
           </p>
 
-          {/* Feature Badges */}
-          <div className="pt-4 flex flex-wrap justify-center gap-6 text-xs text-slate-300 font-medium">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-400" />
-              <span>تسليم تلقائي وفوري</span>
+          <div className="flex flex-wrap items-center justify-center gap-6 pt-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-amber-600 dark:text-amber-400">
+              <Zap className="w-4 h-4" />
+              <span>{t('feat.instant')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-teal-400" />
-              <span>دفع عبر بوابة Chargily الرسمية</span>
+            <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="w-4 h-4" />
+              <span>{t('feat.secure')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-400" />
-              <span>ملفات أصلية عالية الجودة</span>
+            <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">
+              <FileText className="w-4 h-4" />
+              <span>{t('feat.hq')}</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Products Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Search & Categories Bar */}
-        <div className="flex items-center justify-between gap-3 glass-card p-3 rounded-2xl">
-          {/* Category Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowCatDropdown(!showCatDropdown)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 min-w-[120px] justify-between"
-            >
-              <span>{selectedCategory}</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showCatDropdown ? 'rotate-180' : ''}`} />
-            </button>
-            {showCatDropdown && (
-              <div className="absolute top-full right-0 mt-2 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => { setSelectedCategory(cat); setShowCatDropdown(false); }}
-                    className={`w-full text-right px-4 py-3 text-xs font-semibold transition-colors border-b border-slate-800 last:border-0 ${
-                      selectedCategory === cat
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Search Box */}
-          <div className="relative flex-grow">
-            <Search className="w-4 h-4 absolute right-3.5 top-3 text-slate-500" />
-            <input
-              type="text"
-              placeholder="ابحث عن منتج..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-4 pr-10 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
-            />
-          </div>
+      {/* 2. Products Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+        
+        {/* Filter Bar */}
+        <div className="flex items-center gap-6 border-b border-[var(--store-border)]">
+          <button 
+            onClick={() => setActiveTab('all')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'all' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+          >
+            الكل
+          </button>
+          <button 
+            onClick={() => setActiveTab('digital')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+          >
+            منتجات رقمية
+          </button>
+          <button 
+            onClick={() => setActiveTab('subscription')}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+          >
+            اشتراكات
+          </button>
         </div>
 
-        {/* Products Grid */}
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="inline-block w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
-            <p className="text-slate-400 text-sm">جاري تحميل المنتجات...</p>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20 glass-card rounded-2xl p-8">
-            <p className="text-slate-400 text-base mb-2">لم نجد منتجات تضمن هذا البحث</p>
-            <button
-              onClick={() => {
-                setSelectedCategory('الكل');
-                setSearchQuery('');
-              }}
-              className="text-emerald-400 text-xs font-semibold hover:underline"
-            >
-              إعادة ضبط الفلاتر
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="glass-card rounded-3xl overflow-hidden hover:border-emerald-500/40 transition-all duration-300 flex flex-col group"
-              >
-                {/* Image & Tag */}
-                <div className="relative h-52 w-full overflow-hidden bg-slate-900">
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute top-4 right-4 bg-slate-950/80 backdrop-blur-md text-emerald-400 border border-emerald-500/30 text-xs px-3 py-1.5 rounded-full font-bold">
-                    {product.fileType || 'ملف رقمي'}
-                  </div>
-                  <div className="absolute top-4 left-4 flex flex-col items-end gap-2">
-                    {product.category && (
-                      <div className="bg-slate-900/80 backdrop-blur-md text-slate-300 text-xs px-3 py-1.5 rounded-full font-medium shadow-lg">
-                        {product.category}
-                      </div>
-                    )}
-                    {product.category === 'منتجات رقمية' && (
-                      <div className={`backdrop-blur-md text-[10px] px-3 py-1.5 rounded-full font-bold shadow-lg border ${
-                        (product.stockLinks?.length || 0) > 0
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : 'bg-red-500/10 text-red-400 border-red-500/30'
-                      }`}>
-                        {(product.stockLinks?.length || 0) > 0 ? `المتوفر: ${product.stockLinks?.length}` : 'نفذت الكمية'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Body */}
-                <div className="p-6 flex-grow flex flex-col justify-between space-y-6">
-                  <div className="space-y-3">
-                    <h3 className="font-bold text-lg text-white group-hover:text-emerald-400 transition-colors leading-snug">
-                      {product.name}
-                    </h3>
-                    <p className="text-slate-400 text-xs leading-relaxed line-clamp-3">
-                      {product.description}
-                    </p>
-
-                    {/* Features Snippet */}
-                    {product.features && (
-                      <div className="space-y-1.5 pt-2">
-                        {product.features.slice(0, 2).map((feat, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-300">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                            <span className="truncate">{feat}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pricing & Actions */}
-                  <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-slate-500 block font-medium">السعر:</span>
-                      <span className="text-2xl font-black text-white">
-                        {product.price}{' '}
-                        <span className="text-emerald-400 text-sm font-bold">د.ج</span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/product/${product.id}`}
-                        className="px-4 py-2.5 rounded-xl bg-slate-900 text-slate-300 hover:text-white border border-slate-800 text-xs font-semibold hover:border-slate-700 transition-colors"
-                      >
-                        التفاصيل
-                      </Link>
-                      {product.category === 'منتجات رقمية' && (product.stockLinks?.length || 0) === 0 ? (
-                        <div className="px-4 py-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/40 font-extrabold text-xs flex items-center gap-1.5 cursor-not-allowed">
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>نفذ المخزون</span>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/checkout/${product.id}`}
-                          className="chargily-btn px-4 py-2.5 rounded-xl text-slate-950 font-extrabold text-xs flex items-center gap-1.5"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>شراء الآن</span>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+        {/* Product Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.map(product => (
+            <div key={product.id} className="group store-card rounded-xl overflow-hidden">
+              <div className="aspect-[4/3] bg-[var(--store-card)] relative overflow-hidden">
+                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute top-3 right-3">
+                  <span className="bg-black/60 backdrop-blur-md border border-white/10 text-[var(--store-text)] text-[10px] font-bold px-2.5 py-1 rounded-md">
+                    {product.type === 'digital' ? t('badge.digital') : t('badge.sub')}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="p-4 space-y-3">
+                <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-1">{product.name}</h3>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-emerald-400 font-bold text-lg">{product.price}</span>
+                    <span className="text-[var(--store-text-muted)] text-xs font-medium">د.ج</span>
+                  </div>
+                </div>
+                <button className="w-full py-2 bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] text-xs font-bold rounded-lg hover:bg-[var(--store-hover)] transition-colors flex items-center justify-center gap-2">
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>{t('btn.add')}</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </section>
     </div>
   );

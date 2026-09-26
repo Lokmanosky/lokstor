@@ -27,30 +27,30 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4" dir="rtl">
-      <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-8 space-y-6 shadow-2xl">
+    <div className="min-h-screen bg-[var(--admin-bg)] flex items-center justify-center p-4" dir="rtl">
+      <div className="w-full max-w-sm bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl p-8 space-y-6 shadow-sm">
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
-            <Lock className="w-7 h-7 text-emerald-400" />
+          <div className="w-12 h-12 rounded-xl bg-[var(--admin-hover)] border border-[var(--admin-border)] flex items-center justify-center mx-auto">
+            <Lock className="w-5 h-5 text-[var(--admin-primary)]" />
           </div>
-          <h1 className="text-xl font-extrabold text-white">تسجيل الدخول</h1>
-          <p className="text-xs text-slate-400">لوحة تحكم لوقستور</p>
+          <h1 className="text-xl font-bold text-[var(--admin-text)]">تسجيل الدخول</h1>
+          <p className="text-xs text-[var(--admin-text-muted)]">لوحة تحكم Lokstor</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="email" required placeholder="البريد الإلكتروني"
             value={email} onChange={e => setEmail(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-emerald-500/50 outline-none"
+            className="w-full p-3 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md text-[var(--admin-text)] text-sm focus:border-[var(--admin-primary)] outline-none transition-colors"
           />
           <input
             type="password" required placeholder="كلمة المرور"
             value={password} onChange={e => setPassword(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-emerald-500/50 outline-none"
+            className="w-full p-3 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md text-[var(--admin-text)] text-sm focus:border-[var(--admin-primary)] outline-none transition-colors"
           />
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && <p className="text-[var(--admin-danger)] text-xs text-center">{error}</p>}
           <button
             type="submit" disabled={loading}
-            className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-extrabold text-sm hover:bg-emerald-400 transition-colors disabled:opacity-50"
+            className="w-full py-2.5 rounded-md bg-[var(--admin-primary)] text-[var(--admin-bg)] font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {loading ? 'جاري الدخول...' : 'دخول'}
           </button>

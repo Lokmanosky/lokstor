@@ -1,6 +1,7 @@
 'use client';
 
-import { LogOut, Bell, Menu, Sun, Moon } from 'lucide-react';
+import { LogOut, Bell, Menu, Sun, Moon, Eye } from 'lucide-react';
+import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useEffect, useState } from 'react';
@@ -39,15 +40,20 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen }: Props) {
   return (
     <div className="sticky top-0 z-30 h-16 bg-[var(--admin-card)] border-b border-[var(--admin-border)] px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        {!sidebarOpen && (
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]">
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
-        <h2 className="font-medium text-[var(--admin-text)] text-sm">لوحة التحكم</h2>
+        {/* Only show on mobile */}
+        <button 
+          onClick={() => setSidebarOpen(!sidebarOpen)} 
+          className="md:hidden p-1.5 text-[var(--admin-text-muted)] border border-[var(--admin-border)] rounded-md transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h2 className="font-medium text-[var(--admin-text)] text-sm hidden md:block">لوحة التحكم</h2>
       </div>
 
       <div className="flex items-center gap-4">
+        <Link href="/" target="_blank" className="p-2 text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] rounded-md transition-colors" title="عرض المتجر">
+          <Eye className="w-4 h-4" />
+        </Link>
         <button onClick={toggleTheme} className="p-2 text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] rounded-md transition-colors">
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>

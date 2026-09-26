@@ -13,7 +13,7 @@ export interface StoreSettings {
 }
 
 const defaultSettings: StoreSettings = {
-  storeName: 'لوقستور',
+  storeName: 'Lokstor',
   storeSlug: 'lokstor',
   storeSubtitle: 'متجر المنتجات الرقمية الجزائري',
   logoLetter: 'L',

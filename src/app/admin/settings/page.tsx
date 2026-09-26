@@ -1,103 +1,164 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Save } from 'lucide-react';
+
+import { useState, useEffect } from 'react';
+import { Save, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
 
 export default function SettingsPage() {
-  const [storeName, setStoreName] = useState('لوقستور');
-  const [storeSlug, setStoreSlug] = useState('lokstor');
-  const [subtitle, setSubtitle] = useState('متجر المنتجات الرقمية الجزائري');
-  const [logoLetter, setLogoLetter] = useState('L');
-  const [logoImg, setLogoImg] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const currentSettings = useStoreSettings();
+  
+  const [storeName, setStoreName] = useState(currentSettings.storeName || 'Lokstor');
+  const [logoUrl, setLogoUrl] = useState(currentSettings.logoImageUrl || '');
+  const [file, setFile] = useState<File | null>(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'store')).then(snap => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setStoreName(d.storeName || 'لوقستور');
-        setStoreSlug(d.storeSlug || 'lokstor');
-        setSubtitle(d.storeSubtitle || 'متجر المنتجات الرقمية الجزائري');
-        setLogoLetter(d.logoLetter || 'L');
-      }
-    });
-  }, []);
+    setStoreName(currentSettings.storeName);
+    setLogoUrl(currentSettings.logoImageUrl || '');
+  }, [currentSettings]);
 
-  const handleSave = async () => {
-    setSaving(true);
+  // Convert File to Base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    
     try {
-      let logoImageUrl: string | undefined;
-      if (logoImg) {
-        logoImageUrl = await new Promise<string>((resolve, reject) => {
-          const img = new Image();
-          const reader = new FileReader();
-          reader.onload = e => {
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = 128; canvas.height = 128;
-              canvas.getContext('2d')!.drawImage(img, 0, 0, 128, 128);
-              resolve(canvas.toDataURL('image/jpeg', 0.85));
-            };
-            img.onerror = reject;
-            img.src = e.target!.result as string;
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(logoImg);
-        });
+      let finalLogoUrl = logoUrl;
+      
+      if (file) {
+        // Convert to base64 instead of Firebase Storage
+        finalLogoUrl = await fileToBase64(file);
+        setLogoUrl(finalLogoUrl);
       }
-      const payload: any = { storeName, storeSlug, storeSubtitle: subtitle, logoLetter };
-      if (logoImageUrl) payload.logoImageUrl = logoImageUrl;
-      await setDoc(doc(db, 'settings', 'store'), payload, { merge: true });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      
+      await saveStoreSettings({
+        storeName,
+        logoImageUrl: finalLogoUrl
+      });
+      
+      setMessage('تم حفظ الإعدادات بنجاح!');
+    } catch (err: any) {
+      console.error(err);
+      setMessage('حدث خطأ أثناء الحفظ.');
     } finally {
-      setSaving(false);
+      setLoading(false);
+      setFile(null);
     }
   };
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-slate-300 block">{label}</label>
-      {children}
-    </div>
-  );
-
   return (
-    <div className="space-y-8 max-w-lg">
-      <h1 className="text-2xl font-extrabold text-white">الإعدادات ⚙️</h1>
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h1 className="text-xl font-semibold text-[var(--admin-text)]">الإعدادات</h1>
+        <p className="text-sm text-[var(--admin-text-muted)] mt-1">تخصيص معلومات المتجر الأساسية</p>
+      </div>
 
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-5">
-        <h2 className="font-bold text-white text-sm border-b border-slate-800 pb-3">بيانات المتجر</h2>
-        <Field label="اسم المتجر (عربي)">
-          <input type="text" value={storeName} onChange={e => setStoreName(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm" />
-        </Field>
-        <Field label="الاسم اللاتيني (Slug)">
-          <input type="text" value={storeSlug} onChange={e => setStoreSlug(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm" dir="ltr" />
-        </Field>
-        <Field label="الشعار الفرعي">
-          <input type="text" value={subtitle} onChange={e => setSubtitle(e.target.value)}
-            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm" />
-        </Field>
-        <Field label="حرف اللوغو">
-          <input type="text" maxLength={2} value={logoLetter} onChange={e => setLogoLetter(e.target.value)}
-            className="w-32 p-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm" dir="ltr" />
-        </Field>
-        <Field label="صورة اللوغو (اختياري)">
-          <input type="file" accept="image/*" onChange={e => setLogoImg(e.target.files?.[0] || null)}
-            className="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-xs" />
-        </Field>
+      <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md shadow-sm p-6">
+        <form onSubmit={handleSave} className="space-y-6">
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[var(--admin-text)]">اسم المتجر</label>
+            <input 
+              type="text" 
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+              className="w-full bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md px-3 py-2 text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors"
+              placeholder="مثال: Lokstor"
+              required
+            />
+          </div>
 
-        <button
-          onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-extrabold text-sm hover:bg-emerald-400 transition-colors disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" />
-          {saving ? 'جاري الحفظ...' : saved ? '✓ تم الحفظ!' : 'حفظ الإعدادات'}
-        </button>
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-[var(--admin-text)] block">شعار المتجر</label>
+            
+            <div className="flex items-center gap-6">
+              {/* Preview */}
+              <div className="w-16 h-16 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] flex items-center justify-center overflow-hidden shrink-0">
+                {file ? (
+                  <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                ) : logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-6 h-6 text-[var(--admin-text-muted)]" />
+                )}
+              </div>
+              
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-[var(--admin-hover)] border border-[var(--admin-border)] text-[var(--admin-text)] rounded-md text-sm font-medium hover:bg-[var(--admin-border)] transition-colors">
+                    <Upload className="w-4 h-4" />
+                    <span>رفع صورة من الجهاز (Base64)</span>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                  {file && (
+                    <button type="button" onClick={() => setFile(null)} className="text-xs text-red-400 hover:text-red-500">
+                      إلغاء
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-px bg-[var(--admin-border)] flex-1"></div>
+                  <span className="text-xs text-[var(--admin-text-muted)]">أو</span>
+                  <div className="h-px bg-[var(--admin-border)] flex-1"></div>
+                </div>
+                <input 
+                  type="url" 
+                  value={file ? '' : logoUrl}
+                  onChange={(e) => { setLogoUrl(e.target.value); setFile(null); }}
+                  disabled={file !== null}
+                  className="w-full bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md px-3 py-2 text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors disabled:opacity-50"
+                  placeholder="رابط الصورة (URL)"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+          </div>
+
+          {message && (
+            <div className={`p-3 rounded-md text-sm font-medium ${message.includes('خطأ') ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
+              {message}
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-[var(--admin-border)] flex justify-end">
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-6 py-2 bg-[var(--admin-primary)] text-[var(--admin-bg)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 min-w-[140px]"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>حفظ التعديلات</span>
+                </>
+              )}
+            </button>
+          </div>
+
+        </form>
       </div>
     </div>
   );

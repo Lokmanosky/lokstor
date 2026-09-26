@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
 تاريخ الشراء: ${new Date(order.createdAt).toLocaleString('ar-DZ')}
 حالة الدفع: مؤكد مدفوع عبر Chargily Pay
 
-شكراً لتسوقكم من لوقستور! هذا الملف الرقمي تجريبي تم توليده تلقائياً لتأكيد نجاح عملية الشراء والتحميل.
+شكراً لتسوقكم من Lokstor! هذا الملف الرقمي تجريبي تم توليده تلقائياً لتأكيد نجاح عملية الشراء والتحميل.
 تصفح المنتجات القادمة: ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}
 `;
 

@@ -9,8 +9,6 @@
 
 body {
   font-family: var(--font-cairo), system-ui, -apple-system, sans-serif;
-  background-color: #0b1329;
-  color: #f8fafc;
   direction: rtl;
   min-height: 100vh;
 }
@@ -71,4 +69,40 @@ body {
   --admin-danger: #E85A4F;
   --admin-sidebar: #131417;
   --admin-hover: #25272D;
+}
+
+:root {
+  --store-bg: #F2F2EF;
+  --store-card: #FFFFFF;
+  --store-card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --store-card-hover-shadow: 0 4px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.07);
+  --store-border: #E2E2DD;
+  --store-text: #1A1A17;
+  --store-text-muted: #475569;
+  --store-hover: #EAEAE6;
+  --store-primary: #059669;
+  --store-header-bg: rgba(242,242,239,0.92);
+}
+
+.dark {
+  --store-bg: #0a0a0a;
+  --store-card: #141414;
+  --store-card-shadow: none;
+  --store-card-hover-shadow: 0 0 0 1px #2a2a2a;
+  --store-border: #252525;
+  --store-text: #F5F5F5;
+  --store-text-muted: #a3a3a3;
+  --store-hover: #1a1a1a;
+  --store-primary: #34d399;
+  --store-header-bg: rgba(10,10,10,0.95);
+}
+
+.store-card {
+  background: var(--store-card);
+  border: 1px solid var(--store-border);
+  box-shadow: var(--store-card-shadow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.store-card:hover {
+  box-shadow: var(--store-card-hover-shadow);
 }
