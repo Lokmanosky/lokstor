@@ -72,19 +72,28 @@ export default function ProductForm({ productId }: ProductFormProps) {
     setImageUploading(true);
     setError('');
     try {
-      // Upload directly from browser using Firebase Storage Client SDK
+      // Try server-side upload first (works on Vercel with Admin SDK credentials)
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        set('imageUrl', data.url);
+        return;
+      }
+
+      // Fallback: client-side Firebase Storage upload (for local dev without Admin SDK)
       const { storage } = await import('@/lib/firebase');
       const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `images/products/product_${Date.now()}.${ext}`;
       const fileRef = ref(storage, path);
-
       await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' });
       const url = await getDownloadURL(fileRef);
       set('imageUrl', url);
     } catch (err: any) {
-      setError('فشل رفع الصورة: ' + (err?.message || 'تحقق من إعدادات Firebase Storage'));
+      setError('فشل رفع الصورة: ' + (err?.message || ''));
     } finally {
       setImageUploading(false);
     }
