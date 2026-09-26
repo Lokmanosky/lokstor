@@ -1,21 +1,41 @@
-rules_version = '2';
+rules_version = \'2\';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 1. Products Collection:
-    // Public read allowed for anyone browsing the store.
-    // Write (create, update, delete) allowed ONLY for authenticated users with custom claim "admin" == true.
-    match /products/{productId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+    // Helper Functions
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
     }
 
-    // 2. Orders Collection:
-    // Direct client access is STRICTLY BLOCKED.
-    // Orders can ONLY be created, read, or updated via Firebase Admin SDK in API routes.
+    function isProductValid() {
+      let data = request.resource.data;
+      let hasValidKeys = data.keys().hasOnly(['name', 'description', 'price', 'currency', 'imageUrl', 'image', 'fileUrl', 'stock', 'stockLinks', 'type', 'category', 'features', 'status', 'createdAt', 'updatedAt', 'fileType']);
+      let hasValidPrice = data.price is number && data.price >= 0; // >= 0 in case of free products
+      let hasValidName = data.name is string && data.name.size() > 0 && data.name.size() <= 200;
+      
+      return hasValidKeys && hasValidPrice && hasValidName;
+    }
+
+    // 1. Products Collection
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isProductValid();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Orders Collection
     match /orders/{orderId} {
-      allow read, write: if false;
+      allow read, write: if false; // Strict Server-side only
+    }
+
+    // 3. Settings Collection
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && request.resource.data.keys().hasOnly([
+        'storeName', 'storeSlug', 'logoImageUrl', 'logoLetter', 'heroTitle', 'heroSubtitle', 
+        'theme', 'storeCurrency', 'adminEmail', 'updatedAt', 'createdAt'
+      ]);
     }
   }
 }

@@ -6,20 +6,72 @@ import { collection, doc, setDoc, getDoc } from 'firebase/firestore';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { Product, Order } from '@/types';
 import crypto from 'crypto';
+import { checkoutSchema } from '@/lib/validations';
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+
+// DOMPurify setup for Server-side
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
+
+// Firestore-based Rate Limiter helper
+async function checkRateLimit(ip: string): Promise<boolean> {
+  if (!adminDb) return true; // Fallback if adminDb is not initialized
+  try {
+    const rlRef = adminDb.collection('rateLimits').doc(ip);
+    const docSnap = await rlRef.get();
+    
+    const now = Date.now();
+    const limit = 5; // max 5 requests per minute
+    const windowMs = 60000;
+    
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      if (now - data.lastRequest < windowMs) {
+        if (data.count >= limit) return false;
+        await rlRef.update({ count: data.count + 1 });
+      } else {
+        await rlRef.update({ count: 1, lastRequest: now });
+      }
+    } else {
+      await rlRef.set({ count: 1, lastRequest: now });
+    }
+    return true;
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    return true; // fail open
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { productId, customerName, customerEmail } = body;
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    
+    // 1. Rate Limiting Check
+    const allowed = await checkRateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json({ error: 'لقد تجاوزت الحد المسموح من الطلبات. يرجى المحاولة بعد دقيقة.' }, { status: 429 });
+    }
 
-    if (!productId || !customerName || !customerEmail) {
+    const body = await req.json();
+
+    // 2. Server-side Validation with Zod
+    const validationResult = checkoutSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'يرجى تقديم جميع البيانات المطلوبة (المنتج، الاسم، والبريد الإلكتروني)' },
+        { error: 'بيانات غير صالحة', details: validationResult.error.errors },
         { status: 400 }
       );
     }
 
-    // 1. Fetch Product from Firestore or local fallback
+    const { productId, customerName, customerEmail, customerPhone } = validationResult.data;
+
+    // 3. XSS Protection (Sanitize inputs)
+    const cleanName = purify.sanitize(customerName);
+    const cleanEmail = purify.sanitize(customerEmail);
+    const cleanPhone = customerPhone ? purify.sanitize(customerPhone) : undefined;
+
+    // 4. Fetch Product from Firestore or local fallback
     let product: Product | null = null;
     
     if (adminDb) {
@@ -30,51 +82,46 @@ export async function POST(req: NextRequest) {
     }
 
     if (!product) {
-      // Try Client Firestore fallback
       try {
         const docRef = doc(db, 'products', productId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           product = { id: docSnap.id, ...docSnap.data() } as Product;
         }
-      } catch (err) {
-        // ignore
-      }
+      } catch (err) {}
     }
 
     if (!product) {
-      // Check in INITIAL_PRODUCTS seed
       const seedProd = INITIAL_PRODUCTS.find((p) => p.id === productId);
-      if (seedProd) {
-        product = seedProd;
-      }
+      if (seedProd) product = seedProd;
     }
 
     if (!product) {
       return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 444 });
     }
 
-    // Check stock for digital products
-    if (product.category === 'منتجات رقمية') {
-      const stock = product.stockLinks || [];
-      if (stock.length === 0) {
+    // Check stock
+    if (product.stock !== undefined && product.stock <= 0) {
         return NextResponse.json({ error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
-      }
+    }
+    if (product.stockLinks && product.stockLinks.length === 0) {
+      return NextResponse.json({ error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
     }
 
-    // 2. Generate unique order ID
+    // 5. Generate Order ID
     const orderId = 'ord_' + crypto.randomBytes(8).toString('hex');
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-    // 3. Create Order object in Firestore
+    // 6. Create Order object
     const orderData: Order = {
       id: orderId,
       productId: product.id,
       productName: product.name,
       productPrice: product.price,
       currency: product.currency || 'dzd',
-      customerName,
-      customerEmail,
+      customerName: cleanName,
+      customerEmail: cleanEmail,
+      customerPhone: cleanPhone,
       status: 'pending',
       createdAt: Date.now(),
     };
@@ -85,12 +132,10 @@ export async function POST(req: NextRequest) {
     } else {
       try {
         await setDoc(doc(db, 'orders', orderId), orderData);
-      } catch (err) {
-        console.warn('Fallback setDoc error:', err);
-      }
+      } catch (err) {}
     }
 
-    // 4. Create Chargily Checkout or Demo Mock
+    // 7. Create Chargily Checkout
     if (isChargilyConfigured) {
       const chargily = getChargilyClient();
       const checkout = await chargily.createCheckout({
@@ -102,11 +147,10 @@ export async function POST(req: NextRequest) {
         description: `طلب شراء: ${product.name}`,
         metadata: {
           order_id: orderId,
-          customer_email: customerEmail,
+          customer_email: cleanEmail,
         },
       });
 
-      // Update Order with Chargily checkout ID and URL
       if (adminDb) {
         await adminDb.collection('orders').doc(orderId).update({
           chargilyInvoiceId: checkout.id,
@@ -120,22 +164,18 @@ export async function POST(req: NextRequest) {
         orderId,
       });
     } else {
-      // Mock Fallback for preview/development when CHARGILY_API_KEY is not set yet
       const mockCheckoutUrl = `${baseUrl}/success?order_id=${orderId}&mock=true`;
-      
       if (adminDb) {
         await adminDb.collection('orders').doc(orderId).update({
           chargilyInvoiceId: 'mock_inv_' + orderId,
           chargilyCheckoutUrl: mockCheckoutUrl,
         });
       }
-
       return NextResponse.json({
         success: true,
         checkoutUrl: mockCheckoutUrl,
         orderId,
         isMock: true,
-        message: 'تم إنشاء الطلب بنجاح (وضع المحاكاة التجريبي - قم بإضافة CHARGILY_API_KEY للتكامل الحقيقي)',
       });
     }
   } catch (error: any) {
