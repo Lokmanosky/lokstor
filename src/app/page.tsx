@@ -72,8 +72,13 @@ function HomePageContent() {
             <span>{t('hero.badge')}</span>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl font-black text-[var(--store-text)] tracking-tight leading-tight">
-            {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span> {t('hero.title3')}
+          <h1 className="text-3xl sm:text-5xl font-black text-[var(--store-text)] tracking-tight leading-snug">
+            <span className="block">
+              {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span>
+            </span>
+            <span className="block mt-1 sm:mt-2">
+              {t('hero.title3')}
+            </span>
           </h1>
           
           <p className="text-[var(--store-text-muted)] text-lg max-w-2xl mx-auto leading-relaxed">
