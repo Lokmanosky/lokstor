@@ -1,11 +1,12 @@
 'use client';
 
-import { LogOut, Bell, Menu, Sun, Moon, Eye } from 'lucide-react';
+import { LogOut, Bell, Menu, Sun, Moon, Eye, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
+import { useTranslation } from '@/lib/i18n-context';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 interface Props { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void; }
@@ -13,6 +14,8 @@ interface Props { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void; }
 export default function AdminTopBar({ sidebarOpen, setSidebarOpen }: Props) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [theme, setTheme] = useState('light');
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const { lang, setLang } = useTranslation();
 
   useEffect(() => {
     // Check initial theme safely on client
@@ -54,6 +57,31 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen }: Props) {
         <Link href="/" target="_blank" className="p-2 text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] rounded-md transition-colors" title="عرض المتجر">
           <Eye className="w-4 h-4" />
         </Link>
+        
+        {/* Language Switcher */}
+        <div className="relative">
+          <button 
+            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+            className="p-2 text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] rounded-md transition-colors"
+            title="تغيير اللغة"
+          >
+            <Globe className="w-4 h-4" />
+          </button>
+          
+          {langDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setLangDropdownOpen(false)}></div>
+              <div className="absolute top-10 left-0 w-32 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md shadow-lg overflow-hidden z-50">
+                <div className="flex flex-col text-sm">
+                  <button onClick={() => {setLang('ar'); setLangDropdownOpen(false)}} className={`text-right px-4 py-2 hover:bg-[var(--admin-hover)] transition-colors ${lang === 'ar' ? 'text-[var(--admin-primary)] font-bold' : 'text-[var(--admin-text)]'}`}>العربية</button>
+                  <button onClick={() => {setLang('en'); setLangDropdownOpen(false)}} className={`text-right px-4 py-2 hover:bg-[var(--admin-hover)] transition-colors ${lang === 'en' ? 'text-[var(--admin-primary)] font-bold' : 'text-[var(--admin-text)]'}`}>English</button>
+                  <button onClick={() => {setLang('fr'); setLangDropdownOpen(false)}} className={`text-right px-4 py-2 hover:bg-[var(--admin-hover)] transition-colors ${lang === 'fr' ? 'text-[var(--admin-primary)] font-bold' : 'text-[var(--admin-text)]'}`}>Français</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         <button onClick={toggleTheme} className="p-2 text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] rounded-md transition-colors">
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
