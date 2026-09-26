@@ -148,7 +148,14 @@ export default function AdminPage() {
       if (selectedImage) {
         setSaveError('جاري رفع الصورة إلى التخزين...');
         const imageRef = ref(storage, `images/products/${Date.now()}_${selectedImage.name}`);
-        const uploadResult = await uploadBytes(imageRef, selectedImage);
+        
+        // Add timeout to upload
+        const uploadPromise = uploadBytes(imageRef, selectedImage);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("استغرق رفع الصورة وقتاً طويلاً جداً (ربما حجمها كبير أو الإنترنت ضعيف). يرجى المحاولة بصورة أصغر.")), 15000)
+        );
+        
+        const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
         finalImageUrl = await getDownloadURL(uploadResult.ref);
       }
 
