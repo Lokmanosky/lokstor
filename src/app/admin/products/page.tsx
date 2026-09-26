@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { Product } from '@/types';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, ImageOff } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ProductsPage() {
@@ -22,14 +22,20 @@ export default function ProductsPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if(!id) return;
-    if(confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+    if (!id) return;
+    if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
       try {
         await deleteDoc(doc(db, 'products', id));
-      } catch(e) {
+      } catch (e) {
         console.error(e);
+        alert('فشل الحذف، تحقق من صلاحيات Firestore');
       }
     }
+  };
+
+  const getImageSrc = (p: Product) => {
+    const raw = (p.imageUrl || p.image || '').replace(/^"+|"+$/g, '').trim();
+    return raw || null;
   };
 
   return (
@@ -39,12 +45,13 @@ export default function ProductsPage() {
           <h1 className="text-xl font-semibold text-[var(--admin-text)]">المنتجات</h1>
           <p className="text-sm text-[var(--admin-text-muted)] mt-1">إدارة منتجات المتجر وتفاصيلها</p>
         </div>
-        
-        {/* We assume there is a product add/edit page at /admin/products/new in the future, for now just a disabled-looking button or simple link */}
-        <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[var(--admin-primary)] text-[var(--admin-bg)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity w-full sm:w-auto cursor-not-allowed opacity-50" title="قريباً">
+        <Link
+          href="/admin/products/new"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[var(--admin-primary)] text-[var(--admin-bg)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity w-full sm:w-auto"
+        >
           <Plus className="w-4 h-4" />
           <span>إضافة منتج</span>
-        </button>
+        </Link>
       </div>
 
       <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md shadow-sm">
@@ -61,42 +68,52 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-[var(--admin-border)]">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">
-                    جاري التحميل...
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">جاري التحميل...</td></tr>
               ) : products.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">
-                    لا توجد منتجات حالياً
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">لا توجد منتجات حالياً</td></tr>
               ) : (
-                products.map(p => (
-                  <tr key={p.id} className="hover:bg-[var(--admin-hover)] transition-colors">
-                    <td className="px-4 py-3">
-                      {p.imageUrl ? (
-                        <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded object-cover border border-[var(--admin-border)]" />
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-[var(--admin-bg)] border border-[var(--admin-border)] flex items-center justify-center text-[var(--admin-text-muted)] text-xs">صورة</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--admin-text)] font-medium">{p.name || '—'}</td>
-                    <td className="px-4 py-3 text-[var(--admin-text-muted)]">{p.category || '—'}</td>
-                    <td className="px-4 py-3 text-[var(--admin-text)] font-medium">{Number(p.price || 0).toLocaleString()} د.ج</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button className="text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-colors cursor-not-allowed opacity-50" title="تعديل (قريباً)">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(p.id!)} title="حذف" className="text-[var(--admin-text-muted)] hover:text-[var(--admin-danger)] transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                products.map(p => {
+                  const imgSrc = getImageSrc(p);
+                  return (
+                    <tr key={p.id} className="hover:bg-[var(--admin-hover)] transition-colors">
+                      <td className="px-4 py-3">
+                        {imgSrc ? (
+                          <img
+                            src={imgSrc}
+                            alt={p.name}
+                            className="w-12 h-12 rounded-lg object-cover border border-[var(--admin-border)]"
+                            onError={(e) => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] flex items-center justify-center">
+                            <ImageOff className="w-5 h-5 text-[var(--admin-text-muted)]" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-[var(--admin-text)] font-medium">{p.name || '—'}</td>
+                      <td className="px-4 py-3 text-[var(--admin-text-muted)]">{p.category || '—'}</td>
+                      <td className="px-4 py-3 text-[var(--admin-text)] font-medium">{Number(p.price || 0).toLocaleString()} د.ج</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/admin/products/${p.id}/edit`}
+                            className="text-[var(--admin-text-muted)] hover:text-[var(--admin-primary)] transition-colors"
+                            title="تعديل"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(p.id!)}
+                            title="حذف"
+                            className="text-[var(--admin-text-muted)] hover:text-[var(--admin-danger)] transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
