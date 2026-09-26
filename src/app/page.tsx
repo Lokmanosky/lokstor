@@ -15,7 +15,7 @@ function HomePageContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
 
@@ -166,11 +166,11 @@ function HomePageContent() {
                         disabled={outOfStock}
                         onClick={() => {
                           if(!outOfStock) {
-                            addItem({
+                            addToCart({
                               id: product.id,
                               name: product.name,
                               price: product.price,
-                              image: product.imageUrl,
+                              imageUrl: product.imageUrl || product.image || "",
                               quantity: 1,
                               type: product.type
                             });

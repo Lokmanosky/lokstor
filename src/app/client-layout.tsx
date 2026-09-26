@@ -39,6 +39,7 @@ function NavBar() {
     }
   };
 
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -474,16 +475,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/?q=${encodeURIComponent(searchQuery)}`);
-      setMobileMenuOpen(false);
-    }
-  };
 
   const isAdmin = pathname?.startsWith('/admin');
 

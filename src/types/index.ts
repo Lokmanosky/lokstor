@@ -7,6 +7,10 @@ export interface Product {
   fileUrl?: string; // Storage path or URL (For single file)
   stockLinks?: string[]; // Array of unique single-use links for stock-based products
   imageUrl: string;
+  image?: string;
+  stock?: number;
+  type?: string;
+  status?: string;
   category?: string;
   features?: string[];
   fileType?: string; // PDF, ZIP, Template, etc.
