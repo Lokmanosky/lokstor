@@ -1,129 +1,160 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySignature } from '@/lib/chargily';
-import { adminDb, adminStorage } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import crypto from 'crypto';
+import { adminDb, adminStorage } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Signature Verification
+    const signature = req.headers.get('signature');
+    if (!signature) {
+      console.warn('Webhook received without signature');
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     const rawBody = await req.text();
-    const signature = req.headers.get('signature') || req.headers.get('x-chargily-signature') || '';
-    const secretKey = process.env.CHARGILY_API_SECRET || process.env.CHARGILY_API_KEY || '';
+    const secret = process.env.CHARGILY_API_SECRET || '';
 
-    // 1. Verify Chargily Signature if Secret is defined
-    if (secretKey) {
-      const isValid = verifySignature(Buffer.from(rawBody), signature, secretKey);
-      if (!isValid) {
-        console.error('Invalid Webhook Signature');
-        return NextResponse.json({ error: 'التوقيع الرقمي غير صالح (Invalid signature)' }, { status: 403 });
-      }
-    } else {
-      console.warn('CHARGILY_API_SECRET is not set - Skipping signature verification in dev mode.');
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(rawBody);
+    const computedSignature = hmac.digest('hex');
+
+    const signatureBuffer = Buffer.from(signature, 'utf8');
+    const computedSignatureBuffer = Buffer.from(computedSignature, 'utf8');
+
+    if (
+      signatureBuffer.length !== computedSignatureBuffer.length ||
+      !crypto.timingSafeEqual(signatureBuffer, computedSignatureBuffer)
+    ) {
+      console.warn('Webhook signature mismatch');
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const payload = JSON.parse(rawBody);
-    const eventType = payload.type || payload.event;
-    const checkoutData = payload.data || payload;
-
-    // Check if event indicates paid checkout
-    const isPaidEvent =
-      eventType === 'checkout.paid' ||
-      eventType === 'invoice.paid' ||
-      checkoutData.status === 'paid';
-
-    if (!isPaidEvent) {
-      return NextResponse.json({ message: 'Event ignored (not paid status)' }, { status: 200 });
+    const body = JSON.parse(rawBody);
+    
+    // Check if it's checkout.paid
+    if (body.type !== 'checkout.paid') {
+      return NextResponse.json({ success: true, message: 'Ignored event type' });
     }
 
-    // Retrieve order_id from checkout metadata
-    const orderId = checkoutData.metadata?.order_id || checkoutData.metadata?.orderId;
+    const orderId = body.data?.metadata?.order_id;
+    const paidAmount = body.data?.amount;
 
     if (!orderId) {
-      return NextResponse.json({ error: 'order_id missing in webhook metadata' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'No order_id in metadata' }, { status: 400 });
     }
 
-    // 2. Generate secure download token and expiration (24h)
-    const downloadToken = crypto.randomBytes(24).toString('hex');
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    if (!adminDb) {
+      throw new Error('adminDb is not configured');
+    }
 
-    // 3. Fetch Order & Product to retrieve the download link (from stockLinks or fileUrl)
-    let downloadUrl = '';
+    // 2 & 3. Idempotency & Amount matching (Inside Transaction)
+    const orderRef = adminDb!.collection('orders').doc(orderId);
+    
+    const result = await adminDb!.runTransaction(async (transaction) => {
+      const orderDoc = await transaction.get(orderRef);
+      if (!orderDoc.exists) {
+        throw new Error('Order not found');
+      }
+      
+      const orderData = orderDoc.data()!;
+      
+      // Idempotency check: If already processed, skip
+      if (orderData.status === 'paid' || orderData.status === 'flagged') {
+        return { status: orderData.status, alreadyProcessed: true };
+      }
 
-    if (adminDb) {
-      const orderRef = adminDb.collection('orders').doc(orderId);
-      const orderSnap = await orderRef.get();
+      // Amount matching check
+      if (Number(orderData.productPrice) !== Number(paidAmount)) {
+        // Flag it
+        transaction.update(orderRef, { status: 'flagged', amountPaid: paidAmount });
+        return { status: 'flagged', alreadyProcessed: false, orderData };
+      }
 
-      if (orderSnap.exists) {
-        const order = orderSnap.data();
-        const productId = order?.productId;
+      // 4. Fulfillment: generate signed URL or pull from stockLinks
+      let downloadUrl = '';
+      
+      const productRef = adminDb!.collection('products').doc(orderData.productId);
+      const productDoc = await transaction.get(productRef);
+      let prodData = productDoc.exists ? productDoc.data() : null;
 
-        if (productId) {
-          const prodRef = adminDb.collection('products').doc(productId);
-          const prodSnap = await prodRef.get();
-          
-          if (prodSnap.exists) {
-            const prodData = prodSnap.data();
-            
-            // Check if it's a stock-based product
-            if (prodData?.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
-              const stockLinks = [...prodData.stockLinks];
-              downloadUrl = stockLinks.shift(); // Get the first unused link
-              
-              // Update product to remove the used link
-              await prodRef.update({
-                stockLinks: stockLinks
-              });
-            } else if (prodData?.fileUrl) {
-              // Standard single shared link
-              downloadUrl = prodData.fileUrl;
-            }
-          }
+      if (prodData) {
+        if (prodData.category === 'منتجات رقمية' && prodData.stockLinks && prodData.stockLinks.length > 0) {
+           // Assign the first available link/account details
+           downloadUrl = prodData.stockLinks[0];
+           const newStock = prodData.stockLinks.slice(1);
+           transaction.update(productRef, { stockLinks: newStock, stock: newStock.length });
+        } else if (prodData.fileUrl) {
+           // Generate 24h Signed URL if it's a firebase storage file
+           if (prodData.fileUrl.includes('storage.googleapis.com')) {
+              try {
+                const urlParts = new URL(prodData.fileUrl);
+                const pathParts = urlParts.pathname.split('/').filter(Boolean);
+                pathParts.shift(); // remove bucket name
+                const filePath = pathParts.join('/');
+                
+                if (adminStorage) {
+                  const bucket = adminStorage.bucket();
+                  const [signedUrl] = await bucket.file(filePath).getSignedUrl({
+                    action: 'read',
+                    expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+                  });
+                  downloadUrl = signedUrl;
+                } else {
+                  downloadUrl = prodData.fileUrl; // Fallback
+                }
+              } catch(e) {
+                 downloadUrl = prodData.fileUrl; // Fallback
+              }
+           } else {
+             downloadUrl = prodData.fileUrl;
+           }
         }
       }
-    }
 
-    // Fallback URL using internal download route if no direct URL is found
-    if (!downloadUrl) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-      downloadUrl = `${baseUrl}/api/download?order_id=${orderId}&token=${downloadToken}`;
-    }
-
-    // 4. Update Order Status in Firestore to "paid"
-    if (adminDb) {
-      await adminDb.collection('orders').doc(orderId).update({
+      // Update Order
+      transaction.update(orderRef, {
         status: 'paid',
-        downloadToken,
-        downloadUrl,
-        downloadExpiresAt: expiresAt,
-        paidAt: Date.now(),
+        downloadUrl: downloadUrl || null,
+        paidAt: Date.now()
       });
-    } else {
-      try {
-        const orderRef = doc(db, 'orders', orderId);
-        await updateDoc(orderRef, {
-          status: 'paid',
-          downloadToken,
-          downloadUrl,
-          downloadExpiresAt: expiresAt,
-          paidAt: Date.now(),
-        });
-      } catch (err) {
-        console.warn('Fallback updateDoc error:', err);
-      }
+
+      // Add Notification
+      const notifRef = adminDb!.collection('notifications').doc();
+      transaction.set(notifRef, {
+        id: notifRef.id,
+        title: 'طلب جديد مدفوع! 🎉',
+        message: `تم دفع طلب بقيمة ${paidAmount} د.ج بنجاح!`,
+        type: 'success',
+        read: false,
+        createdAt: Date.now(),
+        orderId: orderId
+      });
+
+      return { status: 'paid', alreadyProcessed: false, orderData };
+    });
+
+    if (result.alreadyProcessed) {
+      return NextResponse.json({ success: true, message: 'Already processed', status: result.status });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'تم تحديث حالة الطلب إلى مدفوع بنجاح',
-      orderId,
-    });
+    if (result.status === 'flagged') {
+       const notifRef = adminDb!.collection('notifications').doc();
+       await notifRef.set({
+          id: notifRef.id,
+          title: 'تحذير: تلاعب محتمل بالمبلغ ⚠️',
+          message: `طلب رقم ${orderId}: المبلغ المدفوع (${paidAmount}) لا يطابق سعر المنتج الأصلي!`,
+          type: 'error',
+          read: false,
+          createdAt: Date.now(),
+          orderId: orderId
+       });
+       return NextResponse.json({ success: true, message: 'Order flagged due to amount mismatch' });
+    }
+
+    return NextResponse.json({ success: true, message: 'Order fulfilled successfully' });
+
   } catch (error: any) {
-    console.error('Webhook error:', error);
-    return NextResponse.json(
-      { error: error?.message || 'خطأ في معالجة الـ Webhook' },
-      { status: 500 }
-    );
+    console.error('Webhook Error:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
