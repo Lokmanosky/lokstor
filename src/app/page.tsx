@@ -160,51 +160,57 @@ function HomePageContent() {
                     <Link href={`/product/${product.id}`}>
                       <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h3>
                     </Link>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[var(--store-primary)] text-lg">{product.price} <span className="text-xs">د.ج</span></span>
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">
+                        {product.price} <span className="text-xs font-normal">د.ج</span>
+                      </span>
                       
-                      <button 
-                        disabled={outOfStock}
-                        onClick={() => {
-                          if(!outOfStock) {
-                            addToCart({
-                              id: product.id,
-                              name: product.name,
-                              price: product.price,
-                              imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''),
-                              quantity: 1,
-                              type: product.type
-                            });
-                            setAddedProductId(product.id);
-                            setTimeout(() => setAddedProductId(null), 1500);
-                          }
-                        }}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-md font-bold text-xs transition-all shadow-sm ${
-                          outOfStock 
-                            ? 'bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed'
-                            : addedProductId === product.id
-                            ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-                            : 'border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:bg-[var(--store-card)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)]'
-                        }`}
-                        title="إضافة المنتج للسلة"
-                      >
-                        {outOfStock ? (
-                          <>
-                            <PackageX className="w-4 h-4" />
-                            <span>نفذ المخزون</span>
-                          </>
-                        ) : addedProductId === product.id ? (
-                          <>
-                            <Check className="w-4 h-4 text-emerald-400" />
-                            <span className="text-emerald-400">تمت الإضافة!</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart className="w-4 h-4" />
+                      {outOfStock ? (
+                        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
+                          <PackageX className="w-3.5 h-3.5" />
+                          <span>نفذ المخزون</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          {/* زر الشراء المباشر -> يوجه مباشرة لصفحة الشراء والدفع */}
+                          <Link
+                            href={`/checkout/${product.id}`}
+                            className="flex items-center justify-center px-3 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
+                            title="الشراء المباشر والدفع الآن"
+                          >
                             <span>الشراء</span>
-                          </>
-                        )}
-                      </button>
+                          </Link>
+
+                          {/* أيقونة السلة منفصلة -> تضيف للسلة وتحدث العداد بالأعلى */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addToCart({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                                imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''),
+                                quantity: 1,
+                                type: product.type
+                              });
+                              setAddedProductId(product.id);
+                              setTimeout(() => setAddedProductId(null), 1500);
+                            }}
+                            className={`p-1.5 rounded-md border text-xs font-bold transition-all flex items-center justify-center ${
+                              addedProductId === product.id
+                                ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105'
+                                : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'
+                            }`}
+                            title="إضافة إلى السلة"
+                          >
+                            {addedProductId === product.id ? (
+                              <Check className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <ShoppingCart className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
