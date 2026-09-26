@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
       if (prodData) {
         if (prodData.category === 'منتجات رقمية' && prodData.stockLinks && prodData.stockLinks.length > 0) {
-           // Assign the first available link/account details
+           // Assign first available content (can be a URL, account credentials, code, etc.)
            downloadUrl = prodData.stockLinks[0];
            const newStock = prodData.stockLinks.slice(1);
            transaction.update(productRef, { stockLinks: newStock, stock: newStock.length });

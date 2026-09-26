@@ -10,7 +10,8 @@ export const productSchema = z.object({
   image: z.string().optional(),
   fileUrl: z.string().optional(),
   stock: z.number().min(0).optional(),
-  stockLinks: z.array(z.string().url('رابط غير صالح')).optional(),
+  // stockLinks: any text content — URL, account credentials, activation code, instructions, etc.
+  stockLinks: z.array(z.string().min(1).max(5000)).optional(),
   type: z.enum(['digital', 'subscription']).optional(),
   category: z.string().optional(),
   features: z.array(z.string().max(100)).optional(),

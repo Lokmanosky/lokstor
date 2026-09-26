@@ -4,7 +4,73 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Order } from '@/types';
-import { CheckCircle2, Download, ShieldCheck, Sparkles, ArrowRight, RefreshCw, FileText, Check } from 'lucide-react';
+import { Check, RefreshCw, Download, Copy, CheckCheck, ArrowRight } from 'lucide-react';
+
+function isUrl(str: string) {
+  try {
+    new URL(str);
+    return str.startsWith('http://') || str.startsWith('https://');
+  } catch {
+    return false;
+  }
+}
+
+function DeliveryBox({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  if (isUrl(content)) {
+    return (
+      <div className="space-y-3 pt-4">
+        <a
+          href={content}
+          download
+          target="_blank"
+          rel="noopener noreferrer"
+          className="chargily-btn inline-flex items-center justify-center gap-3 w-full py-4 px-8 rounded-2xl text-slate-950 font-black text-base shadow-xl"
+        >
+          <Download className="w-5 h-5" />
+          <span>تحميل الملف الرقمي الآن</span>
+        </a>
+        <p className="text-[11px] text-slate-500">
+          رابط التحميل الخاص بك. إذا لم يعمل، انسخه وافتحه في المتصفح.
+        </p>
+      </div>
+    );
+  }
+
+  // Plain text content: account credentials, code, instructions, etc.
+  return (
+    <div className="space-y-3 pt-4 text-right">
+      <p className="text-xs text-emerald-400 font-bold">📦 محتوى الطلب الرقمي:</p>
+      <div className="relative bg-slate-900 border border-emerald-500/30 rounded-2xl p-5">
+        <pre className="text-sm text-white whitespace-pre-wrap break-words font-mono leading-relaxed">
+          {content}
+        </pre>
+        <button
+          onClick={handleCopy}
+          className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold hover:bg-slate-700 transition-colors"
+        >
+          {copied ? (
+            <><CheckCheck className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">تم النسخ</span></>
+          ) : (
+            <><Copy className="w-3.5 h-3.5 text-slate-400" /><span className="text-slate-400">نسخ</span></>
+          )}
+        </button>
+      </div>
+      <p className="text-[11px] text-slate-500">
+        احتفظ بهذه المعلومات في مكان آمن. لن تتمكن من الوصول إليها مجدداً بعد مغادرة هذه الصفحة.
+      </p>
+    </div>
+  );
+}
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -32,7 +98,6 @@ function SuccessContent() {
         setErrorMsg(data.error || 'لم نتمكن من إيجاد بيانات الطلب');
       }
     } catch (err: any) {
-      console.error('Fetch order error:', err);
       setErrorMsg('حدث خطأ أثناء الاستعلام عن حالة الطلب.');
     } finally {
       setLoading(false);
@@ -42,7 +107,6 @@ function SuccessContent() {
 
   useEffect(() => {
     if (orderId) {
-      // Automatically auto confirm if mock parameter is present
       fetchOrder(isMock);
     } else {
       setLoading(false);
@@ -53,8 +117,8 @@ function SuccessContent() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center glass-card rounded-3xl p-12 my-12">
         <div className="inline-block w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">جاري التحقق من حالة الفاتورة والدفع...</h2>
-        <p className="text-slate-400 text-xs">يرجى الانتظار لحظات حتى يتم تأكيد التحويل بواسطة بوابة Chargily.</p>
+        <h2 className="text-xl font-bold text-white mb-2">جاري التحقق من حالة الدفع...</h2>
+        <p className="text-slate-400 text-xs">يرجى الانتظار لحظات.</p>
       </div>
     );
   }
@@ -62,30 +126,24 @@ function SuccessContent() {
   if (!orderId || (!loading && !order)) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center glass-card rounded-3xl p-12 my-12 space-y-6">
-        <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto">
-          !
-        </div>
+        <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto text-2xl font-bold">!</div>
         <h2 className="text-2xl font-bold text-white">لم يتم العثور على الطلب</h2>
         <p className="text-slate-400 text-xs leading-relaxed max-w-md mx-auto">
           {errorMsg || 'يرجى التأكد من رابط الشراء أو الاستعلام باستخدام البريد الإلكتروني.'}
         </p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-        >
-          <ArrowRight className="w-4 h-4" />
-          <span>العودة للرئيسية</span>
+        <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">
+          <ArrowRight className="w-4 h-4" /><span>العودة للرئيسية</span>
         </Link>
       </div>
     );
   }
 
   const isPaid = order?.status === 'paid';
+  const deliveryContent = order?.downloadUrl;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
       <div className="glass-card p-8 sm:p-12 rounded-3xl text-center space-y-8 border border-slate-800 shadow-2xl relative overflow-hidden">
-        {/* Glow backdrop */}
         <div className="absolute top-0 right-1/2 translate-x-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Status Icon */}
@@ -104,16 +162,16 @@ function SuccessContent() {
         {/* Title */}
         <div className="space-y-2">
           <h1 className="text-3xl font-extrabold text-white">
-            {isPaid ? 'تم الدفع وتأكيد الطلب بنجاح! 🎉' : 'طلبك قيد المعالجة والتأكيد...'}
+            {isPaid ? 'تم الدفع وتأكيد الطلب بنجاح! 🎉' : 'طلبك قيد المعالجة...'}
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
             {isPaid
-              ? 'شكراً لك على ثقتك بـ Lokstor! ملفك الرقمي أصبح جاهزاً للتحميل الآن.'
-              : 'جاري استلام إشعار الدفع النهائي من بوابة Chargily. يرجى تحديث الصفحة أو انتظار تأكيد Webhook.'}
+              ? 'شكراً لثقتك بـ Lokstor! محتوى طلبك الرقمي جاهز أدناه.'
+              : 'جاري استلام إشعار الدفع النهائي من بوابة Chargily.'}
           </p>
         </div>
 
-        {/* Order Info Card */}
+        {/* Order Info */}
         <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl text-right space-y-3 text-xs">
           <div className="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-3">
             <span>رقم الطلب:</span>
@@ -124,7 +182,7 @@ function SuccessContent() {
             <span className="font-bold text-white">{order?.productName}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-3">
-            <span>البريد الإلكتروني للعميل:</span>
+            <span>البريد الإلكتروني:</span>
             <span className="text-emerald-400 font-semibold">{order?.customerEmail}</span>
           </div>
           <div className="flex justify-between items-center text-slate-400">
@@ -133,23 +191,16 @@ function SuccessContent() {
           </div>
         </div>
 
-        {/* Download Action Section */}
+        {/* Delivery Section */}
         {isPaid ? (
-          <div className="space-y-4 pt-4">
-            <a
-              href={order?.downloadUrl || `/api/download?order_id=${order?.id}&token=${order?.downloadToken}`}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="chargily-btn inline-flex items-center justify-center gap-3 w-full py-4 px-8 rounded-2xl text-slate-950 font-black text-base shadow-xl"
-            >
-              <Download className="w-5 h-5" />
-              <span>تحميل الملف الرقمي الان</span>
-            </a>
-            <p className="text-[11px] text-slate-500">
-              رابط التحميل الخاص بك صالح ومتوفر أيضاً عبر البريد الإلكتروني.
-            </p>
-          </div>
+          deliveryContent ? (
+            <DeliveryBox content={deliveryContent} />
+          ) : (
+            <div className="pt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+              <p className="font-bold">جاري تجهيز محتوى الطلب...</p>
+              <p className="text-slate-400 mt-1">إذا لم يظهر المحتوى خلال دقيقة، يرجى التواصل معنا برقم طلبك.</p>
+            </div>
+          )
         ) : (
           <div className="space-y-4 pt-2">
             <button
@@ -160,21 +211,18 @@ function SuccessContent() {
               <span>إعادة الفحص والتحقق</span>
             </button>
 
-            {/* Dev Mock Confirm Helper button */}
+            {/* Dev Mock Confirm */}
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 space-y-2">
-              <p className="font-bold">وضع التطوير/التجربة المحلية (Demo / Test Mode):</p>
+              <p className="font-bold">وضع التطوير / التجربة المحلية:</p>
               <p className="text-[11px] text-slate-400">
-                إذا كنت تتصفح دون ربط Webhook مائي مباشر بـ Chargily، يمكنك محاكاة نجاح الترسيل وتفعيل رابط التحميل فوراً:
+                لمحاكاة نجاح الدفع وعرض المحتوى الرقمي فوراً (بدون Webhook حقيقي):
               </p>
               <button
-                onClick={() => {
-                  setConfirmingMock(true);
-                  fetchOrder(true);
-                }}
+                onClick={() => { setConfirmingMock(true); fetchOrder(true); }}
                 disabled={confirmingMock}
                 className="mt-2 px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-extrabold text-xs hover:bg-amber-400 transition-colors"
               >
-                {confirmingMock ? 'جاري التأكيد التجريبي...' : 'تأكيد العملية كمدفوعة ومحاكاة التحميل'}
+                {confirmingMock ? 'جاري التأكيد...' : 'تأكيد كمدفوع ومحاكاة التسليم'}
               </button>
             </div>
           </div>
@@ -183,7 +231,7 @@ function SuccessContent() {
 
       <div className="text-center">
         <Link href="/" className="text-xs text-slate-400 hover:text-white font-semibold">
-          العودة للصفحة الرئيسية للمتجر
+          العودة للصفحة الرئيسية
         </Link>
       </div>
     </div>
