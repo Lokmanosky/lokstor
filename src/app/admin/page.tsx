@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { auth, db, storage } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Product, Order } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { Lock, LogOut, Plus, Trash2, Edit, Package, ShoppingCart, Upload, FileText, Image as ImageIcon, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -146,17 +146,38 @@ export default function AdminPage() {
 
       // Upload file to Firebase Storage if selected
       if (selectedImage) {
-        setSaveError('جاري رفع الصورة إلى التخزين...');
-        const imageRef = ref(storage, `images/products/${Date.now()}_${selectedImage.name}`);
+        setSaveError('جاري تهيئة رفع الصورة...');
+        const cleanName = selectedImage.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        const imageRef = ref(storage, `images/products/${Date.now()}_${cleanName}`);
         
-        // Add timeout to upload
-        const uploadPromise = uploadBytes(imageRef, selectedImage);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("استغرق رفع الصورة وقتاً طويلاً جداً (ربما حجمها كبير أو الإنترنت ضعيف). يرجى المحاولة بصورة أصغر.")), 15000)
-        );
+        const uploadTask = uploadBytesResumable(imageRef, selectedImage);
         
-        const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
-        finalImageUrl = await getDownloadURL(uploadResult.ref);
+        await new Promise((resolve, reject) => {
+          // 15 seconds timeout
+          const timer = setTimeout(() => {
+            uploadTask.cancel();
+            reject(new Error("استغرق رفع الصورة وقتاً طويلاً جداً (ربما حجمها كبير أو الإنترنت ضعيف). يرجى المحاولة بصورة أصغر."));
+          }, 15000);
+
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              setSaveError(`جاري رفع الصورة: ${progress}%`);
+            },
+            (error) => {
+              clearTimeout(timer);
+              reject(error);
+            },
+            () => {
+              clearTimeout(timer);
+              resolve(uploadTask.snapshot);
+            }
+          );
+        });
+        
+        setSaveError('جاري جلب رابط الصورة...');
+        finalImageUrl = await getDownloadURL(imageRef);
       }
 
       setSaveError('جاري معالجة الروابط...');
