@@ -14,9 +14,12 @@ interface MenuPos { x: number; y: number }
 function isEditableTarget(el: EventTarget | null): boolean {
   if (!el || !(el instanceof Element)) return false;
   const tag = (el as HTMLElement).tagName;
-  const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
-  const isContentEditable = (el as HTMLElement).isContentEditable;
-  return isInput || isContentEditable;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable;
+}
+
+function hasTextSelected(): boolean {
+  const sel = window.getSelection();
+  return !!(sel && sel.toString().trim().length > 0);
 }
 
 export default function DevToolsGuard() {
@@ -24,7 +27,6 @@ export default function DevToolsGuard() {
   const menuRef = useRef<HTMLDivElement>(null);
   const isProd = process.env.NODE_ENV === 'production';
 
-  // Close menu on outside click / scroll
   useEffect(() => {
     const close = () => setMenu(null);
     document.addEventListener('click', close);
@@ -39,8 +41,8 @@ export default function DevToolsGuard() {
     if (!isProd) return;
 
     const handleContextMenu = (e: MouseEvent) => {
-      // Only intercept when inside an editable element
-      if (isEditableTarget(e.target)) {
+      // Show menu if: inside editable field OR there is selected text
+      if (isEditableTarget(e.target) || hasTextSelected()) {
         e.preventDefault();
 
         const menuW = 160;
@@ -51,9 +53,8 @@ export default function DevToolsGuard() {
         if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
 
         setMenu({ x, y });
-      }
-      // Everywhere else: block the browser menu (existing behavior)
-      else {
+      } else {
+        // Everywhere else: silent block
         e.preventDefault();
         setMenu(null);
       }
