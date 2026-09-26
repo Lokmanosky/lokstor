@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --font-cairo: 'Cairo', sans-serif;
+  --background: #0f172a;
+  --foreground: #f8fafc;
+}
+
+body {
+  font-family: var(--font-cairo), system-ui, -apple-system, sans-serif;
+  background-color: #0b1329;
+  color: #f8fafc;
+  direction: rtl;
+  min-height: 100vh;
+}
+
+/* Glassmorphism Effect */
+.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-nav {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Chargily primary green glow */
+.chargily-btn {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+  transition: all 0.25s ease-in-out;
+}
+
+.chargily-btn:hover {
+  box-shadow: 0 6px 28px rgba(16, 185, 129, 0.5);
+  transform: translateY(-2px);
+}
