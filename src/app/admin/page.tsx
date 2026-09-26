@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { auth, db, storage } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, getDocs, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Product, Order } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
-import { Lock, LogOut, Plus, Trash2, Package, ShoppingCart, Upload, FileText, Image as ImageIcon, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, LogOut, Plus, Trash2, Edit, Package, ShoppingCart, Upload, FileText, Image as ImageIcon, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -26,14 +26,16 @@ export default function AdminPage() {
 
   // Add Product Form State
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [newProdName, setNewProdName] = useState<string>('');
   const [newProdDesc, setNewProdDesc] = useState<string>('');
   const [newProdPrice, setNewProdPrice] = useState<number>(1000);
   const [newProdCategory, setNewProdCategory] = useState<string>('منتجات رقمية');
   const [newProdFileType, setNewProdFileType] = useState<string>('PDF');
-  const [newProdImageUrl, setNewProdImageUrl] = useState<string>('');
+  const [newProdFileUrl, setNewProdFileUrl] = useState<string>('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [newProdFeatures, setNewProdFeatures] = useState<string>('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
   useEffect(() => {
@@ -91,26 +93,39 @@ export default function AdminPage() {
     await signOut(auth);
   };
 
-  const handleAddProduct = async (e: React.FormEvent) => {
+  const openEditModal = (p: Product) => {
+    setEditingProductId(p.id);
+    setNewProdName(p.name);
+    setNewProdDesc(p.description);
+    setNewProdPrice(p.price);
+    setNewProdCategory(p.category || 'منتجات رقمية');
+    setNewProdFileType(p.fileType || 'PDF');
+    setNewProdFileUrl(p.fileUrl || '');
+    setNewProdFeatures(p.features ? p.features.join('\n') : '');
+    setSelectedImage(null);
+    setShowAddModal(true);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdName || !newProdPrice) return;
 
     setIsUploading(true);
     try {
-      let fileStorageUrl = '';
-
-      // Upload file to Firebase Storage if selected
-      if (selectedFile) {
-        const fileRef = ref(storage, `products/${Date.now()}_${selectedFile.name}`);
-        const uploadResult = await uploadBytes(fileRef, selectedFile);
-        fileStorageUrl = uploadResult.ref.fullPath;
-      } else {
-        fileStorageUrl = 'products/default_digital_product.pdf';
+      let finalImageUrl = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80';
+      if (editingProductId) {
+        const existingProd = products.find(p => p.id === editingProductId);
+        if (existingProd) finalImageUrl = existingProd.imageUrl;
       }
 
-      const defaultImg =
-        newProdImageUrl ||
-        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80';
+      // Upload file to Firebase Storage if selected
+      if (selectedImage) {
+        const imageRef = ref(storage, `images/products/${Date.now()}_${selectedImage.name}`);
+        const uploadResult = await uploadBytes(imageRef, selectedImage);
+        finalImageUrl = await getDownloadURL(uploadResult.ref);
+      }
+
+      
 
       const featuresArr = newProdFeatures
         .split('\n')
@@ -124,22 +139,28 @@ export default function AdminPage() {
         currency: 'dzd',
         category: newProdCategory,
         fileType: newProdFileType,
-        fileUrl: fileStorageUrl,
-        imageUrl: defaultImg,
+        fileUrl: newProdFileUrl,
+        imageUrl: finalImageUrl,
         features: featuresArr.length > 0 ? featuresArr : ['ملف ممتاز عالي الجودة'],
         createdAt: Date.now(),
       };
 
-      const docRef = await addDoc(collection(db, 'products'), productPayload);
-      setProducts([{ id: docRef.id, ...productPayload }, ...products]);
+      if (editingProductId) {
+        await updateDoc(doc(db, 'products', editingProductId), productPayload);
+        setProducts(products.map(p => p.id === editingProductId ? { id: editingProductId, ...productPayload } as Product : p));
+      } else {
+        const docRef = await addDoc(collection(db, 'products'), productPayload);
+        setProducts([{ id: docRef.id, ...productPayload } as Product, ...products]);
+      }
 
       // Reset Form
       setNewProdName('');
       setNewProdDesc('');
       setNewProdPrice(1000);
-      setNewProdImageUrl('');
+      setNewProdFileUrl('');
       setNewProdFeatures('');
-      setSelectedFile(null);
+      setSelectedImage(null);
+      setEditingProductId(null);
       setShowAddModal(false);
     } catch (err: any) {
       console.error('Add product error:', err);
@@ -242,7 +263,18 @@ export default function AdminPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setEditingProductId(null);
+              setNewProdName('');
+              setNewProdDesc('');
+              setNewProdPrice(1000);
+              setNewProdCategory('منتجات رقمية');
+              setNewProdFileType('PDF');
+              setNewProdFileUrl('');
+              setNewProdFeatures('');
+              setSelectedImage(null);
+              setShowAddModal(true);
+            }}
             className="chargily-btn px-4 py-2.5 rounded-xl text-slate-950 font-bold text-xs flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -301,13 +333,22 @@ export default function AdminPage() {
 
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
                 <span className="text-slate-500 text-[11px] truncate max-w-[180px]">مسار: {p.fileUrl}</span>
-                <button
-                  onClick={() => handleDeleteProduct(p.id)}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditModal(p)}
+                    className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                    title="تعديل المنتج"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(p.id)}
                   className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
                   title="حذف المنتج"
                 >
                   <Trash2 className="w-4 h-4" />
-                </button>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -365,13 +406,13 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
           <div className="glass-card w-full max-w-lg p-6 rounded-3xl border border-slate-800 space-y-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <h3 className="font-bold text-lg text-white">إضافة منتج رقمي جديد</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white text-xs">
+              <h3 className="font-bold text-lg text-white">{editingProductId ? "تعديل المنتج" : "إضافة منتج رقمي جديد"}</h3>
+              <button onClick={() => { setShowAddModal(false); setEditingProductId(null); }} className="text-slate-400 hover:text-white text-xs">
                 إغلاق ✕
               </button>
             </div>
 
-            <form onSubmit={handleAddProduct} className="space-y-4">
+            <form onSubmit={handleSaveProduct} className="space-y-4">
               <div className="space-y-1 text-xs">
                 <label className="font-semibold text-slate-300 block">اسم المنتج الرقمي</label>
                 <input
@@ -427,22 +468,23 @@ export default function AdminPage() {
               </div>
 
               <div className="space-y-1 text-xs">
-                <label className="font-semibold text-slate-300 block">رابط صورة الغلاف (URL)</label>
+                <label className="font-semibold text-slate-300 block">صورة المنتج (من الحاسوب)</label>
                 <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={newProdImageUrl}
-                  onChange={(e) => setNewProdImageUrl(e.target.value)}
-                  className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+                  className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-300 text-xs"
                 />
               </div>
 
               <div className="space-y-1 text-xs">
-                <label className="font-semibold text-slate-300 block">رفع الملف الرقمي إلى Firebase Storage</label>
+                <label className="font-semibold text-slate-300 block">رابط الملف الرقمي (Drive أو غيره)</label>
                 <input
-                  type="file"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="w-full p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-300 text-xs"
+                  type="url"
+                  placeholder="https://drive.google.com/..."
+                  value={newProdFileUrl}
+                  onChange={(e) => setNewProdFileUrl(e.target.value)}
+                  className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white"
                 />
               </div>
 
@@ -462,7 +504,7 @@ export default function AdminPage() {
                 disabled={isUploading}
                 className="chargily-btn w-full py-3.5 rounded-xl text-slate-950 font-extrabold text-xs"
               >
-                {isUploading ? 'جاري رفع الملف وحفظ المنتج...' : 'حفظ ونشر المنتج الان'}
+                {isUploading ? 'جاري الحفظ...' : (editingProductId ? 'حفظ التعديلات' : 'حفظ ونشر المنتج الان')}
               </button>
             </form>
           </div>
@@ -471,3 +513,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
