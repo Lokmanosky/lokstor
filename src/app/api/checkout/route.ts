@@ -54,6 +54,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 444 });
     }
 
+    // Check stock for digital products
+    if (product.category === 'منتجات رقمية') {
+      const stock = product.stockLinks || [];
+      if (stock.length === 0) {
+        return NextResponse.json({ error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
+      }
+    }
+
     // 2. Generate unique order ID
     const orderId = 'ord_' + crypto.randomBytes(8).toString('hex');
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';

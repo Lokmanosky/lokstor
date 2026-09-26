@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [newProdCategory, setNewProdCategory] = useState<string>('منتجات رقمية');
   const [newProdFileType, setNewProdFileType] = useState<string>('PDF');
   const [newProdFileUrl, setNewProdFileUrl] = useState<string>('');
+  const [newProdStockLinks, setNewProdStockLinks] = useState<string>('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [newProdFeatures, setNewProdFeatures] = useState<string>('');
   
@@ -101,6 +102,7 @@ export default function AdminPage() {
     setNewProdCategory(p.category || 'منتجات رقمية');
     setNewProdFileType(p.fileType || 'PDF');
     setNewProdFileUrl(p.fileUrl || '');
+    setNewProdStockLinks(p.stockLinks ? p.stockLinks.join('\n') : '');
     setNewProdFeatures(p.features ? p.features.join('\n') : '');
     setSelectedImage(null);
     setShowAddModal(true);
@@ -132,18 +134,27 @@ export default function AdminPage() {
         .map((f) => f.trim())
         .filter(Boolean);
 
-      const productPayload = {
+      const stockLinksArr = newProdStockLinks.split('\n').map(l => l.trim()).filter(Boolean);
+      
+      const productPayload: any = {
         name: newProdName,
         description: newProdDesc,
         price: Number(newProdPrice),
         currency: 'dzd',
         category: newProdCategory,
         fileType: newProdFileType,
-        fileUrl: newProdFileUrl,
         imageUrl: finalImageUrl,
         features: featuresArr.length > 0 ? featuresArr : ['ملف ممتاز عالي الجودة'],
         createdAt: Date.now(),
       };
+      
+      if (newProdCategory === 'منتجات رقمية') {
+        productPayload.stockLinks = stockLinksArr;
+        productPayload.fileUrl = '';
+      } else {
+        productPayload.fileUrl = newProdFileUrl;
+        productPayload.stockLinks = [];
+      }
 
       if (editingProductId) {
         await updateDoc(doc(db, 'products', editingProductId), productPayload);
@@ -158,6 +169,8 @@ export default function AdminPage() {
       setNewProdDesc('');
       setNewProdPrice(1000);
       setNewProdFileUrl('');
+              setNewProdStockLinks('');
+      setNewProdStockLinks('');
       setNewProdFeatures('');
       setSelectedImage(null);
       setEditingProductId(null);
@@ -271,6 +284,8 @@ export default function AdminPage() {
               setNewProdCategory('منتجات رقمية');
               setNewProdFileType('PDF');
               setNewProdFileUrl('');
+              setNewProdStockLinks('');
+      setNewProdStockLinks('');
               setNewProdFeatures('');
               setSelectedImage(null);
               setShowAddModal(true);
@@ -332,7 +347,11 @@ export default function AdminPage() {
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-500 text-[11px] truncate max-w-[180px]">مسار: {p.fileUrl}</span>
+                <span className="text-slate-500 text-[11px] truncate max-w-[180px]">
+                  {p.category === 'منتجات رقمية' 
+                    ? `المخزون: ${p.stockLinks ? p.stockLinks.length : 0} رابط` 
+                    : `مسار: ${p.fileUrl || 'لا يوجد'}`}
+                </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEditModal(p)}
@@ -477,16 +496,33 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="space-y-1 text-xs">
-                <label className="font-semibold text-slate-300 block">رابط الملف الرقمي (Drive أو غيره)</label>
-                <input
-                  type="url"
-                  placeholder="https://drive.google.com/..."
-                  value={newProdFileUrl}
-                  onChange={(e) => setNewProdFileUrl(e.target.value)}
-                  className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white"
-                />
-              </div>
+              {newProdCategory === 'منتجات رقمية' ? (
+                <div className="space-y-1 text-xs">
+                  <label className="font-semibold text-slate-300 block">مخزون الروابط (رابط واحد في كل سطر)</label>
+                  <textarea
+                    rows={4}
+                    placeholder="مثال:
+https://link1.com
+https://link2.com"
+                    value={newProdStockLinks}
+                    onChange={(e) => setNewProdStockLinks(e.target.value)}
+                    className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white font-mono text-left"
+                    dir="ltr"
+                  />
+                  <p className="text-[10px] text-emerald-400">سيتم سحب رابط واحد لكل عملية شراء ناجحة.</p>
+                </div>
+              ) : (
+                <div className="space-y-1 text-xs">
+                  <label className="font-semibold text-slate-300 block">رابط الملف الرقمي الموحد (Drive أو غيره)</label>
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/..."
+                    value={newProdFileUrl}
+                    onChange={(e) => setNewProdFileUrl(e.target.value)}
+                    className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white"
+                  />
+                </div>
+              )}
 
               <div className="space-y-1 text-xs">
                 <label className="font-semibold text-slate-300 block">مميزات المنتج (سطر لكل ميزة)</label>

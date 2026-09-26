@@ -4,7 +4,8 @@ export interface Product {
   description: string;
   price: number; // Price in DZD (د.ج)
   currency: string; // 'dzd'
-  fileUrl: string; // Storage path or URL
+  fileUrl?: string; // Storage path or URL (For single file)
+  stockLinks?: string[]; // Array of unique single-use links for stock-based products
   imageUrl: string;
   category?: string;
   features?: string[];

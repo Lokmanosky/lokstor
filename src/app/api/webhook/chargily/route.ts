@@ -48,9 +48,8 @@ export async function POST(req: NextRequest) {
     const downloadToken = crypto.randomBytes(24).toString('hex');
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
-    // 3. Fetch Order & Product to generate Signed URL from Firebase Storage if available
-    let fileUrl = '';
-    let storagePath = '';
+    // 3. Fetch Order & Product to retrieve the download link (from stockLinks or fileUrl)
+    let downloadUrl = '';
 
     if (adminDb) {
       const orderRef = adminDb.collection('orders').doc(orderId);
@@ -61,40 +60,31 @@ export async function POST(req: NextRequest) {
         const productId = order?.productId;
 
         if (productId) {
-          const prodSnap = await adminDb.collection('products').doc(productId).get();
+          const prodRef = adminDb.collection('products').doc(productId);
+          const prodSnap = await prodRef.get();
+          
           if (prodSnap.exists) {
-            storagePath = prodSnap.data()?.fileUrl || '';
+            const prodData = prodSnap.data();
+            
+            // Check if it's a stock-based product
+            if (prodData?.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
+              const stockLinks = [...prodData.stockLinks];
+              downloadUrl = stockLinks.shift(); // Get the first unused link
+              
+              // Update product to remove the used link
+              await prodRef.update({
+                stockLinks: stockLinks
+              });
+            } else if (prodData?.fileUrl) {
+              // Standard single shared link
+              downloadUrl = prodData.fileUrl;
+            }
           }
         }
       }
     }
 
-    if (!storagePath) {
-      // Check in initial products seed
-      const seedProd = INITIAL_PRODUCTS.find((p) => p.fileUrl);
-      if (seedProd) {
-        storagePath = seedProd.fileUrl;
-      }
-    }
-
-    // Try to create Firebase Storage Signed URL
-    let downloadUrl = '';
-    if (adminStorage && storagePath) {
-      try {
-        const bucket = adminStorage.bucket();
-        const file = bucket.file(storagePath);
-        const [signedUrl] = await file.getSignedUrl({
-          version: 'v4',
-          action: 'read',
-          expires: expiresAt,
-        });
-        downloadUrl = signedUrl;
-      } catch (storageErr) {
-        console.warn('Storage Signed URL creation warning:', storageErr);
-      }
-    }
-
-    // Fallback URL using internal download route if direct storage signed URL is not set
+    // Fallback URL using internal download route if no direct URL is found
     if (!downloadUrl) {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       downloadUrl = `${baseUrl}/api/download?order_id=${orderId}&token=${downloadToken}`;
