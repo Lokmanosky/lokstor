@@ -1,8 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { Lock } from 'lucide-react';
 
 export default function AdminLoginPage() {
@@ -10,15 +12,40 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
 
-    const handleGoogleLogin = async () => {
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (isAdmin) {
+        router.replace('/admin');
+      } else {
+        router.replace('/account');
+      }
+    }
+  }, [user, isAdmin, authLoading, router]);
+
+  const checkRoleAndRedirect = async (uid: string, userEmail?: string | null) => {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      const role = snap.exists() ? snap.data()?.role : (userEmail?.toLowerCase() === 'loktech.dz@gmail.com' ? 'admin' : 'customer');
+      if (role === 'admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/account');
+      }
+    } catch {
+      router.replace('/admin');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.replace('/admin');
+      const res = await signInWithPopup(auth, provider);
+      await checkRoleAndRedirect(res.user.uid, res.user.email);
     } catch (e: any) {
       if (e.code === 'auth/popup-closed-by-user') return;
       setError('حدث خطأ أثناء تسجيل الدخول بجوجل');
@@ -32,8 +59,8 @@ export default function AdminLoginPage() {
     setError('');
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.replace('/admin');
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      await checkRoleAndRedirect(res.user.uid, res.user.email);
     } catch {
       setError('بريد إلكتروني أو كلمة مرور غير صحيحة');
     } finally {
@@ -49,7 +76,7 @@ export default function AdminLoginPage() {
             <Lock className="w-5 h-5 text-[var(--admin-primary)]" />
           </div>
           <h1 className="text-xl font-bold text-[var(--admin-text)]">تسجيل الدخول</h1>
-          <p className="text-xs text-[var(--admin-text-muted)]">لوحة تحكم Lokstor</p>
+          <p className="text-xs text-[var(--admin-text-muted)]">لوحة تحكم Lokstor للمسؤولين</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <input
@@ -67,8 +94,8 @@ export default function AdminLoginPage() {
             type="submit" disabled={loading}
             className="w-full py-2.5 rounded-md bg-[var(--admin-primary)] text-[var(--admin-bg)] font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {loading ? 'جاري الدخول...' : 'دخول'}
-                    </button>
+            {loading ? 'جاري التحقق...' : 'دخول'}
+          </button>
         </form>
 
         <div className="flex items-center gap-2">

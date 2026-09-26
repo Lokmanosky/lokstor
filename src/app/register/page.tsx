@@ -35,7 +35,7 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
       setSuccess('تم إنشاء الحساب بنجاح! جاري التوجيه...');
-      setTimeout(() => router.push('/'), 1500);
+      setTimeout(() => router.push('/account'), 1200);
     } catch (err: any) {
       if (err.message.includes('auth/email-already-in-use')) {
         setError('هذا البريد مستخدم بالفعل');
@@ -55,7 +55,7 @@ export default function RegisterPage() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       setSuccess('تم التسجيل بنجاح! جاري التوجيه...');
-      setTimeout(() => router.push('/'), 1500);
+      setTimeout(() => router.push('/account'), 1200);
     } catch (err: any) {
       setError('فشل التسجيل عبر جوجل');
     }
@@ -64,7 +64,7 @@ export default function RegisterPage() {
   // Redirect if already logged in
   if (user) {
     if (typeof window !== 'undefined') {
-      router.push('/');
+      router.push('/account');
     }
     return null;
   }

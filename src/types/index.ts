@@ -51,3 +51,12 @@ export interface CreateCheckoutResult {
   orderId?: string;
   error?: string;
 }
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName?: string;
+  role: 'admin' | 'customer';
+  createdAt: number;
+  lastLoginAt?: number;
+}

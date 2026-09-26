@@ -21,7 +21,7 @@ const GoogleIcon = () => (
 
 function NavBar() {
   const s = useStoreSettings();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { totalItems } = useCart();
   const { t, lang, setLang } = useTranslation();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -181,19 +181,25 @@ function NavBar() {
           <div className="flex items-center gap-2 border-l border-[var(--store-border)] pl-2 ml-1">
             {user ? (
               <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-[var(--store-text)]">
-                  <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Link 
+                  href="/account"
+                  className="hidden sm:flex items-center gap-2 text-xs font-medium text-[var(--store-text)] hover:text-[var(--store-primary)] transition-colors"
+                  title="حسابي وسجل طلباتي"
+                >
+                  <div className="w-7 h-7 rounded-full bg-[var(--store-primary)]/10 border border-[var(--store-primary)]/20 flex items-center justify-center text-[var(--store-primary)]">
                     <User className="w-4 h-4" />
                   </div>
                   <span className="truncate max-w-[100px]">{user.displayName || user.email?.split('@')[0]}</span>
-                </div>
-                <Link 
-                  href="/admin"
-                  className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-[var(--store-text)] hover:bg-[var(--store-hover)] transition-colors"
-                  title="لوحة التحكم"
-                >
-                  <Settings className="w-4 h-4" />
                 </Link>
+                {isAdmin && (
+                  <Link 
+                    href="/admin"
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-amber-400 hover:bg-amber-500/10 transition-colors"
+                    title="لوحة تحكم المسؤول (Admin)"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Link>
+                )}
                 <button 
                   onClick={() => signOut()}
                   className="w-8 h-8 flex items-center justify-center rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
@@ -278,9 +284,14 @@ function NavBar() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-sm font-medium text-[var(--store-text)]">
-                  <Settings className="w-4 h-4" /> لوحة التحكم
+                <Link href="/account" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-sm font-medium text-[var(--store-text)]">
+                  <User className="w-4 h-4" /> حسابي وطلباتي
                 </Link>
+                {isAdmin && (
+                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-sm font-medium text-amber-400">
+                    <Settings className="w-4 h-4" /> لوحة التحكم (Admin)
+                  </Link>
+                )}
                 <button onClick={() => { signOut(); setMobileMenuOpen(false); }} className="flex items-center gap-2 text-sm font-medium text-red-500 text-right">
                   <LogOut className="w-4 h-4" /> تسجيل الخروج
                 </button>
