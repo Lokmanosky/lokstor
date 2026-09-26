@@ -107,7 +107,7 @@ export default function AdminPage() {
 
   const handleRemoveStockLink = (index: number) => {
     const newLinks = newProdStockLinks.filter((_, i) => i !== index);
-    setNewProdStockLinks(newLinks.length > 0 ? newLinks : ['']);
+    setNewProdStockLinks(newLinks);
   };
 
   const openEditModal = (p: Product) => {
