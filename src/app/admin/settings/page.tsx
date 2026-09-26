@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    setStoreName(currentSettings.storeName);
+    setStoreName(currentSettings.storeName || 'Lokstor');
     setLogoUrl(currentSettings.logoImageUrl || '');
   }, [currentSettings]);
 
