@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/auth'; // Wait, it's firestore
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'; // Wait, it's firestore
 import { getFirestore } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
 

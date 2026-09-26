@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
-import { Trash2, ShoppingBag, CreditCard, Clock, CheckCircle2, Package, XCircle } from 'lucide-react';
+import { Trash2, ShoppingBag, CreditCard, Clock, CheckCircle2, Package, XCircle , ShieldCheck } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
