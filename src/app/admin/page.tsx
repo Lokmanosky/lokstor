@@ -38,6 +38,7 @@ export default function AdminPage() {
   const [newProdFeatures, setNewProdFeatures] = useState<string>('');
   
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -120,10 +121,12 @@ export default function AdminPage() {
     setNewProdStockLinks(p.stockLinks && p.stockLinks.length > 0 ? p.stockLinks : ['']);
     setNewProdFeatures(p.features ? p.features.join('\n') : '');
     setSelectedImage(null);
+    setSaveError('');
     setShowAddModal(true);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
+    setSaveError('');
     e.preventDefault();
     if (!newProdName || !newProdPrice) return;
 
@@ -191,7 +194,7 @@ export default function AdminPage() {
       setShowAddModal(false);
     } catch (err: any) {
       console.error('Add product error:', err);
-      alert('حدث خطأ أثناء حفظ المنتج: ' + err?.message);
+      setSaveError('حدث خطأ: ' + err?.message);
     } finally {
       setIsUploading(false);
     }
@@ -301,6 +304,7 @@ export default function AdminPage() {
               setNewProdStockLinks(['']);
               setNewProdFeatures('');
               setSelectedImage(null);
+              setSaveError('');
               setShowAddModal(true);
             }}
             className="chargily-btn px-4 py-2.5 rounded-xl text-slate-950 font-bold text-xs flex items-center gap-2"
@@ -564,6 +568,11 @@ export default function AdminPage() {
                 />
               </div>
 
+              {saveError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-xs">
+                  {saveError}
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={isUploading}
