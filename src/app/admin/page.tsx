@@ -132,6 +132,7 @@ export default function AdminPage() {
 
     setIsUploading(true);
     try {
+      setSaveError('جاري تحضير البيانات...');
       let finalImageUrl = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80';
       if (editingProductId) {
         const existingProd = products.find(p => p.id === editingProductId);
@@ -140,13 +141,13 @@ export default function AdminPage() {
 
       // Upload file to Firebase Storage if selected
       if (selectedImage) {
+        setSaveError('جاري رفع الصورة إلى التخزين...');
         const imageRef = ref(storage, `images/products/${Date.now()}_${selectedImage.name}`);
         const uploadResult = await uploadBytes(imageRef, selectedImage);
         finalImageUrl = await getDownloadURL(uploadResult.ref);
       }
 
-      
-
+      setSaveError('جاري معالجة الروابط...');
       const featuresArr = newProdFeatures
         .split('\n')
         .map((f) => f.trim())
@@ -174,6 +175,7 @@ export default function AdminPage() {
         productPayload.stockLinks = [];
       }
 
+      setSaveError('جاري الحفظ في قاعدة البيانات...');
       if (editingProductId) {
         await updateDoc(doc(db, 'products', editingProductId), productPayload);
         setProducts(products.map(p => p.id === editingProductId ? { id: editingProductId, ...productPayload } as Product : p));
@@ -181,6 +183,8 @@ export default function AdminPage() {
         const docRef = await addDoc(collection(db, 'products'), productPayload);
         setProducts([{ id: docRef.id, ...productPayload } as Product, ...products]);
       }
+      setSaveError('نجاح!');
+      
 
       // Reset Form
       setNewProdName('');
