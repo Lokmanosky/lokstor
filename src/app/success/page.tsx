@@ -50,8 +50,8 @@ function DeliveryBox({ content }: { content: string }) {
   return (
     <div className="space-y-3 pt-4 text-right">
       <p className="text-xs text-emerald-400 font-bold">📦 محتوى الطلب الرقمي:</p>
-      <div className="relative bg-slate-900 border border-emerald-500/30 rounded-2xl p-5">
-        <pre className="text-sm text-white whitespace-pre-wrap break-words font-mono leading-relaxed">
+      <div className="relative bg-[var(--store-bg)] border border-emerald-500/30 rounded-2xl p-5">
+        <pre className="text-sm text-[var(--store-text)] whitespace-pre-wrap break-words font-mono leading-relaxed">
           {content}
         </pre>
         <button
@@ -61,7 +61,7 @@ function DeliveryBox({ content }: { content: string }) {
           {copied ? (
             <><CheckCheck className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">تم النسخ</span></>
           ) : (
-            <><Copy className="w-3.5 h-3.5 text-slate-400" /><span className="text-slate-400">نسخ</span></>
+            <><Copy className="w-3.5 h-3.5 text-[var(--store-text-muted)]" /><span className="text-[var(--store-text-muted)]">نسخ</span></>
           )}
         </button>
       </div>
@@ -115,20 +115,20 @@ function SuccessContent() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center glass-card rounded-3xl p-12 my-12">
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl rounded-3xl p-12 my-12">
         <div className="inline-block w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">جاري التحقق من حالة الدفع...</h2>
-        <p className="text-slate-400 text-xs">يرجى الانتظار لحظات.</p>
+        <h2 className="text-xl font-bold text-[var(--store-text)] mb-2">جاري التحقق من حالة الدفع...</h2>
+        <p className="text-[var(--store-text-muted)] text-xs">يرجى الانتظار لحظات.</p>
       </div>
     );
   }
 
   if (!orderId || (!loading && !order)) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center glass-card rounded-3xl p-12 my-12 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl rounded-3xl p-12 my-12 space-y-6">
         <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto text-2xl font-bold">!</div>
-        <h2 className="text-2xl font-bold text-white">لم يتم العثور على الطلب</h2>
-        <p className="text-slate-400 text-xs leading-relaxed max-w-md mx-auto">
+        <h2 className="text-2xl font-bold text-[var(--store-text)]">لم يتم العثور على الطلب</h2>
+        <p className="text-[var(--store-text-muted)] text-xs leading-relaxed max-w-md mx-auto">
           {errorMsg || 'يرجى التأكد من رابط الشراء أو الاستعلام باستخدام البريد الإلكتروني.'}
         </p>
         <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">
@@ -143,7 +143,7 @@ function SuccessContent() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
-      <div className="glass-card p-8 sm:p-12 rounded-3xl text-center space-y-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+      <div className="bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl p-8 sm:p-12 rounded-3xl text-center space-y-8 border border-[var(--store-border)] shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-1/2 translate-x-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Status Icon */}
@@ -161,10 +161,10 @@ function SuccessContent() {
 
         {/* Title */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-extrabold text-white">
+          <h1 className="text-3xl font-extrabold text-[var(--store-text)]">
             {isPaid ? 'تم الدفع وتأكيد الطلب بنجاح! 🎉' : 'طلبك قيد المعالجة...'}
           </h1>
-          <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
+          <p className="text-[var(--store-text-muted)] text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
             {isPaid
               ? 'شكراً لثقتك بـ Lokstor! محتوى طلبك الرقمي جاهز أدناه.'
               : 'جاري استلام إشعار الدفع النهائي من بوابة Chargily.'}
@@ -172,22 +172,22 @@ function SuccessContent() {
         </div>
 
         {/* Order Info */}
-        <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl text-right space-y-3 text-xs">
-          <div className="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-3">
+        <div className="bg-[var(--store-bg)] border border-[var(--store-border)] p-6 rounded-2xl text-right space-y-3 text-xs">
+          <div className="flex justify-between items-center text-[var(--store-text-muted)] border-b border-[var(--store-border)] pb-3">
             <span>رقم الطلب:</span>
-            <span className="font-mono font-bold text-white">{order?.id}</span>
+            <span className="font-mono font-bold text-[var(--store-text)]">{order?.id}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-3">
+          <div className="flex justify-between items-center text-[var(--store-text-muted)] border-b border-[var(--store-border)] pb-3">
             <span>المنتج:</span>
-            <span className="font-bold text-white">{order?.productName}</span>
+            <span className="font-bold text-[var(--store-text)]">{order?.productName}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400 border-b border-slate-800/80 pb-3">
+          <div className="flex justify-between items-center text-[var(--store-text-muted)] border-b border-[var(--store-border)] pb-3">
             <span>البريد الإلكتروني:</span>
             <span className="text-emerald-400 font-semibold">{order?.customerEmail}</span>
           </div>
-          <div className="flex justify-between items-center text-slate-400">
+          <div className="flex justify-between items-center text-[var(--store-text-muted)]">
             <span>المبلغ المدفوع:</span>
-            <span className="font-black text-white text-sm">{order?.productPrice} د.ج</span>
+            <span className="font-black text-[var(--store-text)] text-sm">{order?.productPrice} د.ج</span>
           </div>
         </div>
 
@@ -198,14 +198,14 @@ function SuccessContent() {
           ) : (
             <div className="pt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
               <p className="font-bold">جاري تجهيز محتوى الطلب...</p>
-              <p className="text-slate-400 mt-1">إذا لم يظهر المحتوى خلال دقيقة، يرجى التواصل معنا برقم طلبك.</p>
+              <p className="text-[var(--store-text-muted)] mt-1">إذا لم يظهر المحتوى خلال دقيقة، يرجى التواصل معنا برقم طلبك.</p>
             </div>
           )
         ) : (
           <div className="space-y-4 pt-2">
             <button
               onClick={() => fetchOrder(false)}
-              className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-xs border border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-[var(--store-bg)] text-[var(--store-text)] font-bold text-xs border border-[var(--store-border)] hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               <span>إعادة الفحص والتحقق</span>
@@ -214,7 +214,7 @@ function SuccessContent() {
             {/* Dev Mock Confirm */}
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 space-y-2">
               <p className="font-bold">وضع التطوير / التجربة المحلية:</p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[var(--store-text-muted)]">
                 لمحاكاة نجاح الدفع وعرض المحتوى الرقمي فوراً (بدون Webhook حقيقي):
               </p>
               <button
@@ -230,7 +230,7 @@ function SuccessContent() {
       </div>
 
       <div className="text-center">
-        <Link href="/" className="text-xs text-slate-400 hover:text-white font-semibold">
+        <Link href="/" className="text-xs text-[var(--store-text-muted)] hover:text-[var(--store-text)] font-semibold">
           العودة للصفحة الرئيسية
         </Link>
       </div>
@@ -240,7 +240,7 @@ function SuccessContent() {
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 text-slate-400 text-sm">جاري التحميل...</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-[var(--store-text-muted)] text-sm">جاري التحميل...</div>}>
       <SuccessContent />
     </Suspense>
   );
