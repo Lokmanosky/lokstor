@@ -26,7 +26,7 @@ async function checkRateLimit(ip: string): Promise<boolean> {
     const windowMs = 60000;
     
     if (docSnap.exists) {
-      const data = docSnap.data();
+      const data = docSnap.data()!;
       if (now - data.lastRequest < windowMs) {
         if (data.count >= limit) return false;
         await rlRef.update({ count: data.count + 1 });
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const validationResult = checkoutSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: validationResult.error.errors },
+        { error: 'بيانات غير صالحة', details: validationResult.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
