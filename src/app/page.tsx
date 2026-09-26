@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX } from 'lucide-react';
+import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
@@ -16,6 +16,7 @@ function HomePageContent() {
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
   const { addToCart } = useCart();
+  const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
 
@@ -157,7 +158,7 @@ function HomePageContent() {
                   </Link>
                   <div className="p-4 space-y-3">
                     <Link href={`/product/${product.id}`}>
-                      <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-1 hover:text-[var(--store-primary)] transition-colors">{product.name}</h3>
+                      <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h3>
                     </Link>
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[var(--store-primary)] text-lg">{product.price} <span className="text-xs">د.ج</span></span>
@@ -174,23 +175,33 @@ function HomePageContent() {
                               quantity: 1,
                               type: product.type
                             });
+                            setAddedProductId(product.id);
+                            setTimeout(() => setAddedProductId(null), 1500);
                           }
                         }}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md font-bold text-xs transition-colors ${
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-md font-bold text-xs transition-all shadow-sm ${
                           outOfStock 
                             ? 'bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed'
+                            : addedProductId === product.id
+                            ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
                             : 'border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:bg-[var(--store-card)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)]'
                         }`}
+                        title="إضافة المنتج للسلة"
                       >
                         {outOfStock ? (
                           <>
                             <PackageX className="w-4 h-4" />
                             <span>نفذ المخزون</span>
                           </>
+                        ) : addedProductId === product.id ? (
+                          <>
+                            <Check className="w-4 h-4 text-emerald-400" />
+                            <span className="text-emerald-400">تمت الإضافة!</span>
+                          </>
                         ) : (
                           <>
                             <ShoppingCart className="w-4 h-4" />
-                            <span>{t('store.addCart')}</span>
+                            <span>الشراء</span>
                           </>
                         )}
                       </button>
