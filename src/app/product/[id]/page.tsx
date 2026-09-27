@@ -13,7 +13,8 @@ import {
   ShieldCheck, 
   Download, 
   CreditCard, 
-  Lock, 
+  Lock,
+  Ban, 
   ShoppingCart, 
   Check, 
   Share2, 
@@ -123,7 +124,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const isOutOfStock = ((product.stock !== undefined && product.stock <= 0) || (product.stockLinks && product.stockLinks.length === 0)) && product.category !== 'اشتراكات' && !product.name.includes('Gemini');
+  const isOutOfStock = Boolean(
+    (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) ||
+    (product.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
+    product.status === 'out_of_stock'
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6" dir="rtl">
@@ -217,6 +222,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
+          {/* Out of stock alert banner */}
+          {isOutOfStock && (
+            <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-sm font-black flex items-center gap-2.5">
+              <Ban className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />
+              <span>تم نفاذ المخزون من هذا المنتج حالياً</span>
+            </div>
+          )}
+
           {/* 3. Description */}
           <div className="pt-2 border-t border-[var(--store-border)]">
             <p className="text-[var(--store-text)] text-sm sm:text-base leading-relaxed whitespace-pre-line font-medium">
@@ -247,19 +260,26 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex items-center gap-3">
               <Link
                 href={isOutOfStock ? '#' : `/checkout/${product.id}`}
-                className={`chargily-btn flex-1 py-4 px-6 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
-                  isOutOfStock ? 'opacity-50 pointer-events-none cursor-not-allowed' : 'hover:scale-[1.01] active:scale-[0.99]'
+                className={`flex-1 py-4 px-6 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
+                  isOutOfStock
+                    ? 'bg-red-600 hover:bg-red-700 cursor-not-allowed opacity-95 shadow-red-500/20 pointer-events-none'
+                    : 'chargily-btn hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
                 }`}
+                aria-disabled={isOutOfStock}
               >
-                <Lock className="w-4 h-4" />
-                <span>{isOutOfStock ? 'نفذ المخزون حالياً' : `الشراء والدفع (${product.price} د.ج)`}</span>
+                {isOutOfStock ? <Ban className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
+                <span>{isOutOfStock ? 'تم نفاذ المخزون' : `الشراء والدفع (${product.price.toLocaleString('en-US')} د.ج)`}</span>
               </Link>
 
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className="w-14 h-14 flex items-center justify-center rounded-2xl border-2 border-[var(--store-border)] hover:border-emerald-500 bg-[var(--store-bg)] text-[var(--store-text)] hover:text-emerald-500 transition-all shrink-0 disabled:opacity-50 cursor-pointer shadow-sm"
-                title="إضافة إلى السلة"
+                className={`w-14 h-14 flex items-center justify-center rounded-2xl border-2 transition-all shrink-0 shadow-sm ${
+                  isOutOfStock
+                    ? 'border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 text-red-400 cursor-not-allowed opacity-60'
+                    : 'border-[var(--store-border)] hover:border-emerald-500 bg-[var(--store-bg)] text-[var(--store-text)] hover:text-emerald-500 cursor-pointer'
+                }`}
+                title={isOutOfStock ? 'المنتج غير متوفر في المخزون' : 'إضافة إلى السلة'}
               >
                 {addedToCart ? (
                   <Check className="w-6 h-6 text-emerald-500" />

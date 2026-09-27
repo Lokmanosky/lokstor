@@ -146,7 +146,11 @@ function HomePageContent() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map(product => {
-              const outOfStock = product.stock <= 0 || (product.stockLinks && product.stockLinks.length === 0);
+              const outOfStock = Boolean(
+    (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) ||
+    (product.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
+    product.status === 'out_of_stock'
+  );
               
               return (
                 <div key={product.id} className={`group store-card rounded-xl overflow-hidden`}>
@@ -173,7 +177,7 @@ function HomePageContent() {
                       {outOfStock ? (
                         <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
                           <PackageX className="w-3.5 h-3.5" />
-                          <span>نفذ المخزون</span>
+                          <span>تم نفاذ المخزون</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">

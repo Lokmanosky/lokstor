@@ -109,13 +109,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Check stock for strictly inventory-limited items
-    if (product.category !== 'اشتراكات' && !product.name.includes('Gemini') && product.id !== 'EqSIkdrZVVubkspGUDoW') {
-      if (product.stock !== undefined && product.stock <= 0) {
-        return NextResponse.json({ success: false, error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
-      }
-      if (product.stockLinks && product.stockLinks.length === 0) {
-        return NextResponse.json({ success: false, error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
-      }
+    // Strict stock check - no bypass
+    const isOutOfStock = Boolean(
+      (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) ||
+      (product.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
+      product.status === 'out_of_stock'
+    );
+    if (isOutOfStock) {
+      return NextResponse.json(
+        { success: false, error: 'عذراً، لقد تم نفاذ كمية هذا المنتج من المخزون حالياً ولا يمكن إتمام عملية الشراء.' },
+        { status: 400 }
+      );
     }
 
     // 5. Generate Order ID

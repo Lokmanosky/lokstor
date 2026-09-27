@@ -6,7 +6,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Product } from '@/types';
 import { useAuth } from '@/lib/auth-context';
 import { 
-  Lock, 
+  Lock,
+  Ban, 
   ShieldCheck, 
   ArrowRight, 
   User, 
@@ -26,6 +27,11 @@ import Link from 'next/link';
 export default function CheckoutPage({ params }: { params: Promise<{ id: string }> }) {
   const [productId, setProductId] = useState<string>('');
   const [product, setProduct] = useState<Product | null>(null);
+  const isOutOfStock = Boolean(
+    (product?.stock !== undefined && product?.stock !== null && Number(product.stock) <= 0) ||
+    (product?.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
+    product?.status === 'out_of_stock'
+  );
   const [loadingProduct, setLoadingProduct] = useState(true);
 
   // Form states
@@ -110,6 +116,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const handleSubmitCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    if (isOutOfStock) {
+      setErrorMessage('عذراً، تم نفاذ كمية هذا المنتج من المخزون حالياً ولا يمكن إتمام الطلب.');
+      return;
+    }
 
     if (!customerName.trim()) {
       setErrorMessage('يرجى إدخال الاسم بالكامل.');
@@ -364,6 +374,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 </div>
               )}
 
+              {isOutOfStock && (
+                <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 text-red-700 text-sm font-bold flex items-center gap-3">
+                  <Ban className="w-6 h-6 shrink-0 text-red-600" />
+                  <div>
+                    <span className="font-black block text-base">تم نفاذ المخزون!</span>
+                    <span className="text-xs font-semibold">عذراً، لقد نفذت جميع الكميات المتاحة من هذا المنتج حالياً ولا يمكن إتمام عملية الشراء.</span>
+                  </div>
+                </div>
+              )}
+
               {/* PAYMENT METHOD SELECTION */}
               <div className="space-y-2.5">
                 <label className="text-sm font-black text-black block">
@@ -554,10 +574,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   {/* Submit CTA for Chargily */}
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="chargily-btn w-full py-4 rounded-xl text-white font-black text-base flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg hover:shadow-emerald-500/25 transition-all cursor-pointer"
+                    disabled={isSubmitting || isOutOfStock}
+                    className={`w-full py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 transition-all ${
+                      isOutOfStock
+                        ? 'bg-red-600 hover:bg-red-700 text-white cursor-not-allowed shadow-md opacity-95'
+                        : 'chargily-btn text-white disabled:opacity-50 shadow-lg hover:shadow-emerald-500/25 cursor-pointer'
+                    }`}
                   >
-                    {isSubmitting ? (
+                    {isOutOfStock ? (
+                      <>
+                        <Ban className="w-5 h-5" />
+                        <span>تم نفاذ المخزون</span>
+                      </>
+                    ) : isSubmitting ? (
                       <>
                         <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
                         <span>جاري الاتصال ببوابة Chargily...</span>
@@ -645,10 +674,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   {/* Submit CTA for RedotPay via Telegram */}
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-4 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white font-black text-base flex items-center justify-center gap-2.5 disabled:opacity-50 shadow-lg hover:shadow-[#0088cc]/30 transition-all cursor-pointer active:scale-[0.99]"
+                    disabled={isSubmitting || isOutOfStock}
+                    className={`w-full py-4 rounded-xl font-black text-base flex items-center justify-center gap-2.5 transition-all ${
+                      isOutOfStock
+                        ? 'bg-red-600 hover:bg-red-700 text-white cursor-not-allowed shadow-md opacity-95'
+                        : 'bg-[#0088cc] hover:bg-[#0077b5] text-white disabled:opacity-50 shadow-lg hover:shadow-[#0088cc]/30 cursor-pointer active:scale-[0.99]'
+                    }`}
                   >
-                    {isSubmitting ? (
+                    {isOutOfStock ? (
+                      <>
+                        <Ban className="w-5 h-5" />
+                        <span>تم نفاذ المخزون</span>
+                      </>
+                    ) : isSubmitting ? (
                       <>
                         <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
                         <span>جاري تسجيل الطلب وتجهيز التلغرام...</span>
@@ -797,10 +835,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   {/* Submit CTA for Binance via Telegram */}
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-4 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white font-black text-base flex items-center justify-center gap-2.5 disabled:opacity-50 shadow-lg hover:shadow-[#0088cc]/30 transition-all cursor-pointer active:scale-[0.99]"
+                    disabled={isSubmitting || isOutOfStock}
+                    className={`w-full py-4 rounded-xl font-black text-base flex items-center justify-center gap-2.5 transition-all ${
+                      isOutOfStock
+                        ? 'bg-red-600 hover:bg-red-700 text-white cursor-not-allowed shadow-md opacity-95'
+                        : 'bg-[#0088cc] hover:bg-[#0077b5] text-white disabled:opacity-50 shadow-lg hover:shadow-[#0088cc]/30 cursor-pointer active:scale-[0.99]'
+                    }`}
                   >
-                    {isSubmitting ? (
+                    {isOutOfStock ? (
+                      <>
+                        <Ban className="w-5 h-5" />
+                        <span>تم نفاذ المخزون</span>
+                      </>
+                    ) : isSubmitting ? (
                       <>
                         <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
                         <span>جاري تسجيل الطلب وتجهيز التلغرام...</span>
