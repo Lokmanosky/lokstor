@@ -1,15 +1,14 @@
 import { ChargilyClient, verifySignature } from '@chargily/chargily-pay';
 
-export const isChargilyConfigured = Boolean(process.env.CHARGILY_API_KEY);
+// Fallback test key provided by the user so Chargily Pay works directly on Vercel and mobile without waiting for env sync
+const FALLBACK_TEST_SECRET = 'test_sk_PqHHeAJIhBuCgFpFEHVb276mBO09NYQkJOmucWOg';
+
+export const isChargilyConfigured = Boolean(process.env.CHARGILY_API_KEY || FALLBACK_TEST_SECRET);
 
 export const getChargilyClient = () => {
-  const apiKey = process.env.CHARGILY_API_KEY;
-  const mode = (process.env.CHARGILY_MODE || 'test') as 'test' | 'live';
+  const apiKey = process.env.CHARGILY_API_KEY || FALLBACK_TEST_SECRET;
+  const mode = (process.env.CHARGILY_MODE || (apiKey.startsWith('live_') ? 'live' : 'test')) as 'test' | 'live';
   
-  if (!apiKey) {
-    throw new Error('مفتاح Chargily API غير معرّف في متغيرات البيئة (CHARGILY_API_KEY)');
-  }
-
   return new ChargilyClient({
     api_key: apiKey,
     mode: mode,
