@@ -18,7 +18,11 @@ import {
   Check, 
   Share2, 
   Heart,
-  Sparkles
+  Sparkles,
+  Maximize2,
+  X,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +33,25 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [addedToCart, setAddedToCart] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsImagePreviewOpen(false);
+        setZoomLevel(1);
+      }
+    };
+    if (isImagePreviewOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isImagePreviewOpen]);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -126,12 +149,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         
         {/* RIGHT COLUMN: Product Image */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm">
+          <div 
+            onClick={() => {
+              setIsImagePreviewOpen(true);
+              setZoomLevel(1);
+            }}
+            className="group relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm cursor-zoom-in transition-all hover:shadow-md bg-slate-50 dark:bg-slate-900/40 flex items-center justify-center min-h-[300px]"
+            title="انقر لاستعراض الصورة بالحجم الكامل"
+          >
             <img
               src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
               alt={product.name}
-              className="w-full h-auto max-h-[620px] object-cover object-center"
+              className="w-full h-auto max-h-[700px] object-contain object-center transition-transform duration-300 group-hover:scale-[1.01]"
             />
+            {/* Hover overlay hint badge */}
+            <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-slate-900/85 hover:bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all opacity-90 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
+              <Maximize2 className="w-4 h-4 text-emerald-400" />
+              <span className="font-bold">استعراض وتكبير الصورة</span>
+            </div>
           </div>
         </div>
 
@@ -249,6 +284,96 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
       </div>
+      {/* FULLSCREEN LIGHTBOX MODAL */}
+      {isImagePreviewOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 select-none animate-in fade-in duration-200"
+          onClick={() => {
+            setIsImagePreviewOpen(false);
+            setZoomLevel(1);
+          }}
+        >
+          {/* Header Controls Bar */}
+          <div 
+            className="w-full max-w-6xl flex items-center justify-between text-white pb-3 px-2 z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 max-w-[60%]">
+              <span className="font-bold text-sm sm:text-base truncate text-slate-200">
+                {product.name}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Zoom In */}
+              <button
+                type="button"
+                onClick={() => setZoomLevel((prev) => Math.min(prev + 0.25, 3))}
+                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                title="تكبير"
+              >
+                <ZoomIn className="w-4 h-4" />
+                <span className="hidden sm:inline">تكبير</span>
+              </button>
+
+              {/* Zoom Out */}
+              <button
+                type="button"
+                onClick={() => setZoomLevel((prev) => Math.max(prev - 0.25, 0.5))}
+                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                title="تصغير"
+              >
+                <ZoomOut className="w-4 h-4" />
+                <span className="hidden sm:inline">تصغير</span>
+              </button>
+
+              {/* Zoom Percentage indicator / Reset */}
+              {zoomLevel !== 1 && (
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(1)}
+                  className="px-2.5 py-1 text-xs rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all cursor-pointer font-mono font-bold"
+                  title="إعادة الحجم الأصلي"
+                >
+                  {Math.round(zoomLevel * 100)}% (إعادة ضبط)
+                </button>
+              )}
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsImagePreviewOpen(false);
+                  setZoomLevel(1);
+                }}
+                className="p-2.5 rounded-xl bg-white/15 hover:bg-rose-600 text-white transition-all cursor-pointer flex items-center gap-1 text-xs font-bold mr-2"
+                title="إغلاق (Esc)"
+              >
+                <X className="w-4 h-4" />
+                <span>إغلاق</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Image Viewport */}
+          <div 
+            className="relative flex-1 w-full max-w-6xl max-h-[82vh] flex items-center justify-center overflow-auto p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
+              alt={product.name}
+              style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.2s ease-out' }}
+              className="max-h-[80vh] max-w-[95vw] w-auto h-auto object-contain rounded-xl shadow-2xl transition-transform"
+            />
+          </div>
+
+          {/* Bottom Hint */}
+          <p className="text-slate-400 text-xs mt-3 select-none text-center">
+            💡 يمكنك استخدام أزرار التكبير والتصغير أو النقر خارج الصورة للإغلاق (Esc)
+          </p>
+        </div>
+      )}
     </div>
   );
 }
