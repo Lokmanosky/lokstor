@@ -24,18 +24,10 @@ if (getApps().length === 0) {
     } catch (error) {
       console.warn('Firebase Admin initialization error:', error);
     }
-  } else {
-    try {
-      adminApp = initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-project',
-      });
-    } catch (error) {
-      // ignore
-    }
   }
 } else {
   adminApp = getApp();
 }
 
-export const adminDb: Firestore | null = adminApp ? getFirestore(adminApp) : null;
-export const adminStorage: Storage | null = adminApp ? getStorage(adminApp) : null;
+export const adminDb: Firestore | null = (isAdminConfigured && adminApp) ? getFirestore(adminApp) : null;
+export const adminStorage: Storage | null = (isAdminConfigured && adminApp) ? getStorage(adminApp) : null;
