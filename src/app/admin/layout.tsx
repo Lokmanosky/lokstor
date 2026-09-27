@@ -35,8 +35,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [loading, user, isLoginPage, router]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('adminTheme');
-    document.body.setAttribute('data-theme', saved || 'light');
+    const saved = localStorage.getItem('adminTheme') || localStorage.getItem('store-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    document.body.setAttribute('data-theme', saved);
+    document.documentElement.classList.toggle('dark', saved === 'dark');
   }, []);
 
   useEffect(() => {

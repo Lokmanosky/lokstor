@@ -19,8 +19,11 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
 
   useEffect(() => {
     // Check initial theme safely on client
-    const saved = localStorage.getItem('adminTheme') || 'light';
+    const saved = (localStorage.getItem('adminTheme') || localStorage.getItem('store-theme') || 'light') as 'light' | 'dark';
     setTheme(saved);
+    document.documentElement.setAttribute('data-theme', saved);
+    document.body.setAttribute('data-theme', saved);
+    document.documentElement.classList.toggle('dark', saved === 'dark');
   }, []);
 
   useEffect(() => {
@@ -34,11 +37,20 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
     await signOut(auth);
   };
 
-  const toggleTheme = () => {
+  const toggleTheme = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
     document.body.setAttribute('data-theme', newTheme);
-    localStorage.setItem('adminTheme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    try {
+      localStorage.setItem('adminTheme', newTheme);
+      localStorage.setItem('store-theme', newTheme);
+    } catch {}
   };
 
   return (
@@ -83,7 +95,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
           )}
         </div>
 
-        <button onClick={toggleTheme} className="p-2 text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] rounded-md transition-colors">
+        <button type="button" onClick={toggleTheme} className="p-2 text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] rounded-md transition-colors cursor-pointer" title={theme === 'dark' ? 'التبديل إلى الوضع النهاري' : 'التبديل إلى الوضع الليلي'}>
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
         
