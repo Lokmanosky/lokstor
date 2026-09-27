@@ -127,34 +127,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         
         {/* RIGHT COLUMN: Product Image */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm">
+          <div className="bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm">
             <img
               src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
               alt={product.name}
               className="w-full h-auto max-h-[620px] object-cover object-center"
             />
-            {/* Action buttons (Share & Like) */}
-            <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
-              <button
-                onClick={handleShare}
-                className="w-10 h-10 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-[var(--store-border)] flex items-center justify-center text-[var(--store-text)] hover:text-emerald-600 shadow-md transition-all active:scale-95 cursor-pointer"
-                title="مشاركة رابط المنتج"
-              >
-                {copiedLink ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => setLiked(!liked)}
-                className="w-10 h-10 rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-[var(--store-border)] flex items-center justify-center text-[var(--store-text)] hover:text-rose-500 shadow-md transition-all active:scale-95 cursor-pointer"
-                title="إضافة للمفضلة"
-              >
-                <Heart className={`w-4 h-4 ${liked ? 'fill-rose-500 text-rose-500' : ''}`} />
-              </button>
-            </div>
-            {copiedLink && (
-              <div className="absolute top-16 left-4 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg">
-                تم نسخ رابط المنتج!
-              </div>
-            )}
           </div>
         </div>
 
@@ -165,14 +143,44 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             {product.name}
           </h1>
 
-          {/* 2. Price in Red / Bold */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black text-red-600 dark:text-red-500">
-              {product.price.toLocaleString('en-US')}
-            </span>
-            <span className="text-xl font-black text-red-600 dark:text-red-500">
-              د.ج
-            </span>
+          {/* 2. Price Line with Share & Favorite Actions */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-black text-red-600 dark:text-red-500">
+                {product.price.toLocaleString('en-US')}
+              </span>
+              <span className="text-xl font-black text-red-600 dark:text-red-500">
+                د.ج
+              </span>
+            </div>
+
+            {/* Favorite & Share Buttons in Price Row */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleShare}
+                className="w-10 h-10 rounded-xl border border-[var(--store-border)] hover:border-emerald-500 bg-[var(--store-bg)] flex items-center justify-center text-[var(--store-text)] hover:text-emerald-500 shadow-sm transition-all active:scale-95 cursor-pointer relative"
+                title="مشاركة رابط المنتج"
+              >
+                {copiedLink ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
+                {copiedLink && (
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-2 py-0.5 rounded whitespace-nowrap shadow-md z-20">
+                    تم النسخ!
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setLiked(!liked)}
+                className={`w-10 h-10 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] flex items-center justify-center shadow-sm transition-all active:scale-95 cursor-pointer ${
+                  liked 
+                    ? 'border-rose-500 text-rose-500 bg-rose-50 dark:bg-rose-950/30' 
+                    : 'text-[var(--store-text)] hover:text-rose-500 hover:border-rose-400'
+                }`}
+                title="إضافة للمفضلة"
+              >
+                <Heart className={`w-4 h-4 ${liked ? 'fill-rose-500 text-rose-500' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* 3. Description */}
