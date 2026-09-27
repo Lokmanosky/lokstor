@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
 import { adminDb } from '@/lib/firebase-admin';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { Product, Order } from '@/types';
 import crypto from 'crypto';
@@ -22,7 +22,7 @@ async function checkRateLimit(ip: string): Promise<boolean> {
     const docSnap = await rlRef.get();
     
     const now = Date.now();
-    const limit = 5; // max 5 requests per minute
+    const limit = 15; // max 15 requests per minute
     const windowMs = 60000;
     
     if (docSnap.exists) {
@@ -75,10 +75,12 @@ export async function POST(req: NextRequest) {
     let product: Product | null = null;
     
     if (adminDb) {
-      const prodDoc = await adminDb.collection('products').doc(productId).get();
-      if (prodDoc.exists) {
-        product = { id: prodDoc.id, ...prodDoc.data() } as Product;
-      }
+      try {
+        const prodDoc = await adminDb.collection('products').doc(productId).get();
+        if (prodDoc.exists) {
+          product = { id: prodDoc.id, ...prodDoc.data() } as Product;
+        }
+      } catch (e) {}
     }
 
     if (!product) {
@@ -112,8 +114,8 @@ export async function POST(req: NextRequest) {
     const orderId = 'ord_' + crypto.randomBytes(8).toString('hex');
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
-    // 6. Create Order object
-    const orderData: Order = {
+    // 6. Create Order object without undefined fields
+    const orderData: any = {
       id: orderId,
       productId: product.id,
       productName: product.name,
@@ -121,24 +123,39 @@ export async function POST(req: NextRequest) {
       currency: product.currency || 'dzd',
       customerName: cleanName,
       customerEmail: cleanEmail,
-      customerPhone: cleanPhone,
       status: 'pending',
       createdAt: Date.now(),
     };
+
+    if (cleanPhone) {
+      orderData.customerPhone = cleanPhone;
+    }
 
     // Save to Firestore
     if (adminDb) {
       await adminDb.collection('orders').doc(orderId).set(orderData);
     } else {
-      try {
-        await setDoc(doc(db, 'orders', orderId), orderData);
-      } catch (err) {}
+      await setDoc(doc(db, 'orders', orderId), orderData);
     }
 
     // 7. Create Chargily Checkout
     if (isChargilyConfigured) {
       const chargily = getChargilyClient();
-      const checkout = await chargily.createCheckout({
+      let customerId: string | undefined = undefined;
+
+      try {
+        const customer = await chargily.createCustomer({
+          name: cleanName,
+          email: cleanEmail,
+        });
+        if (customer && customer.id) {
+          customerId = customer.id;
+        }
+      } catch (custErr: any) {
+        console.warn('Chargily createCustomer notice:', custErr?.message || custErr);
+      }
+
+      const checkoutPayload: any = {
         amount: product.price,
         currency: 'dzd',
         success_url: `${baseUrl}/success?order_id=${orderId}`,
@@ -149,13 +166,23 @@ export async function POST(req: NextRequest) {
           order_id: orderId,
           customer_email: cleanEmail,
         },
-      });
+      };
+
+      if (customerId) {
+        checkoutPayload.customer_id = customerId;
+      }
+
+      const checkout = await chargily.createCheckout(checkoutPayload);
+
+      const updatePayload = {
+        chargilyInvoiceId: checkout.id,
+        chargilyCheckoutUrl: checkout.checkout_url,
+      };
 
       if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).update({
-          chargilyInvoiceId: checkout.id,
-          chargilyCheckoutUrl: checkout.checkout_url,
-        });
+        await adminDb.collection('orders').doc(orderId).update(updatePayload);
+      } else {
+        await updateDoc(doc(db, 'orders', orderId), updatePayload);
       }
 
       return NextResponse.json({
@@ -165,12 +192,17 @@ export async function POST(req: NextRequest) {
       });
     } else {
       const mockCheckoutUrl = `${baseUrl}/success?order_id=${orderId}&mock=true`;
+      const updatePayload = {
+        chargilyInvoiceId: 'mock_inv_' + orderId,
+        chargilyCheckoutUrl: mockCheckoutUrl,
+      };
+
       if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).update({
-          chargilyInvoiceId: 'mock_inv_' + orderId,
-          chargilyCheckoutUrl: mockCheckoutUrl,
-        });
+        await adminDb.collection('orders').doc(orderId).update(updatePayload);
+      } else {
+        await updateDoc(doc(db, 'orders', orderId), updatePayload);
       }
+
       return NextResponse.json({
         success: true,
         checkoutUrl: mockCheckoutUrl,

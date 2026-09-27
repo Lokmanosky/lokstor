@@ -201,6 +201,27 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
+            {user ? (
+              <div className="p-3.5 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-xs flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    ✓
+                  </div>
+                  <div>
+                    <span className="font-black text-black block text-sm">تم التعرف على حسابك ({user.email})</span>
+                    <span className="text-blue-950 font-bold block">تم ملء بيانات الدفع والتسليم تلقائياً بحسابك</span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 bg-emerald-200 text-emerald-950 font-black rounded-lg text-[11px] shrink-0">
+                  ملء آلي
+                </span>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950 font-bold">
+                💡 إذا كان لديك حساب، سجل دخولك ليتم ملء بياناتك وإضافة طلبك لحسابك تلقائياً.
+              </div>
+            )}
+
             {/* Name input */}
             <div className="space-y-2">
               <label className="text-sm font-black text-black block">
