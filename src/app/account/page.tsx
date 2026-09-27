@@ -22,7 +22,8 @@ import {
   Check, 
   Loader2,
   Settings,
-  Sparkles
+  Sparkles,
+  CreditCard
 } from 'lucide-react';
 
 export default function CustomerAccountPage() {
@@ -225,6 +226,7 @@ export default function CustomerAccountPage() {
             {orders.map((order) => {
               const isPaid = order.status === 'paid';
               const isPending = order.status === 'pending';
+              
               const dateStr = order.createdAt ? new Date(Number(order.createdAt)).toLocaleDateString('ar-DZ', {
                 year: 'numeric',
                 month: 'short',
@@ -319,15 +321,28 @@ export default function CustomerAccountPage() {
                         </>
                       )}
 
-                      {isPending && order.chargilyCheckoutUrl && (
-                        <a
-                          href={order.chargilyCheckoutUrl}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 text-black text-xs font-bold hover:opacity-90 transition-opacity"
-                        >
-                          <span>إتمام الدفع الآن</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                      {isPending && (
+                        <>
+                          <a
+                            href={order.chargilyCheckoutUrl || `/checkout/${order.productId}`}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition-all"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            <span>إتمام الدفع الآن</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <button
+                            onClick={() => copyToClipboard(order.id, order.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-xs text-[var(--store-text)] transition-colors"
+                            title="نسخ رقم الطلب"
+                          >
+                            {copiedId === order.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedId === order.id ? 'تم النسخ' : 'نسخ رقم الطلب'}</span>
+                          </button>
+                        </>
                       )}
+
+
                     </div>
                   </div>
                 </div>
