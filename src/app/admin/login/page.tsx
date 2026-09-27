@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,14 @@ export default function AdminLoginPage() {
     }
   }, [user, isAdmin, authLoading, router]);
 
+  useEffect(() => {
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) {
+        await checkRoleAndRedirect(result.user.uid, result.user.email);
+      }
+    }).catch(() => {});
+  }, []);
+
   const checkRoleAndRedirect = async (uid: string, userEmail?: string | null) => {
     try {
       const snap = await getDoc(doc(db, 'users', uid));
@@ -45,25 +53,10 @@ export default function AdminLoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-      const res = await signInWithPopup(auth, provider);
-      await checkRoleAndRedirect(res.user.uid, res.user.email);
+      await signInWithRedirect(auth, provider);
     } catch (e: any) {
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
-        try {
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: 'select_account' });
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch {}
-      }
-      if (e.code === 'auth/popup-closed-by-user') return;
-      setError('حدث خطأ أثناء تسجيل الدخول بجوجل');
-    } finally {
+      console.error('Google redirect error:', e);
+      setError('تعذّر فتح صفحة Google، حاول مجدداً');
       setLoading(false);
     }
   };

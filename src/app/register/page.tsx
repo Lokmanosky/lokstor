@@ -1,11 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { UserPlus, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -56,31 +56,24 @@ export default function RegisterPage() {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-      await signInWithPopup(auth, provider);
-      setSuccess('تم التسجيل بنجاح! جاري التوجيه...');
-      setTimeout(() => router.push('/account'), 1000);
+      // Always use redirect for reliability - works on all mobile browsers
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-        try {
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: 'select_account' });
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch {
-          setError('فشل التسجيل عبر جوجل');
-        }
-      } else if (err.code !== 'auth/popup-closed-by-user') {
-        setError('فشل التسجيل عبر جوجل');
-      }
-    } finally {
+      console.error('Google redirect error:', err);
+      setError('تعذّر فتح صفحة Google، تأكد من اتصالك بالإنترنت وحاول مجدداً');
       setGoogleLoading(false);
     }
   };
+
+  // Handle Google redirect result on mobile
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        setSuccess('تم التسجيل بنجاح! جاري التوجيه...');
+        setTimeout(() => router.push('/account'), 1000);
+      }
+    }).catch(() => {});
+  }, []);
 
   // Redirect if already logged in
   if (user) {
