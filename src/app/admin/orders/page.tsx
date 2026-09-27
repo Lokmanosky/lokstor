@@ -51,6 +51,7 @@ export default function OrdersPage() {
               <tr className="border-b border-[var(--admin-border)]">
                 <th className="px-4 py-3 font-medium">المنتج</th>
                 <th className="px-4 py-3 font-medium">العميل</th>
+                <th className="px-4 py-3 font-medium">وسيلة الدفع</th>
                 <th className="px-4 py-3 font-medium">المبلغ</th>
                 <th className="px-4 py-3 font-medium">الحالة</th>
                 <th className="px-4 py-3 font-medium">الإجراءات</th>
@@ -79,6 +80,17 @@ export default function OrdersPage() {
                         <span className="text-[var(--admin-text-muted)] text-xs">{o.customerEmail || '—'}</span>
                         {o.customerPhone && <span className="text-[var(--admin-text-muted)] text-xs">{o.customerPhone}</span>}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {o.paymentMethod === 'redotpay' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          🔴 RedotPay
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          💳 شارجيلي
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-[var(--admin-text)] font-medium">{Number(o.amount || o.productPrice || 0).toLocaleString()} د.ج</td>
                     <td className="px-4 py-3">

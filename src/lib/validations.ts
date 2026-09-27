@@ -24,7 +24,8 @@ export const checkoutSchema = z.object({
   customerName: z.string().min(2, 'يرجى إدخال اسمك الحقيقي').max(100),
   customerEmail: z.string().email('بريد إلكتروني غير صالح').max(100),
   customerPhone: z.string().max(20).optional(),
-  productId: z.string().min(1)
+  productId: z.string().min(1),
+  paymentMethod: z.enum(['chargily', 'redotpay']).optional().default('chargily')
 });
 
 // Login Schema

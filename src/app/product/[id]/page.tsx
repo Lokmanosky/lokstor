@@ -100,8 +100,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const isOutOfStock = (product.stock !== undefined && product.stock <= 0) || 
-                       (product.stockLinks && product.stockLinks.length === 0);
+  const isOutOfStock = ((product.stock !== undefined && product.stock <= 0) || (product.stockLinks && product.stockLinks.length === 0)) && product.category !== 'اشتراكات' && !product.name.includes('Gemini');
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6" dir="rtl">

@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerEmail, customerPhone } = validationResult.data;
+    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily' } = validationResult.data as any;
 
     // 3. XSS Protection (Sanitize inputs)
     const cleanName = purify.sanitize(customerName);
@@ -136,6 +136,26 @@ export async function POST(req: NextRequest) {
       await adminDb.collection('orders').doc(orderId).set(orderData);
     } else {
       await setDoc(doc(db, 'orders', orderId), orderData);
+    }
+
+    // 6.5. Handle RedotPay Checkout
+    if (paymentMethod === 'redotpay') {
+      orderData.paymentMethod = 'redotpay';
+      orderData.redotpayId = '1622725404';
+      orderData.redotpayName = 'Lokmanosky';
+      orderData.status = 'pending';
+
+      if (adminDb) {
+        await adminDb.collection('orders').doc(orderId).set(orderData);
+      } else {
+        await setDoc(doc(db, 'orders', orderId), orderData);
+      }
+
+      return NextResponse.json({
+        success: true,
+        orderId,
+        paymentMethod: 'redotpay',
+      });
     }
 
     // 7. Create Chargily Checkout

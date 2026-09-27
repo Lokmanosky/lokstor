@@ -29,7 +29,10 @@ export interface Order {
   customerEmail: string;
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
-  status: 'pending' | 'paid' | 'failed';
+  paymentMethod?: 'chargily' | 'redotpay';
+  redotpayId?: string;
+  redotpayName?: string;
+  status: 'pending' | 'paid' | 'failed' | 'pending_manual_review';
   amount?: number | string; // alias for productPrice from Chargily
   downloadToken?: string;
   downloadUrl?: string;
