@@ -135,10 +135,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         }),
       });
 
-      const data = await res.json();
+      const resText = await res.text();
+      let data: any = {};
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch (parseError) {
+        console.error('Failed to parse checkout JSON response:', resText);
+      }
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'فشلت عملية إنشاء الفاتورة');
+        throw new Error(data?.error || 'حدث خطأ أثناء إعداد الفاتورة، يرجى المحاولة مرة أخرى.');
       }
 
       if (paymentMethod === 'redotpay' || paymentMethod === 'binance') {

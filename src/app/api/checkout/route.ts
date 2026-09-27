@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
 import { adminDb } from '@/lib/firebase-admin';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
-import { Product, Order } from '@/types';
+import { Product } from '@/types';
 import crypto from 'crypto';
 import { checkoutSchema } from '@/lib/validations';
-import DOMPurify from 'dompurify';
-import { JSDOM } from 'jsdom';
 
-// DOMPurify setup for Server-side
-const window = new JSDOM('').window;
-const purify = DOMPurify(window);
+// Safe lightweight string sanitizer (No heavy/broken serverless libraries like JSDOM)
+function sanitizeText(str: string): string {
+  if (!str) return '';
+  return str.replace(/[<>]/g, '').trim();
+}
 
 // Firestore-based Rate Limiter helper
 async function checkRateLimit(ip: string): Promise<boolean> {
@@ -22,7 +22,7 @@ async function checkRateLimit(ip: string): Promise<boolean> {
     const docSnap = await rlRef.get();
     
     const now = Date.now();
-    const limit = 15; // max 15 requests per minute
+    const limit = 20; // max 20 requests per minute
     const windowMs = 60000;
     
     if (docSnap.exists) {
@@ -45,31 +45,37 @@ async function checkRateLimit(ip: string): Promise<boolean> {
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1';
     
     // 1. Rate Limiting Check
     const allowed = await checkRateLimit(ip);
     if (!allowed) {
-      return NextResponse.json({ error: 'لقد تجاوزت الحد المسموح من الطلبات. يرجى المحاولة بعد دقيقة.' }, { status: 429 });
+      return NextResponse.json({ success: false, error: 'لقد تجاوزت الحد المسموح من الطلبات. يرجى المحاولة بعد دقيقة.' }, { status: 429 });
     }
 
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      return NextResponse.json({ success: false, error: 'تنسيق البيانات غير صحيح.' }, { status: 400 });
+    }
 
     // 2. Server-side Validation with Zod
     const validationResult = checkoutSchema.safeParse(body);
     if (!validationResult.success) {
+      const issues = validationResult.error.issues.map(i => i.message).join('، ');
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: validationResult.error.flatten().fieldErrors },
+        { success: false, error: issues || 'بيانات غير صالحة', details: validationResult.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
     const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily' } = validationResult.data as any;
 
-    // 3. XSS Protection (Sanitize inputs)
-    const cleanName = purify.sanitize(customerName);
-    const cleanEmail = purify.sanitize(customerEmail);
-    const cleanPhone = customerPhone ? purify.sanitize(customerPhone) : undefined;
+    // 3. Clean inputs
+    const cleanName = sanitizeText(customerName);
+    const cleanEmail = sanitizeText(customerEmail);
+    const cleanPhone = customerPhone ? sanitizeText(customerPhone) : undefined;
 
     // 4. Fetch Product from Firestore or local fallback
     let product: Product | null = null;
@@ -99,20 +105,26 @@ export async function POST(req: NextRequest) {
     }
 
     if (!product) {
-      return NextResponse.json({ error: 'المنتج غير موجود' }, { status: 444 });
+      return NextResponse.json({ success: false, error: 'المنتج المطلوب غير موجود أو تم حذفه' }, { status: 404 });
     }
 
-    // Check stock
-    if (product.stock !== undefined && product.stock <= 0) {
-        return NextResponse.json({ error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
-    }
-    if (product.stockLinks && product.stockLinks.length === 0) {
-      return NextResponse.json({ error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
+    // Check stock for strictly inventory-limited items
+    if (product.category !== 'اشتراكات' && !product.name.includes('Gemini') && product.id !== 'EqSIkdrZVVubkspGUDoW') {
+      if (product.stock !== undefined && product.stock <= 0) {
+        return NextResponse.json({ success: false, error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
+      }
+      if (product.stockLinks && product.stockLinks.length === 0) {
+        return NextResponse.json({ success: false, error: 'عذراً، لقد نفذت كمية هذا المنتج من المخزون حالياً' }, { status: 400 });
+      }
     }
 
     // 5. Generate Order ID
     const orderId = 'ord_' + crypto.randomBytes(8).toString('hex');
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    
+    // Dynamic Base URL detection (works on Vercel, localhost, custom domains)
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const proto = req.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app');
 
     // 6. Create Order object without undefined fields
     const orderData: any = {
@@ -123,6 +135,7 @@ export async function POST(req: NextRequest) {
       currency: product.currency || 'dzd',
       customerName: cleanName,
       customerEmail: cleanEmail,
+      paymentMethod,
       status: 'pending',
       createdAt: Date.now(),
     };
@@ -131,14 +144,26 @@ export async function POST(req: NextRequest) {
       orderData.customerPhone = cleanPhone;
     }
 
-    // Save to Firestore
-    if (adminDb) {
-      await adminDb.collection('orders').doc(orderId).set(orderData);
-    } else {
-      await setDoc(doc(db, 'orders', orderId), orderData);
+    // 6.5. Handle Binance Checkout
+    if (paymentMethod === 'binance') {
+      orderData.paymentMethod = 'binance';
+      orderData.binanceUid = '427636242';
+      orderData.status = 'pending';
+
+      if (adminDb) {
+        await adminDb.collection('orders').doc(orderId).set(orderData);
+      } else {
+        await setDoc(doc(db, 'orders', orderId), orderData);
+      }
+
+      return NextResponse.json({
+        success: true,
+        orderId,
+        paymentMethod: 'binance',
+      });
     }
 
-    // 6.5. Handle RedotPay Checkout
+    // 6.6. Handle RedotPay Checkout
     if (paymentMethod === 'redotpay') {
       orderData.paymentMethod = 'redotpay';
       orderData.redotpayId = '1622725404';
@@ -158,23 +183,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-        // 6.6. Handle Binance Checkout
-    if (paymentMethod === 'binance') {
-      orderData.paymentMethod = 'binance';
-      orderData.binanceUid = '427636242';
-      orderData.status = 'pending';
-
-      if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).set(orderData);
-      } else {
-        await setDoc(doc(db, 'orders', orderId), orderData);
-      }
-
-      return NextResponse.json({
-        success: true,
-        orderId,
-        paymentMethod: 'binance',
-      });
+    // Save initial order for Chargily
+    if (adminDb) {
+      await adminDb.collection('orders').doc(orderId).set(orderData);
+    } else {
+      await setDoc(doc(db, 'orders', orderId), orderData);
     }
 
     // 7. Create Chargily Checkout
@@ -230,6 +243,7 @@ export async function POST(req: NextRequest) {
         orderId,
       });
     } else {
+      // Mock mode fallback if Chargily keys are not yet configured on environment
       const mockCheckoutUrl = `${baseUrl}/success?order_id=${orderId}&mock=true`;
       const updatePayload = {
         chargilyInvoiceId: 'mock_inv_' + orderId,
@@ -252,7 +266,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Checkout API error:', error);
     return NextResponse.json(
-      { error: error?.message || 'حدث خطأ أثناء معالجة الطلب' },
+      { success: false, error: error?.message || 'حدث خطأ أثناء معالجة الطلب في الخادم' },
       { status: 500 }
     );
   }
