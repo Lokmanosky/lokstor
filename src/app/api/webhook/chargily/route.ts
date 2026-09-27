@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       let prodData = productDoc.exists ? productDoc.data() : null;
 
       if (prodData) {
-        if (prodData.category === 'منتجات رقمية' && prodData.stockLinks && prodData.stockLinks.length > 0) {
+        if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
            // Assign first available content (can be a URL, account credentials, code, etc.)
            downloadUrl = prodData.stockLinks[0];
            const newStock = prodData.stockLinks.slice(1);
