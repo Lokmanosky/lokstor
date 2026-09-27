@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu } from 'lucide-react';
 import { useStoreSettings, StoreSettingsProvider } from '@/lib/store-settings';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useTranslation } from '@/lib/i18n-context';
@@ -25,7 +25,28 @@ function NavBar() {
   const { totalItems } = useCart();
   const { t, lang, setLang } = useTranslation();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [theme, setTheme] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('light') ? 'light' : 'dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('store-theme') as 'light' | 'dark' | null;
+      const isDark = savedTheme ? savedTheme === 'dark' : document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'dark' : 'light');
+      document.documentElement.classList.toggle('dark', isDark);
+    } catch {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'dark' : 'light');
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    try {
+      localStorage.setItem('store-theme', nextTheme);
+    } catch {}
+  };
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
@@ -146,11 +167,7 @@ function NavBar() {
           {/* Theme & Language Toggles */}
           <div className="flex items-center gap-2 border-l border-[var(--store-border)] pl-2 ml-1 relative">
             <button 
-              onClick={() => {
-                const newTheme = theme === 'dark' ? 'light' : 'dark';
-                setTheme(newTheme);
-                document.documentElement.classList.toggle('dark', newTheme === 'dark');
-              }}
+              onClick={handleToggleTheme}
               className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors"
               title="تغيير المظهر"
             >
@@ -299,11 +316,7 @@ function NavBar() {
             )}
 
             <div className="mt-auto flex justify-between items-center pt-4 border-t border-[var(--store-border)]">
-              <button onClick={() => {
-                const newTheme = theme === 'dark' ? 'light' : 'dark';
-                setTheme(newTheme);
-                document.documentElement.classList.toggle('dark', newTheme === 'dark');
-              }} className="p-2 border border-[var(--store-border)] rounded-md text-[var(--store-text)]">
+              <button onClick={handleToggleTheme} className="p-2 border border-[var(--store-border)] rounded-md text-[var(--store-text)]">
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
               
