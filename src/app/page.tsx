@@ -154,9 +154,9 @@ function HomePageContent() {
               
               return (
                 <div key={product.id} className={`group store-card rounded-xl overflow-hidden`}>
-                  <Link href={`/product/${product.id}`} className="block">
+                  <Link href={`/product/${product.id}`} className="block" aria-label={product.name}>
                     <div className="aspect-[4/3] bg-[var(--store-card)] relative overflow-hidden">
-                      <img src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')} alt={product.name} loading="lazy" width={400} height={300} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute top-3 right-3 flex flex-col gap-2">
                         <span className="bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-md">
                           {product.type === 'digital' ? t('badge.digital') : t('badge.sub')}
@@ -167,7 +167,7 @@ function HomePageContent() {
                   </Link>
                   <div className="p-4 space-y-3">
                     <Link href={`/product/${product.id}`}>
-                      <h3 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h3>
+                      <h2 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
                     </Link>
                     <div className="flex items-center justify-between gap-2 pt-1">
                       <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">
@@ -210,7 +210,7 @@ function HomePageContent() {
                                 ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105'
                                 : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'
                             }`}
-                            title="إضافة إلى السلة"
+                            title="إضافة إلى السلة" aria-label={addedProductId === product.id ? "تمت الإضافة إلى السلة" : `إضافة ${product.name} إلى السلة`}
                           >
                             {addedProductId === product.id ? (
                               <Check className="w-4 h-4 text-emerald-400" />

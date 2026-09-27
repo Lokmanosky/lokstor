@@ -169,7 +169,7 @@ function NavBar() {
             <button 
               onClick={handleToggleTheme}
               className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors"
-              title="تغيير المظهر"
+              title="تغيير المظهر" aria-label="تبديل المظهر النهاري والليلي"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -178,7 +178,7 @@ function NavBar() {
               <button 
                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
                 className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors"
-                title="تغيير اللغة"
+                title="تغيير اللغة" aria-label="تغيير لغة الموقع"
               >
                 <Globe className="w-4 h-4 text-blue-500" />
               </button>
@@ -243,12 +243,13 @@ function NavBar() {
 
           <button 
             onClick={() => setMobileMenuOpen(true)}
+            aria-label="فتح القائمة الرئيسية"
             className="md:hidden w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
           
-          <Link href="/cart" className="w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:border-[var(--store-border)] transition-colors relative ml-1">
+          <Link href="/cart" aria-label="سلة المشتريات" className="w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:border-[var(--store-border)] transition-colors relative ml-1">
             <ShoppingCart className="w-4 h-4 text-amber-500" />
             {totalItems > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
@@ -268,7 +269,7 @@ function NavBar() {
         <div className="absolute top-0 right-0 h-full w-64 bg-[var(--store-bg)] border-l border-[var(--store-border)] shadow-2xl flex flex-col">
           <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--store-border)]">
             <span className="font-bold text-[var(--store-text)]">القائمة</span>
-            <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-[var(--store-text-muted)] hover:text-[var(--store-text)]">
+            <button onClick={() => setMobileMenuOpen(false)} aria-label="إغلاق القائمة" className="p-2 text-[var(--store-text-muted)] hover:text-[var(--store-text)]">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -338,7 +339,7 @@ function NavBar() {
         <div className="w-full max-w-md bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl shadow-2xl overflow-hidden relative">
           <button 
             onClick={() => setIsLoginModalOpen(false)}
-            className="absolute top-4 left-4 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+            aria-label="إغلاق نافذة تسجيل الدخول" className="absolute top-4 left-4 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -382,7 +383,7 @@ function NavBar() {
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+                    aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -466,8 +467,8 @@ function Footer() {
               <span>طرق الدفع المدعومة</span>
             </h4>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="bg-transparent border border-emerald-900/50 text-emerald-400 px-3 py-1.5 rounded-md">💳 البطاقة الذهبية</span>
-              <span className="bg-transparent border border-teal-900/50 text-teal-400 px-3 py-1.5 rounded-md">💳 بطاقة CIB</span>
+              <span className="bg-transparent border border-emerald-700/40 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-md font-semibold">💳 البطاقة الذهبية</span>
+              <span className="bg-transparent border border-teal-700/40 dark:border-teal-900/50 text-teal-700 dark:text-teal-400 px-3 py-1.5 rounded-md font-semibold">💳 بطاقة CIB</span>
             </div>
           </div>
 
