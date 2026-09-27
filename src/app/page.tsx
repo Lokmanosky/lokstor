@@ -2,11 +2,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check } from 'lucide-react';
+import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
 import { useCart } from '@/lib/cart-context';
+import { useAuth } from '@/lib/auth-context';
 
 import { Suspense } from 'react';
 
@@ -17,6 +18,8 @@ function HomePageContent() {
   const { t } = useTranslation();
   const { addToCart } = useCart();
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  const [showLoginToast, setShowLoginToast] = useState(false);
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
 
@@ -194,6 +197,11 @@ function HomePageContent() {
                           <button
                             type="button"
                             onClick={() => {
+                              if (!user) {
+                                setShowLoginToast(true);
+                                setTimeout(() => setShowLoginToast(false), 3500);
+                                return;
+                              }
                               addToCart({
                                 id: product.id,
                                 name: product.name,
@@ -229,6 +237,30 @@ function HomePageContent() {
         )}
 
       </section>
+
+    {/* Toast: Login required to add to cart */}
+    {showLoginToast && (
+      <div
+        role="alert"
+        aria-live="assertive"
+        style={{
+          position: 'fixed',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+        }}
+        className="flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/30 border border-amber-500/30 bg-[#1c1200] text-amber-300 text-sm font-bold w-max"
+      >
+        <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+          <LogIn className="w-4 h-4 text-amber-400" />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-amber-200 font-bold text-sm">يجب تسجيل الدخول أولاً</span>
+          <span className="text-amber-400/80 text-xs font-medium">سجّل دخولك لإضافة المنتجات إلى سلتك</span>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

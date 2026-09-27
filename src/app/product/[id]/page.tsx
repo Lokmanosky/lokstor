@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Product } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { useCart } from '@/lib/cart-context';
+import { useAuth } from '@/lib/auth-context';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -23,7 +24,8 @@ import {
   Maximize2,
   X,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  LogIn
 } from 'lucide-react';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,6 +33,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const { addToCart } = useCart();
+  const { user } = useAuth();
+  const [showLoginToast, setShowLoginToast] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -77,6 +81,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const handleAddToCart = () => {
     if (!product) return;
+    if (!user) {
+      setShowLoginToast(true);
+      setTimeout(() => setShowLoginToast(false), 3500);
+      return;
+    }
     addToCart({
       id: product.id,
       name: product.name,
@@ -392,6 +401,30 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <p className="text-slate-400 text-xs mt-3 select-none text-center">
             💡 يمكنك استخدام أزرار التكبير والتصغير أو النقر خارج الصورة للإغلاق (Esc)
           </p>
+        </div>
+      )}
+
+      {/* Toast: Login required to add to cart */}
+      {showLoginToast && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          style={{
+            position: 'fixed',
+            bottom: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+          }}
+          className="flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/30 border border-amber-500/30 bg-[#1c1200] text-amber-300 text-sm font-bold w-max"
+        >
+          <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+            <LogIn className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-amber-200 font-bold text-sm">يجب تسجيل الدخول أولاً</span>
+            <span className="text-amber-400/80 text-xs font-medium">سجّل دخولك لإضافة المنتجات إلى سلتك</span>
+          </div>
         </div>
       )}
     </div>
