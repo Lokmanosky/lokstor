@@ -29,7 +29,8 @@ export interface Order {
   customerEmail: string;
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
-  paymentMethod?: 'chargily' | 'redotpay';
+  paymentMethod?: 'chargily' | 'redotpay' | 'binance';
+  binanceUid?: string;
   redotpayId?: string;
   redotpayName?: string;
   status: 'pending' | 'paid' | 'failed' | 'pending_manual_review';

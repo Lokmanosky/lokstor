@@ -25,7 +25,7 @@ export const checkoutSchema = z.object({
   customerEmail: z.string().email('بريد إلكتروني غير صالح').max(100),
   customerPhone: z.string().max(20).optional(),
   productId: z.string().min(1),
-  paymentMethod: z.enum(['chargily', 'redotpay']).optional().default('chargily')
+  paymentMethod: z.enum(['chargily', 'redotpay', 'binance']).optional().default('chargily')
 });
 
 // Login Schema

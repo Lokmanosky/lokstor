@@ -158,6 +158,25 @@ export async function POST(req: NextRequest) {
       });
     }
 
+        // 6.6. Handle Binance Checkout
+    if (paymentMethod === 'binance') {
+      orderData.paymentMethod = 'binance';
+      orderData.binanceUid = '427636242';
+      orderData.status = 'pending';
+
+      if (adminDb) {
+        await adminDb.collection('orders').doc(orderId).set(orderData);
+      } else {
+        await setDoc(doc(db, 'orders', orderId), orderData);
+      }
+
+      return NextResponse.json({
+        success: true,
+        orderId,
+        paymentMethod: 'binance',
+      });
+    }
+
     // 7. Create Chargily Checkout
     if (isChargilyConfigured) {
       const chargily = getChargilyClient();

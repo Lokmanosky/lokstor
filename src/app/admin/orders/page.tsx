@@ -82,7 +82,11 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {o.paymentMethod === 'redotpay' ? (
+                      {o.paymentMethod === 'binance' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                          🟡 Binance
+                        </span>
+                      ) : o.paymentMethod === 'redotpay' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
                           🔴 RedotPay
                         </span>
