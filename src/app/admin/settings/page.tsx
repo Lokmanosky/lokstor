@@ -1,165 +1,262 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound } from 'lucide-react';
 import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
+import { useAuth } from '@/lib/auth-context';
+import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function SettingsPage() {
   const currentSettings = useStoreSettings();
-  
+  const { user } = useAuth();
+
+  // Store settings
   const [storeName, setStoreName] = useState(currentSettings.storeName || 'Lokstor');
   const [logoUrl, setLogoUrl] = useState(currentSettings.logoImageUrl || '');
   const [file, setFile] = useState<File | null>(null);
-  
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Account settings
+  const [displayName, setDisplayName] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountMsg, setAccountMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'store' | 'account'>('store');
 
   useEffect(() => {
     setStoreName(currentSettings.storeName || 'Lokstor');
     setLogoUrl(currentSettings.logoImageUrl || '');
   }, [currentSettings]);
 
-  // Convert File to Base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
+  useEffect(() => {
+    if (user) setDisplayName(user.displayName || '');
+  }, [user]);
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
+      reader.onerror = reject;
     });
-  };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage('');
-    
+    setStoreLoading(true);
+    setStoreMsg(null);
     try {
       let finalLogoUrl = logoUrl;
-      
       if (file) {
-        // Convert to base64 instead of Firebase Storage
         finalLogoUrl = await fileToBase64(file);
         setLogoUrl(finalLogoUrl);
       }
-      
-      await saveStoreSettings({
-        storeName,
-        logoImageUrl: finalLogoUrl
-      });
-      
-      setMessage('تم حفظ الإعدادات بنجاح!');
+      await saveStoreSettings({ storeName, logoImageUrl: finalLogoUrl });
+      setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
     } catch (err: any) {
-      console.error(err);
-      setMessage('حدث خطأ أثناء الحفظ.');
+      setStoreMsg({ type: 'error', text: 'حدث خطأ أثناء الحفظ.' });
     } finally {
-      setLoading(false);
+      setStoreLoading(false);
       setFile(null);
     }
   };
+
+  const handleSaveAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setAccountLoading(true);
+    setAccountMsg(null);
+    try {
+      // Update display name
+      if (displayName.trim() && displayName !== user.displayName) {
+        await updateProfile(user, { displayName: displayName.trim() });
+        try { await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() }); } catch (_) {}
+      }
+      // Update password
+      if (newPassword) {
+        if (newPassword.length < 6) { setAccountMsg({ type: 'error', text: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.' }); return; }
+        if (newPassword !== confirmPassword) { setAccountMsg({ type: 'error', text: 'كلمتا المرور غير متطابقتين.' }); return; }
+        if (!currentPassword) { setAccountMsg({ type: 'error', text: 'أدخل كلمة المرور الحالية للتحقق.' }); return; }
+        const credential = EmailAuthProvider.credential(user.email!, currentPassword);
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, newPassword);
+        setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      }
+      setAccountMsg({ type: 'success', text: 'تم حفظ التعديلات وتزامنت مع السحابة بنجاح!' });
+    } catch (err: any) {
+      const code = err?.code || '';
+      let msg = 'حدث خطأ. حاول مجدداً.';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+        msg = 'كلمة المرور الحالية غير صحيحة. تحقق منها وأعد المحاولة.';
+      } else if (code === 'auth/requires-recent-login') {
+        msg = 'لأمان حسابك، سجّل الخروج وادخل مجدداً ثم حاول.';
+      } else if (code === 'auth/too-many-requests') {
+        msg = 'محاولات كثيرة جداً. انتظر دقيقة ثم حاول.';
+      } else if (code === 'auth/weak-password') {
+        msg = 'كلمة المرور الجديدة ضعيفة. استخدم 6 أحرف أو أكثر.';
+      }
+      setAccountMsg({ type: 'error', text: msg });
+      setAccountMsg({ type: 'error', text: msg });
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const inputCls = "w-full bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-lg px-3 py-2.5 text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors";
+  const MsgBox = ({ msg }: { msg: { type: 'success' | 'error'; text: string } | null }) => msg ? (
+    <div className={`p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+      {msg.type === 'success' ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+      {msg.text}
+    </div>
+  ) : null;
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-xl font-semibold text-[var(--admin-text)]">الإعدادات</h1>
-        <p className="text-sm text-[var(--admin-text-muted)] mt-1">تخصيص معلومات المتجر الأساسية</p>
+        <p className="text-sm text-[var(--admin-text-muted)] mt-1">إعدادات المتجر والحساب الشخصي</p>
       </div>
 
-      <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md shadow-sm p-6">
-        <form onSubmit={handleSave} className="space-y-6">
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-[var(--admin-text)]">اسم المتجر</label>
-            <input 
-              type="text" 
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-              className="w-full bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md px-3 py-2 text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors"
-              placeholder="مثال: Lokstor"
-              required
-            />
-          </div>
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-[var(--admin-border)]">
+        {[
+          { key: 'store' as const, label: 'إعدادات المتجر', icon: <ImageIcon className="w-4 h-4" /> },
+          { key: 'account' as const, label: 'الحساب الشخصي', icon: <KeyRound className="w-4 h-4" /> },
+        ].map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === t.key
+                ? 'border-[var(--admin-primary)] text-[var(--admin-primary)]'
+                : 'border-transparent text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]'
+            }`}>
+            {t.icon}{t.label}
+          </button>
+        ))}
+      </div>
 
-          <div className="space-y-4">
-            <label className="text-sm font-medium text-[var(--admin-text)] block">شعار المتجر</label>
-            
-            <div className="flex items-center gap-6">
-              {/* Preview */}
-              <div className="w-16 h-16 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] flex items-center justify-center overflow-hidden shrink-0">
-                {file ? (
-                  <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                ) : logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon className="w-6 h-6 text-[var(--admin-text-muted)]" />
-                )}
-              </div>
-              
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center gap-3">
-                  <label className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-[var(--admin-hover)] border border-[var(--admin-border)] text-[var(--admin-text)] rounded-md text-sm font-medium hover:bg-[var(--admin-border)] transition-colors">
-                    <Upload className="w-4 h-4" />
-                    <span>رفع صورة من الجهاز (Base64)</span>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      className="hidden" 
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setFile(e.target.files[0]);
-                        }
-                      }}
-                    />
+      {/* Store Settings Tab */}
+      {activeTab === 'store' && (
+        <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-xl shadow-sm p-6">
+          <form onSubmit={handleSaveStore} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[var(--admin-text)]">اسم المتجر</label>
+              <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)}
+                className={inputCls} placeholder="مثال: Lokstor" required />
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-sm font-medium text-[var(--admin-text)] block">شعار المتجر</label>
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] flex items-center justify-center overflow-hidden shrink-0">
+                  {file ? <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                    : logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                    : <ImageIcon className="w-6 h-6 text-[var(--admin-text-muted)]" />}
+                </div>
+                <div className="flex-1 space-y-3">
+                  <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-[var(--admin-hover)] border border-[var(--admin-border)] text-[var(--admin-text)] rounded-lg text-sm font-medium hover:bg-[var(--admin-border)] transition-colors w-fit">
+                    <Upload className="w-4 h-4" />رفع صورة (Base64)
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setFile(e.target.files[0]); }} />
                   </label>
-                  {file && (
-                    <button type="button" onClick={() => setFile(null)} className="text-xs text-red-400 hover:text-red-500">
-                      إلغاء
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <div className="h-px bg-[var(--admin-border)] flex-1" />
+                    <span className="text-xs text-[var(--admin-text-muted)]">أو</span>
+                    <div className="h-px bg-[var(--admin-border)] flex-1" />
+                  </div>
+                  <input type="url" value={file ? '' : logoUrl} onChange={(e) => { setLogoUrl(e.target.value); setFile(null); }}
+                    disabled={file !== null} className={`${inputCls} disabled:opacity-50`} placeholder="رابط الصورة (URL)" dir="ltr" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-px bg-[var(--admin-border)] flex-1"></div>
-                  <span className="text-xs text-[var(--admin-text-muted)]">أو</span>
-                  <div className="h-px bg-[var(--admin-border)] flex-1"></div>
+              </div>
+            </div>
+
+            <MsgBox msg={storeMsg} />
+
+            <div className="pt-4 border-t border-[var(--admin-border)] flex justify-end">
+              <button type="submit" disabled={storeLoading}
+                className="flex items-center gap-2 px-6 py-2 bg-[var(--admin-primary)] text-[var(--admin-bg)] rounded-lg font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 min-w-[140px] justify-center">
+                {storeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /><span>حفظ الإعدادات</span></>}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Account Tab */}
+      {activeTab === 'account' && user && (
+        <form onSubmit={handleSaveAccount} className="space-y-5">
+          {/* Name */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-xl p-6 space-y-4">
+            <h3 className="font-semibold text-[var(--admin-text)] flex items-center gap-2">
+              <User className="w-4 h-4 text-[var(--admin-primary)]" />
+              معلومات الحساب
+            </h3>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-[var(--admin-text-muted)] block">الاسم الظاهر</label>
+              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="اسمك الكامل" className={inputCls} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-[var(--admin-text-muted)] block">البريد الإلكتروني</label>
+              <input value={user.email || ''} disabled className={`${inputCls} opacity-50 cursor-not-allowed`} dir="ltr" />
+              <p className="text-[11px] text-[var(--admin-text-muted)]">البريد لا يمكن تغييره من هنا.</p>
+            </div>
+          </div>
+
+          {/* Password */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-xl p-6 space-y-4">
+            <h3 className="font-semibold text-[var(--admin-text)] flex items-center gap-2">
+              <Lock className="w-4 h-4 text-[var(--admin-primary)]" />
+              تغيير كلمة المرور
+              <span className="text-[11px] font-normal text-[var(--admin-text-muted)]">(اتركها فارغة إذا لا تريد التغيير)</span>
+            </h3>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--admin-text-muted)] block">كلمة المرور الحالية</label>
+                <div className="relative">
+                  <input type={showCurrent ? 'text' : 'password'} value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••"
+                    className={`${inputCls} pl-10`} dir="ltr" />
+                  <button type="button" onClick={() => setShowCurrent(!showCurrent)}
+                    className="absolute left-3 top-2.5 text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]">
+                    {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                <input 
-                  type="url" 
-                  value={file ? '' : logoUrl}
-                  onChange={(e) => { setLogoUrl(e.target.value); setFile(null); }}
-                  disabled={file !== null}
-                  className="w-full bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md px-3 py-2 text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors disabled:opacity-50"
-                  placeholder="رابط الصورة (URL)"
-                  dir="ltr"
-                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--admin-text-muted)] block">كلمة المرور الجديدة</label>
+                <div className="relative">
+                  <input type={showNew ? 'text' : 'password'} value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••"
+                    className={`${inputCls} pl-10`} dir="ltr" />
+                  <button type="button" onClick={() => setShowNew(!showNew)}
+                    className="absolute left-3 top-2.5 text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]">
+                    {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--admin-text-muted)] block">تأكيد كلمة المرور الجديدة</label>
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••" className={inputCls} dir="ltr" />
               </div>
             </div>
           </div>
 
-          {message && (
-            <div className={`p-3 rounded-md text-sm font-medium ${message.includes('خطأ') ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
-              {message}
-            </div>
-          )}
+          <MsgBox msg={accountMsg} />
 
-          <div className="pt-4 border-t border-[var(--admin-border)] flex justify-end">
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-[var(--admin-primary)] text-[var(--admin-bg)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 min-w-[140px]"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>حفظ التعديلات</span>
-                </>
-              )}
-            </button>
-          </div>
-
+          <button type="submit" disabled={accountLoading}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[var(--admin-primary)] text-[var(--admin-bg)] font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+            {accountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {accountLoading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+          </button>
         </form>
-      </div>
+      )}
     </div>
   );
 }
