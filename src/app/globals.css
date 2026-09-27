@@ -151,3 +151,10 @@ body {
   background-color: var(--admin-sidebar-active-bg) !important;
   border-color: var(--admin-sidebar-active) !important;
 }
+
+.admin-sidebar-theme-btn {
+  color: var(--admin-sidebar-muted) !important;
+}
+.admin-sidebar-theme-btn span {
+  color: var(--admin-sidebar-muted) !important;
+}
