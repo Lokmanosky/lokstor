@@ -108,12 +108,46 @@ body {
   box-shadow: var(--store-card-hover-shadow);
 }
 
-/* Sidebar dark mode crisp white text guarantee */
-[data-theme='dark'] .admin-sidebar-link,
-.dark .admin-sidebar-link,
-[data-theme='dark'] .admin-sidebar-link span,
-.dark .admin-sidebar-link span,
-[data-theme='dark'] .admin-sidebar-link svg,
-.dark .admin-sidebar-link svg {
-  color: #FFFFFF !important;
+/* ── Robust Sidebar Theme Rules for Light and Dark Modes ── */
+:root {
+  --admin-sidebar-text: #1C1C19;
+  --admin-sidebar-muted: #374151;
+  --admin-sidebar-active: #15803D;
+  --admin-sidebar-active-bg: #E5E7EB;
+}
+
+[data-theme='light'] {
+  --admin-sidebar-text: #1C1C19;
+  --admin-sidebar-muted: #374151;
+  --admin-sidebar-active: #15803D;
+  --admin-sidebar-active-bg: #E5E7EB;
+}
+
+[data-theme='dark'] {
+  --admin-sidebar-text: #FFFFFF;
+  --admin-sidebar-muted: #FFFFFF;
+  --admin-sidebar-active: #FFFFFF;
+  --admin-sidebar-active-bg: rgba(255, 255, 255, 0.12);
+}
+
+/* Explicit styling: 100% visible dark text in Light Mode, 100% visible white text in Dark Mode */
+.admin-sidebar-title {
+  color: var(--admin-sidebar-text) !important;
+}
+
+.admin-sidebar-link,
+.admin-sidebar-link span,
+.admin-sidebar-link svg {
+  color: var(--admin-sidebar-muted) !important;
+}
+
+.admin-sidebar-link.active,
+.admin-sidebar-link.active span,
+.admin-sidebar-link.active svg {
+  color: var(--admin-sidebar-active) !important;
+}
+
+.admin-sidebar-link.active {
+  background-color: var(--admin-sidebar-active-bg) !important;
+  border-color: var(--admin-sidebar-active) !important;
 }

@@ -47,7 +47,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="p-1.5 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] dark:text-gray-300 dark:hover:text-white dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-[var(--admin-sidebar-muted)] hover:text-[var(--admin-sidebar-text)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
             title={open ? 'تصغير القائمة' : 'توسيع القائمة'}
           >
             <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${open ? '' : 'rotate-180'}`} />
@@ -56,14 +56,14 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="p-1.5 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] dark:text-gray-300 dark:hover:text-white dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-[var(--admin-sidebar-muted)] hover:text-[var(--admin-sidebar-text)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
         )}
 
         {(!isMobile && !open) ? null : (
-          <span className="font-bold text-[var(--admin-text)] dark:text-white text-base font-mono tracking-wider select-none">
+          <span className="admin-sidebar-title font-bold text-base font-mono tracking-wider select-none">
             Lokstor
           </span>
         )}
@@ -78,25 +78,23 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
               key={href}
               href={href}
               onClick={() => { if(isMobile) setOpen(false); }}
-              className={`admin-sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 group relative rounded-md ${
-                isActive
-                  ? 'text-[var(--admin-primary)] bg-[var(--admin-hover)] border-r-2 border-[var(--admin-primary)] dark:text-white dark:bg-white/10 dark:border-emerald-400 font-bold'
-                  : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] border-r-2 border-transparent dark:text-white dark:hover:text-white dark:hover:bg-white/5'
+              className={`admin-sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative rounded-md ${
+                isActive ? 'active border-r-2 border-[var(--admin-sidebar-active)]' : 'border-r-2 border-transparent hover:bg-[var(--admin-hover)]'
               }`}
             >
-              <Icon className="w-[18px] h-[18px] flex-shrink-0 text-current dark:text-white" />
+              <Icon className="w-[18px] h-[18px] flex-shrink-0 transition-colors" />
               {showLabel && (
-                <span className="flex-1 text-sm font-medium text-current dark:text-white">
+                <span className="flex-1 text-sm font-semibold">
                   {label}
                 </span>
               )}
               {badge !== undefined && badge > 0 && (
-                <span className={`text-[var(--admin-bg)] bg-[var(--admin-primary)] dark:bg-emerald-500 dark:text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0 ${showLabel ? 'px-2 py-0.5 min-w-[20px]' : 'absolute top-1 left-1 w-4 h-4'}`}>
+                <span className={`text-white bg-emerald-600 text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0 ${showLabel ? 'px-2 py-0.5 min-w-[20px]' : 'absolute top-1 left-1 w-4 h-4'}`}>
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
               {!showLabel && (
-                <div className="absolute right-full mr-3 bg-[var(--admin-card)] text-[var(--admin-text)] dark:text-white dark:bg-[#1E2024] text-xs border border-[var(--admin-border)] px-2 py-1 rounded-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-md">
+                <div className="absolute right-full mr-3 bg-[var(--admin-card)] text-[var(--admin-text)] text-xs border border-[var(--admin-border)] px-2 py-1 rounded shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                   {label}
                 </div>
               )}
