@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useTranslation } from '@/lib/i18n-context';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, sendPasswordResetEmail } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -68,6 +68,7 @@ function NavBar() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,8 +107,15 @@ function NavBar() {
 
   const handleGoogleLogin = async () => {
     setError('');
+    setGoogleLoading(true);
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       await signInWithPopup(auth, provider);
       setSuccess('تم الدخول بنجاح!');
       setTimeout(() => {
@@ -115,7 +123,20 @@ function NavBar() {
         setSuccess('');
       }, 1000);
     } catch (err: any) {
-      setError('فشل تسجيل الدخول عبر جوجل');
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        try {
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch {
+          setError('فشل تسجيل الدخول عبر جوجل');
+        }
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setError('فشل تسجيل الدخول عبر جوجل');
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -413,10 +434,15 @@ function NavBar() {
 
             <button 
               onClick={handleGoogleLogin}
-              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
+              disabled={googleLoading || loading}
+              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
             >
-              <GoogleIcon />
-              <span>المتابعة باستخدام Google</span>
+              {googleLoading ? (
+                <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              <span>{googleLoading ? 'جاري التحويل إلى Google...' : 'المتابعة باستخدام Google'}</span>
             </button>
             
             <div className="mt-6 text-center text-xs text-[var(--store-text-muted)]">

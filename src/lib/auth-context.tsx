@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { auth, db } from './firebase';
-import { onAuthStateChanged, User, signOut as firebaseSignOut } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut as firebaseSignOut, getRedirectResult } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { UserProfile } from '@/types';
 
@@ -32,6 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
+    // Handle Google redirect auth for mobile
+    getRedirectResult(auth).catch(() => {});
+
     let unsubProfile: (() => void) | null = null;
 
     const unsubAuth = onAuthStateChanged(auth, async (u) => {

@@ -7,9 +7,9 @@ const cspHeader = `
   font-src 'self' https://fonts.gstatic.com data:;
   img-src 'self' data: blob: https://images.unsplash.com https://storage.googleapis.com https://*.firebasestorage.app https://firebasestorage.googleapis.com https://*.chargily.com https://*.chargily.dz https://*.chargily.net;
   connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasestorage.app https://storage.googleapis.com https://*.chargily.com https://*.chargily.dz https://*.chargily.net;
-  frame-src 'self' https://*.firebaseapp.com https://*.chargily.com https://*.chargily.dz https://*.chargily.net;
+  frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.chargily.com https://*.chargily.dz https://*.chargily.net;
   frame-ancestors 'none';
-  form-action 'self' https://*.chargily.com https://*.chargily.dz https://*.chargily.net;
+  form-action 'self' https://accounts.google.com https://*.chargily.com https://*.chargily.dz https://*.chargily.net;
   object-src 'none';
   base-uri 'self';
 `.replace(/\s{2,}/g, ' ').trim();
