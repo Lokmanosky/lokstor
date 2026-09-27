@@ -3,12 +3,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 const GoogleIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24">
+  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -35,14 +35,14 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
       setSuccess('تم إنشاء الحساب بنجاح! جاري التوجيه...');
-      setTimeout(() => router.push('/account'), 1200);
+      setTimeout(() => router.push('/account'), 1000);
     } catch (err: any) {
       if (err.message.includes('auth/email-already-in-use')) {
         setError('هذا البريد مستخدم بالفعل');
       } else if (err.message.includes('auth/weak-password')) {
-        setError('كلمة المرور ضعيفة جداً');
+        setError('كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)');
       } else {
-        setError('حدث خطأ أثناء إنشاء الحساب');
+        setError('حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة لاحقاً');
       }
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function RegisterPage() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       setSuccess('تم التسجيل بنجاح! جاري التوجيه...');
-      setTimeout(() => router.push('/account'), 1200);
+      setTimeout(() => router.push('/account'), 1000);
     } catch (err: any) {
       setError('فشل التسجيل عبر جوجل');
     }
@@ -70,89 +70,133 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#0a0a0a] border border-neutral-800 rounded-xl p-8 space-y-6">
-        <div className="text-center space-y-2 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="w-5 h-5 text-white" />
+    <div className="min-h-[85vh] bg-[var(--store-bg)] flex items-center justify-center p-4 sm:p-6" dir="rtl">
+      <div className="w-full max-w-md bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-6 sm:p-8 space-y-6 shadow-md transition-colors">
+        
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-[var(--store-hover)] border border-[var(--store-border)] flex items-center justify-center mx-auto mb-3 shadow-sm">
+            <UserPlus className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h1 className="text-xl font-bold text-white">إنشاء حساب جديد</h1>
-          <p className="text-xs text-neutral-400">انضم إلينا للوصول إلى أفضل المنتجات الرقمية</p>
+          <h1 className="text-2xl font-black text-[var(--store-text)] tracking-tight">
+            إنشاء حساب جديد
+          </h1>
+          <p className="text-xs sm:text-sm text-[var(--store-text-muted)] font-medium">
+            انضم إلينا للاستفادة من العروض والوصول لطلباتك الرقمية فوراً
+          </p>
         </div>
         
+        {/* Form */}
         <form onSubmit={handleRegister} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">الاسم الكامل</label>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[var(--store-text)]">
+              الاسم الكامل <span className="text-red-500">*</span>
+            </label>
             <input 
-              type="text" required
-              value={name} onChange={e => setName(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-800 text-white text-sm rounded-md px-4 py-2.5 focus:outline-none focus:border-neutral-600 transition-colors"
-              placeholder="محمد أحمد"
+              type="text" 
+              required
+              value={name} 
+              onChange={e => setName(e.target.value)}
+              className="w-full bg-[var(--store-bg)] border-2 border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-400 transition-colors placeholder:text-slate-400 font-medium"
+              placeholder="مثال: محمد الأمين"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">البريد الإلكتروني</label>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[var(--store-text)]">
+              البريد الإلكتروني <span className="text-red-500">*</span>
+            </label>
             <input 
-              type="email" required
-              value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-800 text-white text-sm rounded-md px-4 py-2.5 focus:outline-none focus:border-neutral-600 transition-colors"
+              type="email" 
+              required
+              value={email} 
+              onChange={e => setEmail(e.target.value)}
+              className="w-full bg-[var(--store-bg)] border-2 border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-400 transition-colors placeholder:text-slate-400 font-medium"
               placeholder="name@example.com"
               dir="ltr"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">كلمة المرور</label>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-[var(--store-text)]">
+              كلمة المرور <span className="text-red-500">*</span>
+            </label>
             <div className="relative">
               <input 
-                type={showPassword ? "text" : "password"} required minLength={6}
-                value={password} onChange={e => setPassword(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-800 text-white text-sm rounded-md pr-4 pl-10 py-2.5 focus:outline-none focus:border-neutral-600 transition-colors"
+                type={showPassword ? "text" : "password"} 
+                required 
+                minLength={6}
+                value={password} 
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-[var(--store-bg)] border-2 border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-xl pr-4 pl-11 py-3 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-400 transition-colors placeholder:text-slate-400 font-medium"
                 placeholder="••••••••"
                 dir="ltr"
               />
               <button 
                 type="button" 
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white transition-colors"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors cursor-pointer"
+                title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p className="text-[11px] text-[var(--store-text-muted)]">يجب أن تتكون من 6 خانات على الأقل.</p>
           </div>
 
-          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-xs text-center rounded-xl font-bold">
+              {error}
+            </div>
+          )}
+
           {success && (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center py-2.5 rounded-md font-medium">
-              {success}
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs text-center rounded-xl font-bold flex items-center justify-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" />
+              <span>{success}</span>
             </div>
           )}
 
           <button 
-            type="submit" disabled={loading}
-            className="w-full py-2.5 bg-white text-black font-bold text-sm rounded-md hover:bg-neutral-200 transition-colors mt-4 disabled:opacity-50"
+            type="submit" 
+            disabled={loading}
+            className="chargily-btn w-full py-3.5 text-white font-black text-sm rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all mt-2 disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'جاري الإنشاء...' : 'إنشاء الحساب'}
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-2">
-          <div className="flex-1 h-px bg-neutral-800"></div>
-          <span className="text-xs text-neutral-500">أو</span>
-          <div className="flex-1 h-px bg-neutral-800"></div>
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-[var(--store-border)]"></div>
+          <span className="text-xs text-[var(--store-text-muted)] font-bold">أو</span>
+          <div className="flex-1 h-px bg-[var(--store-border)]"></div>
         </div>
 
+        {/* Google sign up */}
         <button 
           onClick={handleGoogleRegister}
-          className="w-full py-2.5 bg-neutral-900 border border-neutral-800 text-white font-medium text-sm rounded-md hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
+          type="button"
+          className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-xs sm:text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
         >
           <GoogleIcon />
-          <span>التسجيل باستخدام Google</span>
+          <span>المتابعة والتسجيل باستخدام Google</span>
         </button>
         
-        <div className="text-center text-xs text-neutral-500 pt-4 border-t border-neutral-800 mt-6">
-          لديك حساب بالفعل؟ <Link href="/" className="text-white font-medium hover:underline">تسجيل الدخول من الشريط العلوي</Link>
+        {/* Footer links */}
+        <div className="text-center text-xs text-[var(--store-text-muted)] pt-4 border-t border-[var(--store-border)] space-y-2">
+          <div>
+            لديك حساب بالفعل؟{' '}
+            <Link href="/" className="text-emerald-600 dark:text-emerald-400 font-black hover:underline">
+              تسجيل الدخول من المتجر
+            </Link>
+          </div>
+          <div>
+            <Link href="/" className="inline-flex items-center gap-1 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors">
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span>العودة لصفحة المتجر الرئيسية</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

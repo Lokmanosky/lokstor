@@ -17,8 +17,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className="h-full">
-      <body className="min-h-full flex flex-col bg-[var(--store-bg)] text-[var(--store-text)] antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-300">
+    <html lang="ar" dir="rtl" className="h-full" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var savedTheme = localStorage.getItem('store-theme');
+                if (savedTheme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else if (savedTheme === 'light') {
+                  document.documentElement.classList.remove('dark');
+                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-[var(--store-bg)] text-[var(--store-text)] antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200">
         <DevToolsGuard />
         <I18nProvider>
           <AuthProvider>

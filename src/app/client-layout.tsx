@@ -398,21 +398,21 @@ function NavBar() {
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-white text-black font-bold text-sm rounded-md hover:bg-neutral-200 transition-colors mt-2 disabled:opacity-50"
+                className="chargily-btn w-full py-3 text-white font-black text-sm rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all mt-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
               </button>
             </form>
 
             <div className="my-4 flex items-center gap-2">
-              <div className="flex-1 h-px bg-neutral-800"></div>
+              <div className="flex-1 h-px bg-[var(--store-border)]"></div>
               <span className="text-xs text-[var(--store-text-muted)]">أو</span>
-              <div className="flex-1 h-px bg-neutral-800"></div>
+              <div className="flex-1 h-px bg-[var(--store-border)]"></div>
             </div>
 
             <button 
               onClick={handleGoogleLogin}
-              className="w-full py-2.5 bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] font-medium text-sm rounded-md hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
             >
               <GoogleIcon />
               <span>المتابعة باستخدام Google</span>
