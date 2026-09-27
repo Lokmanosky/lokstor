@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useTranslation } from '@/lib/i18n-context';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -68,7 +68,6 @@ function NavBar() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,19 +104,9 @@ function NavBar() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    setGoogleLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      // Always use redirect for reliability - works on all mobile browsers
-      await signInWithRedirect(auth, provider);
-    } catch (err: any) {
-      console.error('Google redirect error:', err);
-      setError('تعذّر فتح صفحة Google، تأكد من اتصالك بالإنترنت وحاول مجدداً');
-      setGoogleLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    router.push('/google-signin');
+    setIsLoginModalOpen(false);
   };
 
   return (
@@ -414,15 +403,10 @@ function NavBar() {
 
             <button 
               onClick={handleGoogleLogin}
-              disabled={googleLoading || loading}
-              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
             >
-              {googleLoading ? (
-                <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              <span>{googleLoading ? 'جاري التحويل إلى Google...' : 'المتابعة باستخدام Google'}</span>
+              <GoogleIcon />
+              <span>المتابعة باستخدام Google</span>
             </button>
             
             <div className="mt-6 text-center text-xs text-[var(--store-text-muted)]">

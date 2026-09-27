@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { UserPlus, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -25,7 +25,6 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -50,30 +49,9 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleRegister = async () => {
-    setError('');
-    setGoogleLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      // Always use redirect for reliability - works on all mobile browsers
-      await signInWithRedirect(auth, provider);
-    } catch (err: any) {
-      console.error('Google redirect error:', err);
-      setError('تعذّر فتح صفحة Google، تأكد من اتصالك بالإنترنت وحاول مجدداً');
-      setGoogleLoading(false);
-    }
+  const handleGoogleRegister = () => {
+    router.push('/google-signin');
   };
-
-  // Handle Google redirect result on mobile
-  useEffect(() => {
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) {
-        setSuccess('تم التسجيل بنجاح! جاري التوجيه...');
-        setTimeout(() => router.push('/account'), 1000);
-      }
-    }).catch(() => {});
-  }, []);
 
   // Redirect if already logged in
   if (user) {
@@ -190,16 +168,11 @@ export default function RegisterPage() {
         {/* Google sign up */}
         <button 
           onClick={handleGoogleRegister}
-          disabled={googleLoading || loading}
           type="button"
-          className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-xs sm:text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+          className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-xs sm:text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
         >
-          {googleLoading ? (
-            <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-          ) : (
-            <GoogleIcon />
-          )}
-          <span>{googleLoading ? 'جاري التحويل إلى Google...' : 'المتابعة والتسجيل باستخدام Google'}</span>
+          <GoogleIcon />
+          <span>المتابعة والتسجيل باستخدام Google</span>
         </button>
         
         {/* Footer links */}
