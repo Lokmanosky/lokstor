@@ -107,3 +107,13 @@ body {
 .store-card:hover {
   box-shadow: var(--store-card-hover-shadow);
 }
+
+/* Sidebar dark mode crisp white text guarantee */
+[data-theme='dark'] .admin-sidebar-link,
+.dark .admin-sidebar-link,
+[data-theme='dark'] .admin-sidebar-link span,
+.dark .admin-sidebar-link span,
+[data-theme='dark'] .admin-sidebar-link svg,
+.dark .admin-sidebar-link svg {
+  color: #FFFFFF !important;
+}
