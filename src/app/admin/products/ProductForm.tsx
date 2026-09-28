@@ -677,64 +677,179 @@ export default function ProductForm({ productId }: ProductFormProps) {
             )}
           </div>
 
-          {/* ── Stock Items — Each item is isolated ──────────────────────────── */}
+          {/* ── نظام إدارة المخزون (Stock Management) ──────────────────────────── */}
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--admin-border)] pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--admin-border)] pb-3 gap-2">
               <div>
-                <h2 className="text-sm font-semibold text-[var(--admin-text)]">وحدات المخزون</h2>
+                <h2 className="text-sm font-bold text-[var(--admin-text)] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-emerald-500" />
+                  <span>طريقة تحديد المخزون والتوفر</span>
+                </h2>
                 <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
-                  كل وحدة = حقل مستقل معزول — يُسلَّم للعميل واحدة فقط بعد الدفع
+                  اختر بين التحديد بالعدد (للشحن وتفعيل الحسابات كـ ChatGPT) أو بالوحدات المعزولة المجهزة مسبقاً
                 </p>
               </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[var(--admin-primary)]/10 text-[var(--admin-primary)]">
-                {filledCount} وحدة
+
+              {/* Status Badge */}
+              <span className={`text-xs font-bold px-3 py-1 rounded-full self-start sm:self-center ${
+                stockMode === 'numeric'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+              }`}>
+                {stockMode === 'numeric' 
+                  ? (isUnlimitedStock ? 'مخزون غير محدود ♾️' : `${numericStock} متوفر بالعدد`)
+                  : `${filledCount} حساب معزول`}
               </span>
             </div>
 
-            {/* Individual items */}
-            <div className="space-y-2">
-              {stockItems.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <span className="flex-shrink-0 w-6 h-9 flex items-center justify-center text-xs text-[var(--admin-text-muted)] font-mono mt-0.5">
-                    {idx + 1}
+            {/* Mode Selector Tabs (2 Big Cards) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: Numeric Stock (Priority) */}
+              <button
+                type="button"
+                onClick={() => setStockMode('numeric')}
+                className={`p-4 rounded-xl border-2 text-right transition-all cursor-pointer ${
+                  stockMode === 'numeric'
+                    ? 'border-emerald-500 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/30'
+                    : 'border-[var(--admin-border)] bg-[var(--admin-bg)] hover:border-emerald-500/40 opacity-70 hover:opacity-100'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-black text-xs sm:text-sm text-[var(--admin-text)] flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">#</span>
+                    <span>1. تحديد المخزون بالعدد (الأولوية)</span>
                   </span>
-                  <textarea
-                    rows={2}
-                    className={inputCls + ' resize-none font-mono text-xs flex-1'}
-                    value={item}
-                    onChange={e => updateStockItem(idx, e.target.value)}
-                    placeholder={
-                      idx === 0
-                        ? 'مثال: Email: user@gmail.com\nPassword: abc123!'
-                        : `الوحدة ${idx + 1}...`
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeStockItem(idx)}
-                    disabled={stockItems.length === 1}
-                    className="flex-shrink-0 mt-1 p-1.5 rounded text-[var(--admin-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="حذف هذه الوحدة"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {stockMode === 'numeric' && (
+                    <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
+                      ✓
+                    </span>
+                  )}
                 </div>
-              ))}
+                <p className="text-xs text-[var(--admin-text-muted)] leading-relaxed">
+                  يُقفل خيار الحسابات المعزولة. مناسب لتفعيل حسابات <strong>ChatGPT</strong>، وشحن <strong>الألعاب</strong> (تطلب إيميل العميل وكوده وتفعّل له).
+                </p>
+              </button>
+
+              {/* Option 2: Isolated Units */}
+              <button
+                type="button"
+                onClick={() => setStockMode('units')}
+                className={`p-4 rounded-xl border-2 text-right transition-all cursor-pointer ${
+                  stockMode === 'units'
+                    ? 'border-indigo-500 bg-indigo-500/10 shadow-sm ring-1 ring-indigo-500/30'
+                    : 'border-[var(--admin-border)] bg-[var(--admin-bg)] hover:border-indigo-500/40 opacity-70 hover:opacity-100'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-black text-xs sm:text-sm text-[var(--admin-text)] flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-indigo-500 text-white flex items-center justify-center text-xs font-bold">📋</span>
+                    <span>2. وحدات تسليم آلي معزولة</span>
+                  </span>
+                  {stockMode === 'units' && (
+                    <span className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold">
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--admin-text-muted)] leading-relaxed">
+                  تسليم تلقائي فوري بعد الدفع. تضع قائمة حسابات جاهزة أو أكواد، والكود يسلم العميل واحدة ويحذفها تلقائياً.
+                </p>
+              </button>
             </div>
 
-            {/* Add new item */}
-            <button
-              type="button"
-              onClick={addStockItem}
-              className="flex items-center gap-2 px-4 py-2 rounded-md border border-dashed border-[var(--admin-border)] text-sm text-[var(--admin-text-muted)] hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)] transition-colors w-full justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              <span>إضافة وحدة جديدة</span>
-            </button>
+            {/* Mode 1 UI: Numeric Stock */}
+            {stockMode === 'numeric' ? (
+              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-4 animate-in fade-in duration-150">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-[var(--admin-text)]">
+                    الكمية المتوفرة للبيع بالعدد:
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                    <input
+                      type="checkbox"
+                      checked={isUnlimitedStock}
+                      onChange={(e) => setIsUnlimitedStock(e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>مخزون غير محدود (متوفر دائماً ♾️)</span>
+                  </label>
+                </div>
 
-            <p className="text-[11px] text-[var(--admin-text-muted)] bg-amber-500/5 border border-amber-500/20 rounded-md p-2.5">
-              ⚠️ كل وحدة معزولة — الكود يأخذ الوحدة <strong>الأولى</strong> فقط عند كل عملية شراء ثم يحذفها من القائمة.
-            </p>
+                {!isUnlimitedStock && (
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={numericStock}
+                        onChange={(e) => setNumericStock(Math.max(0, parseInt(e.target.value) || 0))}
+                        placeholder="أدخل عدد الوحدات المتاحة (مثال: 50)"
+                        className={inputCls + ' font-mono text-sm font-bold'}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-[var(--admin-text-muted)] shrink-0">
+                      وحدة متاحة
+                    </span>
+                  </div>
+                )}
+
+                <div className="p-3 rounded-lg bg-[var(--admin-card)] border border-emerald-500/20 text-xs space-y-1.5">
+                  <div className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <span>🔒 تم إغلاق وحجب خيار الحسابات المعزولة (stockLinks) تلقائياً.</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--admin-text-muted)] leading-relaxed">
+                    لا يتطلب هذا الوضع أي حسابات مجهزة مسبقاً. عند قيام العميل بالشراء، سيصلك إيميل العميل وبياناته المطلوبة في لوحة التحكم وتفعل له حسابه يدوياً.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* Mode 2 UI: Isolated units */
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="space-y-2">
+                  {stockItems.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-9 flex items-center justify-center text-xs text-[var(--admin-text-muted)] font-mono mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <textarea
+                        rows={2}
+                        className={inputCls + ' resize-none font-mono text-xs flex-1'}
+                        value={item}
+                        onChange={e => updateStockItem(idx, e.target.value)}
+                        placeholder={
+                          idx === 0
+                            ? 'مثال: Email: user@gmail.com\nPassword: abc123!'
+                            : `الوحدة ${idx + 1}...`
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeStockItem(idx)}
+                        disabled={stockItems.length === 1}
+                        className="flex-shrink-0 mt-1 p-1.5 rounded text-[var(--admin-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="حذف هذه الوحدة"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add new item */}
+                <button
+                  type="button"
+                  onClick={addStockItem}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md border border-dashed border-[var(--admin-border)] text-sm text-[var(--admin-text-muted)] hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)] transition-colors w-full justify-center"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>إضافة وحدة جديدة</span>
+                </button>
+
+                <p className="text-[11px] text-[var(--admin-text-muted)] bg-amber-500/5 border border-amber-500/20 rounded-md p-2.5">
+                  ⚠️ كل وحدة معزولة — الكود يأخذ الوحدة <strong>الأولى</strong> فقط عند كل عملية شراء ثم يحذفها من القائمة.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Features */}
