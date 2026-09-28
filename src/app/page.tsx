@@ -300,143 +300,201 @@ function HomePageContent() {
           </div>
         )}
 
-        {/* Product Grid */}
+        {/* ── Product Display: Sectioned by category ──────────────────────── */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="h-64 bg-[var(--store-card)] border border-[var(--store-border)] rounded-xl animate-pulse"></div>
+          <div className="space-y-10">
+            {[1, 2, 3].map(s => (
+              <div key={s} className="space-y-3">
+                <div className="h-7 w-36 bg-[var(--store-card)] border border-[var(--store-border)] rounded-lg animate-pulse" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="rounded-2xl bg-[var(--store-card)] border border-[var(--store-border)] animate-pulse" style={{aspectRatio:'1'}} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-16 px-4 bg-[var(--store-card)] border border-[var(--store-border)] rounded-2xl space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[var(--store-bg)] border border-[var(--store-border)] flex items-center justify-center mx-auto text-[var(--store-text-muted)]">
-              <Search className="w-6 h-6 text-emerald-500" />
-            </div>
+            <Search className="w-8 h-8 mx-auto text-emerald-500 opacity-60" />
             <div className="space-y-1">
               <h3 className="font-bold text-base text-[var(--store-text)]">لم يتم العثور على أي نتائج</h3>
               <p className="text-sm text-[var(--store-text-muted)]">
-                {searchQuery ? `لا توجد منتجات تطابق "${searchQuery}"` : 'لا توجد منتجات متوفرة حالياً في هذا القسم'}
+                {searchQuery ? `لا توجد منتجات تطابق "${searchQuery}"` : 'لا توجد منتجات في هذا القسم حالياً'}
               </p>
             </div>
-            {searchQuery && (
+            {(searchQuery || activeTab !== 'all') && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery('');
-                  setActiveTab('all');
+                  selectTab('all');
                   window.dispatchEvent(new CustomEvent('store-search-query', { detail: '' }));
-                  const url = new URL(window.location.href);
-                  url.searchParams.delete('q');
-                  window.history.replaceState({}, '', url.toString());
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
               >
-                <span>مسح البحث وعرض كل المنتجات</span>
+                <span>عرض كل المنتجات</span>
               </button>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map(product => {
-              const outOfStock = Boolean(
-    product.status === 'out_of_stock' ||
-    (product.stockType === 'numeric'
-      ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
-      : (product.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product.stock === 'number' && product.stock <= 0))
-  );
-              
-              return (
-                <div key={product.id} className="group store-card rounded-2xl overflow-hidden flex flex-col h-full border border-[var(--store-border)] hover:border-[var(--store-primary)]/50 transition-all duration-300">
-                  <Link href={`/product/${product.id}`} className="block relative bg-[var(--store-bg)]" aria-label={product.name}>
-                    <div className="aspect-square w-full relative overflow-hidden flex items-center justify-center bg-[var(--store-bg)]">
-                      <img
-                        src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
-                        alt={product.name}
-                        loading="lazy"
-                        width={400}
-                        height={400}
-                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
-                        <span className="bg-black/75 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
-                          {product.category === 'شحن ألعاب' || product.type === 'games' ? '🎮 شحن ألعاب' : (product.type === 'digital' ? t('badge.digital') : t('badge.sub'))}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                  <div className="p-4 border-t border-[var(--store-border)]/60 flex-1 flex flex-col justify-between gap-3 bg-[var(--store-card)]">
-                    <Link href={`/product/${product.id}`}>
-                      <h2 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
-                    </Link>
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      {product.priceUnspecified ? (
-                        <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                          سعر غير محدد
-                        </span>
-                      ) : (
-                        <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">
-                          {product.price} <span className="text-xs font-normal">د.ج</span>
-                        </span>
-                      )}
-                      
-                      {outOfStock ? (
-                        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
-                          <PackageX className="w-3.5 h-3.5" />
-                          <span>تم نفاذ المخزون</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          {/* زر الشراء المباشر -> يوجه مباشرة لصفحة الشراء والدفع */}
-                          <Link
-                            href={`/checkout/${product.id}`}
-                            className="flex items-center justify-center px-3 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
-                            title="الشراء المباشر والدفع الآن"
-                          >
-                            <span>{product.priceUnspecified ? 'طلب شحن' : 'الشراء'}</span>
-                          </Link>
-
-                          {/* أيقونة السلة منفصلة -> تضيف للسلة وتحدث العداد بالأعلى */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!user) {
-                                setShowLoginToast(true);
-                                setTimeout(() => setShowLoginToast(false), 3500);
-                                return;
-                              }
-                              addToCart({
-                                id: product.id,
-                                name: product.name,
-                                price: product.price,
-                                imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''),
-                                quantity: 1,
-                                type: product.type
-                              });
-                              setAddedProductId(product.id);
-                              setTimeout(() => setAddedProductId(null), 1500);
-                            }}
-                            className={`p-1.5 rounded-md border text-xs font-bold transition-all flex items-center justify-center ${
-                              addedProductId === product.id
-                                ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105'
-                                : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'
-                            }`}
-                            title="إضافة إلى السلة" aria-label={addedProductId === product.id ? "تمت الإضافة إلى السلة" : `إضافة ${product.name} إلى السلة`}
-                          >
-                            {addedProductId === product.id ? (
-                              <Check className="w-4 h-4 text-emerald-400" />
-                            ) : (
-                              <ShoppingCart className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      )}
+        ) : (() => {
+          // ── reusable product card ──────────────────────────────────────────
+          const renderCard = (product: any) => {
+            const outOfStock = Boolean(
+              product.status === 'out_of_stock' ||
+              (product.stockType === 'numeric'
+                ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
+                : (product.stockLinks && Array.isArray(product.stockLinks)
+                    ? product.stockLinks.length === 0
+                    : typeof product.stock === 'number' && product.stock <= 0))
+            );
+            return (
+              <div key={product.id} className="group store-card rounded-2xl overflow-hidden flex flex-col h-full border border-[var(--store-border)] hover:border-[var(--store-primary)]/50 transition-all duration-300">
+                <Link href={`/product/${product.id}`} className="block relative bg-[var(--store-bg)]" aria-label={product.name}>
+                  <div className="aspect-square w-full relative overflow-hidden flex items-center justify-center bg-[var(--store-bg)]">
+                    <img
+                      src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
+                      alt={product.name}
+                      loading="lazy"
+                      width={400}
+                      height={400}
+                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+                      <span className="bg-black/75 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                        {product.category === 'شحن ألعاب' || product.type === 'games' ? '🎮 ألعاب' : (product.type === 'digital' ? t('badge.digital') : t('badge.sub'))}
+                      </span>
                     </div>
                   </div>
+                </Link>
+                <div className="p-4 border-t border-[var(--store-border)]/60 flex-1 flex flex-col justify-between gap-3 bg-[var(--store-card)]">
+                  <Link href={`/product/${product.id}`}>
+                    <h2 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
+                  </Link>
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    {product.priceUnspecified ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">سعر غير محدد</span>
+                    ) : (
+                      <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">{product.price} <span className="text-xs font-normal">د.ج</span></span>
+                    )}
+                    {outOfStock ? (
+                      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
+                        <PackageX className="w-3.5 h-3.5" />
+                        <span>نفذ المخزون</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/checkout/${product.id}`}
+                          className="flex items-center justify-center px-3 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
+                          title="الشراء المباشر">
+                          <span>{product.priceUnspecified ? 'طلب شحن' : 'الشراء'}</span>
+                        </Link>
+                        <button type="button"
+                          onClick={() => {
+                            if (!user) { setShowLoginToast(true); setTimeout(() => setShowLoginToast(false), 3500); return; }
+                            addToCart({ id: product.id, name: product.name, price: product.price, imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''), quantity: 1, type: product.type });
+                            setAddedProductId(product.id);
+                            setTimeout(() => setAddedProductId(null), 1500);
+                          }}
+                          className={`p-1.5 rounded-md border text-xs font-bold transition-all flex items-center justify-center ${addedProductId === product.id ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'}`}
+                          title="إضافة إلى السلة"
+                          aria-label={addedProductId === product.id ? "تمت الإضافة" : `إضافة ${product.name} إلى السلة`}
+                        >
+                          {addedProductId === product.id ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingCart className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          };
+
+          // ── Section renderer ───────────────────────────────────────────────
+          const renderSection = (emoji: string | undefined, title: string, slug: string, prods: any[], showViewAll: boolean) => (
+            <section key={slug} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  {emoji && <span className="text-2xl leading-none flex-shrink-0">{emoji}</span>}
+                  <h2 className="text-xl font-black text-[var(--store-text)] tracking-tight">{title}</h2>
+                  <span className="hidden sm:inline text-xs text-[var(--store-text-muted)] bg-[var(--store-card)] border border-[var(--store-border)] rounded-full px-2.5 py-0.5 font-medium flex-shrink-0">
+                    {prods.length} منتج
+                  </span>
+                </div>
+                {showViewAll && (
+                  <button onClick={() => selectTab(slug)}
+                    className="text-xs font-bold text-[var(--store-primary)] hover:underline flex-shrink-0 whitespace-nowrap transition-all">
+                    عرض القسم كاملاً ←
+                  </button>
+                )}
+              </div>
+              {/* Divider */}
+              <div className="h-px bg-gradient-to-l from-transparent via-[var(--store-border)] to-transparent" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {prods.map(p => renderCard(p))}
+              </div>
+            </section>
+          );
+
+          // ─────────────────────────────────────────────────────────────────
+          // CASE 1: Searching → flat results with no section headers
+          // ─────────────────────────────────────────────────────────────────
+          if (searchQuery.trim()) {
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filteredProducts.map(p => renderCard(p))}
+              </div>
+            );
+          }
+
+          // ─────────────────────────────────────────────────────────────────
+          // CASE 2: specific tab selected → show only that section
+          // ─────────────────────────────────────────────────────────────────
+          if (activeTab !== 'all') {
+            const activeCat = storeCategories.find(c => c.slug === activeTab);
+            const title = activeCat ? activeCat.name : activeTab;
+            const emoji = activeCat?.emoji;
+            return renderSection(emoji, title, activeTab, filteredProducts, false);
+          }
+
+          // ─────────────────────────────────────────────────────────────────
+          // CASE 3: All tab → show each category as its own section
+          // ─────────────────────────────────────────────────────────────────
+          if (storeCategories.length > 0) {
+            const assigned = new Set<string>();
+            const sections = storeCategories.map(cat => {
+              const catProds = products.filter(p => {
+                const match =
+                  p.type === cat.slug ||
+                  (p.category || '').toLowerCase() === cat.name.toLowerCase() ||
+                  (p.category || '') === cat.slug ||
+                  (p.category || '').toLowerCase().includes(cat.slug.toLowerCase());
+                if (match) assigned.add(p.id);
+                return match;
+              });
+              return { cat, prods: catProds };
+            }).filter(s => s.prods.length > 0);
+
+            const uncategorized = products.filter(p => !assigned.has(p.id));
+
+            return (
+              <div className="space-y-14">
+                {sections.map(({ cat, prods }) =>
+                  renderSection(cat.emoji, cat.name, cat.slug, prods, true)
+                )}
+                {uncategorized.length > 0 &&
+                  renderSection('📦', 'منتجات أخرى', '__other__', uncategorized, false)}
+              </div>
+            );
+          }
+
+          // Fallback: no categories defined → flat grid
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {filteredProducts.map(p => renderCard(p))}
+            </div>
+          );
+        })()}
 
       </section>
 
