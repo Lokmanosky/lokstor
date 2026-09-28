@@ -762,7 +762,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-emerald-500 overflow-hidden">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${r.customerName}`} alt="avatar" className="w-full h-full object-cover" />
+                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(r.customerName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
                     </div>
                     <div>
                       <h4 className="font-bold text-sm text-[var(--store-text)]">{r.customerName}</h4>

@@ -41,18 +41,18 @@ function ReviewsCarousel() {
         <h2 className="text-2xl font-black text-[var(--store-text)]">قالوا عن متجرنا</h2>
       </div>
       
-      <div className="relative overflow-hidden group">
+      <div className="relative overflow-x-auto pb-4 group custom-scrollbar">
         <div 
-          className="flex gap-4 sm:gap-6 animate-[scroll_20s_linear_infinite] hover:[animation-play-state:paused]"
-          style={{ width: 'max-content' }}
+          className="flex gap-4 sm:gap-6 w-max"
+          
         >
           {/* Double the array to create seamless infinite scroll */}
-          {[...reviews, ...reviews, ...reviews].map((review, i) => (
+          {reviews.map((review, i) => (
             <div key={`${review.id}-${i}`} className="w-72 sm:w-80 shrink-0 bg-[#161b22] border border-[#30363d] rounded-3xl p-6 relative flex flex-col">
               <Quote className="absolute top-4 left-4 w-10 h-10 text-slate-700/50" />
               <div className="flex flex-col items-center mb-4">
                 <div className="w-16 h-16 rounded-full bg-slate-800 border-[3px] border-emerald-500 overflow-hidden mb-3">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${review.customerName}`} alt="avatar" className="w-full h-full object-cover" />
+                  <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.customerName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
                 </div>
                 <h3 className="font-bold text-white text-lg">{review.customerName}</h3>
                 <div className="flex items-center gap-1 mt-1 text-amber-400">

@@ -168,3 +168,18 @@ body {
 .admin-sidebar-theme-btn span {
   color: var(--admin-sidebar-muted) !important;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--store-bg); 
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--store-border); 
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--store-primary); 
+}
