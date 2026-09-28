@@ -12,7 +12,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Suspense } from 'react';
 
 function HomePageContent() {
-  const [activeTab, setActiveTab] = useState('all');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'all';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
@@ -20,23 +22,62 @@ function HomePageContent() {
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const [showLoginToast, setShowLoginToast] = useState(false);
   const { user } = useAuth();
-  const searchParams = useSearchParams();
   const urlQuery = searchParams.get('q') || '';
   const [searchQuery, setSearchQuery] = useState(urlQuery);
 
+  // Sync tab and search query from URL search params
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '');
+    const currentTab = searchParams.get('tab');
+    if (currentTab) {
+      setActiveTab(currentTab);
+    }
   }, [searchParams]);
 
+  // Listen to custom category and search events from navbar / sidebar
   useEffect(() => {
+    const handleCategorySelect = (e: any) => {
+      if (typeof e.detail === 'string') {
+        const tab = e.detail;
+        setActiveTab(tab);
+        setSearchQuery('');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('q');
+        if (tab === 'all') {
+          url.searchParams.delete('tab');
+        } else {
+          url.searchParams.set('tab', tab);
+        }
+        window.history.replaceState({}, '', url.toString());
+      }
+    };
+
     const handleGlobalSearch = (e: any) => {
       if (typeof e.detail === 'string') {
         setSearchQuery(e.detail);
       }
     };
+
+    window.addEventListener('store-category-select', handleCategorySelect);
     window.addEventListener('store-search-query', handleGlobalSearch);
-    return () => window.removeEventListener('store-search-query', handleGlobalSearch);
+    return () => {
+      window.removeEventListener('store-category-select', handleCategorySelect);
+      window.removeEventListener('store-search-query', handleGlobalSearch);
+    };
   }, []);
+
+  const selectTab = (tab: string) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    if (tab === 'all') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', tab);
+    }
+    window.history.replaceState({}, '', url.toString());
+  };
 
   useEffect(() => {
     async function loadProducts() {
@@ -80,12 +121,20 @@ function HomePageContent() {
       const matchType = (p.type || '').toLowerCase().includes(term);
       if (!matchName && !matchDesc && !matchType) return false;
     }
-    // 2. Tab Match
+    // 2. Tab Match with smart type & category matching
     if (activeTab === 'all') return true;
+    const cat = (p.category || '').toLowerCase();
+    const name = (p.name || '').toLowerCase();
     if (activeTab === 'games') {
-      return p.type === 'games' || (p.category && (p.category.includes('لعب') || p.category.includes('شحن')));
+      return p.type === 'games' || cat.includes('لعب') || cat.includes('شحن') || cat.includes('cod') || name.includes('cod') || name.includes('نقاط');
     }
-    return p.type === activeTab;
+    if (activeTab === 'digital') {
+      return p.type === 'digital' || cat.includes('رقمي') || cat.includes('كتب') || cat.includes('قوالب') || cat.includes('دورات');
+    }
+    if (activeTab === 'subscription') {
+      return p.type === 'subscription' || cat.includes('اشتراك') || name.includes('اشتراك') || name.includes('عرض لفترة');
+    }
+    return p.type === activeTab || p.category === activeTab;
   });
 
   return (
@@ -128,32 +177,32 @@ function HomePageContent() {
       </section>
 
       {/* 2. Products Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+      <section id="products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
         
         {/* Filter Bar & Live Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--store-border)] pb-3">
           {/* Category Tabs */}
           <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
             <button 
-              onClick={() => setActiveTab('all')}
+              onClick={() => selectTab('all')}
               className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'all' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
             >
               {t('nav.all')}
             </button>
             <button 
-              onClick={() => setActiveTab('digital')}
+              onClick={() => selectTab('digital')}
               className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
             >
               {t('nav.digital')}
             </button>
             <button 
-              onClick={() => setActiveTab('subscription')}
+              onClick={() => selectTab('subscription')}
               className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
             >
               {t('nav.subs')}
             </button>
             <button 
-              onClick={() => setActiveTab('games')}
+              onClick={() => selectTab('games')}
               className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
             >
               🎮 شحن ألعاب

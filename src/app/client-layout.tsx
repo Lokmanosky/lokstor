@@ -152,6 +152,21 @@ function NavBar() {
     }
   };
 
+  const handleNavCategory = (tab: string) => {
+    setMobileMenuOpen(false);
+    window.dispatchEvent(new CustomEvent('store-category-select', { detail: tab }));
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname === '/') {
+        const section = document.getElementById('products-section');
+        if (section) {
+          section.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else {
+        router.push(`/?tab=${tab}`);
+      }
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -248,11 +263,12 @@ function NavBar() {
             </span>
           </Link>
           
-          {/* Menu Links */}
+          {/* Menu Links with Category Filter */}
           <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-[var(--store-text-muted)]">
-            <Link href="/" className="hover:text-neutral-100 transition-colors">{t('nav.all')}</Link>
-            <Link href="/" className="hover:text-neutral-100 transition-colors">{t('nav.digital')}</Link>
-            <Link href="/" className="hover:text-neutral-100 transition-colors">{t('nav.subs')}</Link>
+            <Link href="/?tab=all" onClick={() => handleNavCategory('all')} className="hover:text-neutral-100 transition-colors">{t('nav.all')}</Link>
+            <Link href="/?tab=digital" onClick={() => handleNavCategory('digital')} className="hover:text-neutral-100 transition-colors">{t('nav.digital')}</Link>
+            <Link href="/?tab=subscription" onClick={() => handleNavCategory('subscription')} className="hover:text-neutral-100 transition-colors">{t('nav.subs')}</Link>
+            <Link href="/?tab=games" onClick={() => handleNavCategory('games')} className="hover:text-neutral-100 transition-colors">🎮 شحن ألعاب</Link>
           </nav>
         </div>
 
@@ -534,13 +550,13 @@ function NavBar() {
               )}
             </div>
             
-            {/* الأقسام الرئيسية (Larger, comfortable touch targets) */}
+            {/* الأقسام الرئيسية (Larger, comfortable touch targets with real filtering) */}
             <div className="space-y-2">
-              <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">الأقسام</span>
+              <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">الأقسام الرئيسية</span>
               <nav className="flex flex-col gap-2">
                 <Link 
-                  href="/" 
-                  onClick={() => setMobileMenuOpen(false)}
+                  href="/?tab=all" 
+                  onClick={() => handleNavCategory('all')}
                   className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
@@ -551,8 +567,8 @@ function NavBar() {
                 </Link>
 
                 <Link 
-                  href="/" 
-                  onClick={() => setMobileMenuOpen(false)}
+                  href="/?tab=digital" 
+                  onClick={() => handleNavCategory('digital')}
                   className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
@@ -563,13 +579,25 @@ function NavBar() {
                 </Link>
 
                 <Link 
-                  href="/" 
-                  onClick={() => setMobileMenuOpen(false)}
+                  href="/?tab=subscription" 
+                  onClick={() => handleNavCategory('subscription')}
                   className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
                     <span>{t('nav.subs')}</span>
+                  </div>
+                  <span className="text-xs text-[var(--store-text-muted)] opacity-60">←</span>
+                </Link>
+
+                <Link 
+                  href="/?tab=games" 
+                  onClick={() => handleNavCategory('games')}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span>🎮 شحن ألعاب</span>
                   </div>
                   <span className="text-xs text-[var(--store-text-muted)] opacity-60">←</span>
                 </Link>
