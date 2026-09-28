@@ -668,8 +668,9 @@ function NavBar() {
 
 function Footer() {
   const s = useStoreSettings();
+  const { t, lang } = useTranslation();
   return (
-    <footer className="border-t border-[var(--store-border)] bg-[var(--store-bg)] mt-20">
+    <footer className="border-t border-[var(--store-border)] bg-[var(--store-bg)] mt-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-12 border-b border-[var(--store-border)]">
           <div>
@@ -684,47 +685,47 @@ function Footer() {
               <span className="font-bold text-sm tracking-wide text-[var(--store-text)] uppercase">{s.storeName}</span>
             </div>
             <p className="text-sm text-[var(--store-text-muted)] leading-relaxed mb-4">
-              {s.storeSubtitle}
+              {lang === 'ar' ? s.storeSubtitle : t('footer.subtitle')}
             </p>
           </div>
 
           <div className="flex flex-col space-y-4">
-            <Link href="/" className="text-sm text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors w-fit">الرئيسية</Link>
-            <Link href="/about" className="text-sm text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors w-fit">من نحن</Link>
-            <Link href="/terms" className="text-sm text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors w-fit">الشروط والأحكام</Link>
-            <Link href="/shipping-returns" className="text-sm text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors w-fit">سياسة الشحن والإرجاع</Link>
-            <Link href="/privacy" className="text-sm text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors w-fit">سياسة الخصوصية</Link>
-            <Link href="/faq" className="text-sm text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors w-fit">الأسئلة الشائعة</Link>
+            <Link href="/" className="text-sm text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors w-fit">{t('common.home')}</Link>
+            <Link href="/about" className="text-sm text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors w-fit">{t('footer.about')}</Link>
+            <Link href="/terms" className="text-sm text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors w-fit">{t('footer.terms')}</Link>
+            <Link href="/shipping-returns" className="text-sm text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors w-fit">{t('footer.shippingReturns')}</Link>
+            <Link href="/privacy" className="text-sm text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors w-fit">{t('footer.privacy')}</Link>
+            <Link href="/faq" className="text-sm text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors w-fit">{t('footer.faq')}</Link>
           </div>
 
           <div>
             <h4 className="font-bold text-[var(--store-text)] mb-4 text-sm flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-emerald-400" />
-              <span>طرق الدفع المدعومة</span>
+              <span>{t('footer.paymentMethods')}</span>
             </h4>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="bg-transparent border border-emerald-700/40 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-md font-semibold">💳 البطاقة الذهبية</span>
-              <span className="bg-transparent border border-teal-700/40 dark:border-teal-900/50 text-teal-700 dark:text-teal-400 px-3 py-1.5 rounded-md font-semibold">💳 بطاقة CIB</span>
+              <span className="bg-transparent border border-emerald-700/40 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-md font-semibold">💳 {t('footer.edahabia')}</span>
+              <span className="bg-transparent border border-teal-700/40 dark:border-teal-900/50 text-teal-700 dark:text-teal-400 px-3 py-1.5 rounded-md font-semibold">💳 {t('footer.cib')}</span>
             </div>
           </div>
 
           <div>
             <h4 className="font-bold text-[var(--store-text)] mb-4 text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-teal-400" />
-              <span>الضمان والأمان</span>
+              <span>{t('footer.security')}</span>
             </h4>
             <p className="text-xs text-[var(--store-text-muted)] leading-relaxed">
-              جميع العمليات محمية بتشفير عالي الأمان عبر بوابة Chargily الرسمية.
+              {t('footer.securityDesc')}
             </p>
           </div>
         </div>
 
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-[var(--store-text-muted)] gap-4">
-          <p>© {new Date().getFullYear()} {s.storeSlug}. جميع الحقوق محفوظة.</p>
+          <p>© {new Date().getFullYear()} {s.storeSlug}. {t('footer.rights')}</p>
           <div className="flex items-center gap-4">
-            <span>الجزائر 🇩🇿</span>
+            <span>{t('footer.country')}</span>
             <span>•</span>
-            <span>مدعوم بـ Chargily</span>
+            <span>{t('footer.powered')}</span>
           </div>
         </div>
       </div>

@@ -17,12 +17,20 @@ import {
   RotateCcw, 
   Wallet,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Gamepad2,
+  Eye,
+  EyeOff,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -416,6 +424,16 @@ export default function OrdersPage() {
                       <div className="text-[10px] font-mono text-[var(--admin-text-muted)] mt-0.5 opacity-70">
                         {o.id}
                       </div>
+                      {o.customFieldsData && Object.keys(o.customFieldsData).length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedOrder(o); setShowPassword(false); }}
+                          className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-[11px] font-bold transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Gamepad2 className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>بيانات الحساب للشحن 🎮</span>
+                        </button>
+                      )}
                     </td>
 
                     {/* Customer */}
@@ -486,6 +504,14 @@ export default function OrdersPage() {
                     {/* Action Buttons */}
                     <td className="px-2 py-2">
                       <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedOrder(o); setShowPassword(false); }}
+                          title="عرض التفاصيل وبيانات الحساب"
+                          className="p-1 rounded text-[var(--admin-text-muted)] hover:text-indigo-500 hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
                         {/* Confirm Paid */}
                         {o.status !== 'paid' && (
                           <button
@@ -540,6 +566,135 @@ export default function OrdersPage() {
           </table>
         </div>
       </div>
+
+      {/* ORDER DETAILS & GAME ACCOUNT MODAL */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" onClick={() => setSelectedOrder(null)}>
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-right animate-in fade-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-[var(--admin-border)] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm text-[var(--admin-text)]">طلب #{selectedOrder.id?.slice(0, 8)}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  selectedOrder.status === 'paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-500'
+                }`}>
+                  {selectedOrder.status === 'paid' ? 'مدفوع' : 'معلق'}
+                </span>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Product & Customer info */}
+            <div className="grid grid-cols-2 gap-2 text-xs bg-[var(--admin-bg)] p-3 rounded-xl border border-[var(--admin-border)]">
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">المنتج:</span>
+                <span className="font-bold text-[var(--admin-text)] line-clamp-1">{selectedOrder.productName}</span>
+              </div>
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">المبلغ:</span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(selectedOrder.productPrice || selectedOrder.amount || 0).toLocaleString()} د.ج</span>
+              </div>
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">العميل:</span>
+                <span className="font-bold text-[var(--admin-text)]">{selectedOrder.customerName}</span>
+              </div>
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">الإيميل:</span>
+                <span className="font-mono text-[var(--admin-text)] text-[11px] truncate block">{selectedOrder.customerEmail}</span>
+              </div>
+            </div>
+
+            {/* GAME ACCOUNT DETAILS */}
+            {selectedOrder.customFieldsData && Object.keys(selectedOrder.customFieldsData).length > 0 ? (
+              <div className="p-4 rounded-xl bg-indigo-500/10 border-2 border-indigo-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                    <Gamepad2 className="w-4 h-4" />
+                    <span>بيانات حساب اللعبة لشحن الطلب:</span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showPassword ? 'إخفاء كلمات المرور' : 'إظهار كلمات المرور'}</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {Object.entries(selectedOrder.customFieldsData).map(([key, val]) => {
+                    const isSecret = key.toLowerCase().includes('pass') || key.includes('كلمة');
+                    const displayVal = (isSecret && !showPassword) ? '••••••••••••' : val;
+                    return (
+                      <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--admin-card)] border border-indigo-500/20 text-xs">
+                        <span className="font-bold text-[var(--admin-text-muted)]">{key}:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-[var(--admin-text)] select-all">{displayVal}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(val);
+                              setCopiedKey(key);
+                              setTimeout(() => setCopiedKey(null), 2000);
+                            }}
+                            className="px-2 py-1 rounded bg-[var(--admin-hover)] text-[11px] font-bold text-[var(--admin-text)] hover:text-indigo-500 transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            {copiedKey === key ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedKey === key ? 'تم' : 'نسخ'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Copy All Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allText = Object.entries(selectedOrder.customFieldsData || {})
+                      .map(([k, v]) => `${k}: ${v}`).join('\n');
+                    navigator.clipboard.writeText(allText);
+                    setCopiedKey('all');
+                    setTimeout(() => setCopiedKey(null), 2000);
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  {copiedKey === 'all' ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === 'all' ? 'تم نسخ جميع بيانات الحساب!' : 'نسخ جميع بيانات الحساب دفعة واحدة 📋'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-[var(--admin-bg)] border border-[var(--admin-border)] text-xs text-center text-[var(--admin-text-muted)]">
+                لا توجد بيانات حساب إضافية لهذا الطلب (منتج رقمي عادي أو اشتراك).
+              </div>
+            )}
+
+            {/* Actions Footer */}
+            <div className="flex items-center gap-2 pt-2 border-t border-[var(--admin-border)]">
+              {selectedOrder.status !== 'paid' && (
+                <button
+                  type="button"
+                  onClick={() => { handleUpdateStatus(selectedOrder.id!, 'paid'); setSelectedOrder(null); }}
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>تأكيد كمدفوع (تم شحن الحساب)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="px-4 py-2 rounded-lg border border-[var(--admin-border)] text-xs font-bold text-[var(--admin-text)] hover:bg-[var(--admin-hover)] cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

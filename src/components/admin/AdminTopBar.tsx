@@ -15,7 +15,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
   const [unreadCount, setUnreadCount] = useState(0);
   const [theme, setTheme] = useState('light');
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const { lang, setLang } = useTranslation();
+  const { lang, setLang, t } = useTranslation();
 
   useEffect(() => {
     const saved = (localStorage.getItem('adminTheme') || localStorage.getItem('store-theme') || 'light') as 'light' | 'dark';
@@ -80,7 +80,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
           </button>
         )}
         <h2 className="font-bold text-[var(--admin-text)] text-xs sm:text-sm truncate select-none">
-          لوحة التحكم
+          {t('admin.dashboardTitle')}
         </h2>
       </div>
 
@@ -93,7 +93,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
             className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-[var(--admin-hover)] text-[var(--admin-text)] rounded-md hover:opacity-80 transition-opacity flex-shrink-0"
           >
             <ArrowRight className="w-3.5 h-3.5" />
-            <span>العودة للمتجر</span>
+            <span>{t('nav.backToStore')}</span>
           </Link>
         ) : (
           <Link
@@ -102,7 +102,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
             title="العودة لصفحة المتجر"
           >
             <Store className="w-3.5 h-3.5 text-emerald-500" />
-            <span>المتجر</span>
+            <span>{t('admin.store')}</span>
           </Link>
         )}
         
@@ -176,7 +176,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
             title="تسجيل الخروج"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">خروج</span>
+            <span className="hidden md:inline">{t('admin.logout')}</span>
           </button>
         )}
       </div>

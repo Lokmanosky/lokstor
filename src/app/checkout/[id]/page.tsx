@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Product, ProductVariant } from '@/types';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/lib/i18n-context';
 import { 
   Lock,
   Ban, 
@@ -21,11 +22,13 @@ import {
   ExternalLink,
   Sparkles,
   CheckCircle2,
-  QrCode
+  QrCode,
+  Gamepad2
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CheckoutPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t, lang } = useTranslation();
   const [productId, setProductId] = useState<string>('');
   const [product, setProduct] = useState<Product | null>(null);
   const isOutOfStock = Boolean(
@@ -37,6 +40,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
   // Form states
   const { user } = useAuth();
+  const [gameInfo, setGameInfo] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('lokstor_game_info');
+      if (stored) {
+        setGameInfo(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Error reading game info:', e);
+    }
+  }, []);
+
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'chargily' | 'redotpay' | 'binance'>('chargily');
@@ -165,6 +181,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           customerName,
           customerEmail,
           paymentMethod,
+          variantId: selectedVariant?.id || undefined,
+          customFieldsData: Object.keys(gameInfo).length > 0 ? gameInfo : undefined,
         }),
       });
 
@@ -191,7 +209,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 `💰 المبلغ: ${product?.price?.toLocaleString('en-US')} د.ج (~4$ USDT)\n` +
 `👤 الاسم: ${customerName}\n` +
 `📧 البريد: ${customerEmail}\n` +
-`🔖 رقم الطلب: #${orderRef}\n\n` +
+`🔖 رقم الطلب: #${orderRef}\n` +
+(Object.keys(gameInfo).length > 0
+  ? `\n🎮 بيانات حساب اللعبة للشحن:\n` + Object.entries(gameInfo).map(([k, v]) => `• ${k}: ${v}`).join('\n') + '\n\n'
+  : '\n') +
 `سأرسل لكم لقطة شاشة وصل التحويل الآن للتأكيد والتفعيل السريع.`;
 
         const telegramUrl = `https://t.me/Loktech?text=${encodeURIComponent(telegramMessage)}`;
@@ -226,7 +247,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <div className="inline-block w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mb-4" />
-        <p className="text-blue-950 dark:text-white font-bold text-sm">جاري تحميل بيانات الشراء...</p>
+        <p className="text-blue-950 dark:text-white font-bold text-sm">{t('checkout.loading')}</p>
       </div>
     );
   }
@@ -234,32 +255,32 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   if (!product) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-white border-2 border-slate-300 rounded-3xl p-8 my-12 shadow-sm">
-        <h2 className="text-2xl font-black text-black mb-4">عذراً، المنتج غير متوفر</h2>
+        <h2 className="text-2xl font-black text-black mb-4">{t('checkout.outOfStockTitle')}</h2>
         <Link href="/" className="text-emerald-700 font-bold hover:underline text-sm">
-          العودة للمتجر
+          {t('checkout.backToStore')}
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8" dir="rtl">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header back link */}
       <Link
         href={`/product/${product.id}`}
         className="inline-flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-opacity"
       >
-        <ArrowRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-        <span>العودة لصفحة تفاصيل المنتج</span>
+        <ArrowRight className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${lang !== 'ar' ? 'rotate-180' : ''}`} />
+        <span>{t('checkout.back')}</span>
       </Link>
 
       {/* Main Title & Subtitle */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight checkout-main-title">
-          تأكيد الطلب وإتمام الدفع
+          {t('checkout.title')}
         </h1>
         <p className="text-emerald-600 dark:text-emerald-400 text-sm sm:text-base font-semibold max-w-xl mx-auto">
-          اختر وسيلة الدفع المناسبة لك، وسيصلك رابط التفعيل والتحميل فوراً
+          {t('checkout.subtitle')}
         </p>
       </div>
 
@@ -268,7 +289,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         {/* Order Summary Box */}
         <div className="md:col-span-5 bg-white p-6 sm:p-7 rounded-2xl space-y-6 border-2 border-slate-300 shadow-sm">
           <h3 className="font-black text-black text-lg border-b-2 border-slate-200 pb-3">
-            ملخص الفاتورة
+            {t('checkout.orderSummary')}
           </h3>
 
           <div className="flex items-center gap-4">
@@ -282,28 +303,44 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 {product.name}
               </h4>
               <span className="text-xs text-blue-950 font-bold block">
-                {product.fileType || 'اشتراك / ملف رقمي'}
+                {product.fileType || t('checkout.defaultType')}
               </span>
             </div>
           </div>
 
+          {Object.keys(gameInfo).length > 0 && (
+            <div className="p-3 bg-indigo-50 border-2 border-indigo-200 rounded-xl space-y-1.5 text-xs text-right">
+              <span className="font-black text-indigo-950 flex items-center gap-1.5">
+                <Gamepad2 className="w-4 h-4 text-indigo-600" />
+                <span>{lang === 'ar' ? 'بيانات شحن الحساب المُدخلة:' : lang === 'fr' ? 'Informations du compte de jeu :' : 'Game Account Details:'}</span>
+              </span>
+              {Object.entries(gameInfo).map(([k, v]) => (
+                <div key={k} className="flex justify-between items-center text-blue-950 font-bold">
+                  <span className="text-slate-600">{k}:</span>
+                  <span className="font-mono text-[11px] truncate max-w-[170px]">
+                    {k.toLowerCase().includes('pass') || k.includes('كلمة') ? '••••••••' : v}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 text-sm">
             <div className="flex justify-between items-center text-blue-950 font-bold">
-              <span>سعر المنتج:</span>
-              <span className="text-black font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} د.ج`}</span>
+              <span>{t('checkout.productPrice')}</span>
+              <span className="text-black font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} {t('common.currency')}`}</span>
             </div>
             <div className="flex justify-between items-center text-blue-950 font-bold">
-              <span>طريقة التسليم:</span>
-              <span className="text-emerald-700 font-black">تفعيل وتسليم فوري</span>
+              <span>{t('checkout.deliveryMethod')}</span>
+              <span className="text-emerald-700 font-black">{t('checkout.instantDelivery')}</span>
             </div>
             <div className="flex justify-between items-center text-black font-black text-base pt-3 border-t-2 border-slate-200">
-              <span>المبلغ الإجمالي:</span>
+              <span>{t('checkout.totalAmount')}</span>
               <div className="text-left">
                 <span className="text-emerald-600 text-2xl font-black block leading-none">
                   {product.price.toLocaleString('en-US')} د.ج
                 </span>
                 <span className="text-xs text-slate-500 font-bold">
-                  (أو ما يعادله بـ USDT / RedotPay ~4$)
+                  {t('checkout.cryptoEq')}
                 </span>
               </div>
             </div>
@@ -311,7 +348,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
           <div className="bg-emerald-50 p-3.5 rounded-xl border-2 border-emerald-300 text-xs text-blue-950 font-bold flex items-start gap-2.5 leading-relaxed">
             <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-            <span>معاملاتك مؤمنة بالكامل مع تسليم فوري وتوثيق رسمي للطلب.</span>
+            <span>{t('checkout.guaranteeBadge')}</span>
           </div>
         </div>
 
@@ -401,8 +438,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 text-red-700 text-sm font-bold flex items-center gap-3">
                   <Ban className="w-6 h-6 shrink-0 text-red-600" />
                   <div>
-                    <span className="font-black block text-base">تم نفاذ المخزون!</span>
-                    <span className="text-xs font-semibold">عذراً، لقد نفذت جميع الكميات المتاحة من هذا المنتج حالياً ولا يمكن إتمام عملية الشراء.</span>
+                    <span className="font-black block text-base">{t('product.outOfStock')}</span>
+                    <span className="text-xs font-semibold">{t('checkout.outOfStock')}</span>
                   </div>
                 </div>
               )}
@@ -410,7 +447,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {/* PAYMENT METHOD SELECTION */}
               <div className="space-y-2.5">
                 <label className="text-sm font-black text-black block">
-                  اختر وسيلة الدفع <span className="text-red-600">*</span>
+                  {t('checkout.selectMethod')} <span className="text-red-600">*</span>
                 </label>
                 
                 {/* 2 Top Options: Chargily & RedotPay */}
@@ -428,7 +465,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-black text-sm text-black flex items-center gap-1.5">
                         <CreditCard className="w-4 h-4 text-emerald-600" />
-                        البطاقة الذهبية / CIB
+                        {t('checkout.edahabiaCib')}
                       </span>
                       {paymentMethod === 'chargily' && (
                         <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
@@ -437,7 +474,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                       )}
                     </div>
                     <p className="text-xs text-blue-950 font-bold">
-                      دفع إلكتروني آمن وفوري عبر Chargily
+                      {t('checkout.chargilyDesc')}
                     </p>
                   </button>
 
@@ -456,7 +493,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-black">
                           R
                         </span>
-                        محفظة RedotPay
+                        {t('checkout.redotpay')}
                       </span>
                       {paymentMethod === 'redotpay' && (
                         <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold">
@@ -465,7 +502,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                       )}
                     </div>
                     <p className="text-xs text-rose-900 font-bold">
-                      تحويل بالـ ID فوري بدون رسوم (0% عمولة)
+                      {t('checkout.redotpayDesc')}
                     </p>
                   </button>
                 </div>
@@ -491,21 +528,21 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     <div className="text-right">
                       <div className="flex items-center gap-2">
                         <span className="font-black text-sm text-black">
-                          بايننس (Binance)
+                          {t('checkout.binance')}
                         </span>
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300">
                           USDT
                         </span>
                       </div>
                       <p className="text-xs text-amber-950 font-semibold mt-0.5">
-                        تحويل داخلي بالـ UID (مجاني 0%) أو إيداع USDT (BEP20)
+                        {t('checkout.binanceDesc')}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="hidden sm:inline-block text-[11px] font-bold text-slate-500">
-                      0% رسوم Pay
+                      {t('checkout.binanceFee')}
                     </span>
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                       paymentMethod === 'binance' 
@@ -526,12 +563,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                       ✓
                     </div>
                     <div>
-                      <span className="font-black text-black block text-sm">تم التعرف على حسابك ({user.email})</span>
-                      <span className="text-blue-950 font-bold block">تم ملء بيانات الدفع والتسليم تلقائياً بحسابك</span>
+                      <span className="font-black text-black block text-sm">{t('checkout.accountRecognized')} ({user.email})</span>
+                      <span className="text-blue-950 font-bold block">{t('checkout.autoFilled')}</span>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 bg-emerald-200 text-emerald-950 font-black rounded-lg text-[11px] shrink-0">
-                    ملء آلي
+                    {t('checkout.autoBadge')}
                   </span>
                 </div>
               ) : (
@@ -543,14 +580,14 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {/* Name input */}
               <div className="space-y-2">
                 <label className="text-sm font-black text-black block">
-                  الاسم الكامل <span className="text-red-600">*</span>
+                  {t('checkout.fullName')} <span className="text-red-600">*</span>
                 </label>
                 <div className="relative">
                   <User className="w-5 h-5 absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-950 pointer-events-none" />
                   <input
                     type="text"
                     required
-                    placeholder="مثال: محمد الأمين"
+                    placeholder={t('checkout.namePlaceholder')}
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="w-full pl-4 pr-11 py-3.5 bg-white border-2 border-slate-400 rounded-xl text-sm font-bold text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all shadow-sm"
@@ -561,14 +598,14 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {/* Email input */}
               <div className="space-y-2">
                 <label className="text-sm font-black text-black block">
-                  البريد الإلكتروني <span className="text-red-600">*</span>
+                  {t('checkout.email')} <span className="text-red-600">*</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-5 h-5 absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-950 pointer-events-none" />
                   <input
                     type="email"
                     required
-                    placeholder="name@example.com"
+                    placeholder={t('checkout.emailPlaceholder')}
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     className="w-full pl-4 pr-11 py-3.5 bg-white border-2 border-slate-400 rounded-xl text-sm font-bold text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all shadow-sm"
@@ -576,7 +613,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   />
                 </div>
                 <p className="text-xs text-blue-950 font-bold">
-                  ملاحظة: تأكد من صحة البريد لتلقي تفاصيل الشراء وإشعار التفعيل.
+                  {t('checkout.emailNotice')}
                 </p>
               </div>
 
@@ -587,10 +624,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-xs space-y-1.5 leading-relaxed">
                     <div className="flex items-center gap-2 font-black text-emerald-800 text-sm">
                       <CreditCard className="w-4 h-4" />
-                      <span>الدفع محمي بواسطة Chargily Pay</span>
+                      <span>{t('checkout.chargilyNoticeTitle')}</span>
                     </div>
                     <p className="text-blue-950 font-semibold">
-                      عند النقر على الزر أدناه، سيتم توجيهك إلى صفحة الدفع الآمنة الخاصة بـ Chargily لإتمام العملية باستخدام البطاقة الذهبية أو بطاقة CIB.
+                      {t('checkout.chargilyNoticeDesc')}
                     </p>
                   </div>
 
@@ -612,12 +649,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     ) : isSubmitting ? (
                       <>
                         <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>جاري الاتصال ببوابة Chargily...</span>
+                        <span>{t('checkout.preparing')}</span>
                       </>
                     ) : (
                       <>
                         <Lock className="w-4 h-4" />
-                        <span>متابعة لصفحة الدفع ({product.price.toLocaleString('en-US')} د.ج)</span>
+                        <span>{t('checkout.payBtn')} ({product.price.toLocaleString('en-US')} {t('common.currency')})</span>
                       </>
                     )}
                   </button>

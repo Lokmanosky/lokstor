@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n-context';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -15,6 +16,7 @@ interface Props { open: boolean; setOpen: (v: boolean) => void; isMobile?: boole
 
 export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   const pathname = usePathname();
+  const { t, lang } = useTranslation();
   const [pendingCount, setPendingCount] = useState(0);
   const [theme, setTheme] = useState('light');
 
@@ -54,12 +56,12 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   };
 
   const navItems = [
-    { href: '/admin', label: 'الرئيسية', icon: LayoutDashboard },
-    { href: '/admin/orders', label: 'الطلبات', icon: ShoppingCart, badge: pendingCount },
-    { href: '/admin/abandoned', label: 'المتروكة', icon: AlertTriangle },
-    { href: '/admin/products', label: 'المنتجات', icon: Package },
-    { href: '/admin/inventory', label: 'المخزون', icon: Boxes },
-    { href: '/admin/settings', label: 'الإعدادات', icon: Settings },
+    { href: '/admin', label: t('nav.adminDashboard'), icon: LayoutDashboard },
+    { href: '/admin/orders', label: t('nav.adminOrders'), icon: ShoppingCart, badge: pendingCount },
+    { href: '/admin/abandoned', label: t('nav.adminAbandoned'), icon: AlertTriangle },
+    { href: '/admin/products', label: t('nav.adminProducts'), icon: Package },
+    { href: '/admin/inventory', label: t('nav.adminInventory'), icon: Boxes },
+    { href: '/admin/settings', label: t('nav.adminSettings'), icon: Settings },
   ];
 
   // Logic for positioning based on mobile state
@@ -111,7 +113,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
             onClick={() => { if (isMobile) setOpen(false); }}
           >
             <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
-            {(open || isMobile) && <span className="flex-1">العودة للمتجر</span>}
+            {(open || isMobile) && <span className="flex-1">{t('nav.backToStore')}</span>}
           </Link>
         </div>
         {navItems.map(({ href, label, icon: Icon, badge }) => {
