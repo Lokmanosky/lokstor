@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, Bell, Menu, Sun, Moon, ExternalLink, Globe, ArrowRight } from 'lucide-react';
+import { LogOut, Store, Bell, Menu, Sun, Moon, ExternalLink, Globe, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -80,7 +80,7 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Visit store link: clearly labeled button with ExternalLink icon */}
+        {/* Visit store link: clearly labeled button with Store icon */}
         {isLoginPage ? (
           <Link
             href="/"
@@ -90,16 +90,14 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
             <span>العودة للمتجر</span>
           </Link>
         ) : (
-          <a
+          <Link
             href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium border border-[var(--admin-border)] rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors"
-            title="فتح المتجر في نافذة جديدة"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold border border-[var(--admin-border)] rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors shadow-2xs"
+            title="العودة لصفحة المتجر"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-emerald-500" />
-            <span>زيارة المتجر</span>
-          </a>
+            <Store className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-bold">المتجر</span>
+          </Link>
         )}
         
         {/* Language Switcher */}

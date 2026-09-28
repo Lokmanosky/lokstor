@@ -8,7 +8,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   LayoutDashboard, ShoppingCart, Package,
   Settings, ChevronLeft, AlertTriangle, Boxes,
-  Sun, Moon
+  Sun, Moon, Store
 } from 'lucide-react';
 
 interface Props { open: boolean; setOpen: (v: boolean) => void; isMobile?: boolean; }
@@ -134,6 +134,19 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           );
         })}
       </nav>
+
+      {/* Return to Store */}
+      <div className="px-2 pb-2">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-md border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-all group"
+          title="العودة للمتجر"
+          onClick={() => { if(isMobile) setOpen(false); }}
+        >
+          <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
+          {(open || isMobile) && <span className="flex-1">العودة للمتجر</span>}
+        </Link>
+      </div>
 
       {/* Dedicated Theme Toggle at the bottom of the sidebar */}
       <div className="p-2.5 border-t border-[var(--admin-border)] mt-auto">

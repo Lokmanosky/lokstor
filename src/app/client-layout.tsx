@@ -1,4 +1,5 @@
 'use client';
+import { usePathname, useRouter } from 'next/navigation';
 
 import Link from 'next/link';
 import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu } from 'lucide-react';
@@ -24,8 +25,56 @@ function NavBar() {
   const { user, signOut, isAdmin } = useAuth();
   const { totalItems } = useCart();
   const { t, lang, setLang } = useTranslation();
+  const router = useRouter();
+
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Open login modal with fresh, clean state
+  const openLoginModal = () => {
+    setError('');
+    setSuccess('');
+    setLoading(false);
+    setIsLoginModalOpen(true);
+  };
+
+  // Safe signOut with complete state reset
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setMobileMenuOpen(false);
+      setIsLoginModalOpen(false);
+      setError('');
+      setSuccess('');
+      setEmail('');
+      setPassword('');
+      setLoading(false);
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
+  };
+
+  // Auto-close login modal when user changes/logs in
+  useEffect(() => {
+    if (user && isLoginModalOpen) {
+      setIsLoginModalOpen(false);
+      setError('');
+      setSuccess('');
+      setEmail('');
+      setPassword('');
+      setLoading(false);
+    }
+  }, [user, isLoginModalOpen]);
 
   useEffect(() => {
     try {
@@ -47,10 +96,6 @@ function NavBar() {
       localStorage.setItem('store-theme', nextTheme);
     } catch {}
   };
-  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,15 +104,6 @@ function NavBar() {
       setMobileMenuOpen(false);
     }
   };
-
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,11 +115,11 @@ function NavBar() {
       setTimeout(() => {
         setIsLoginModalOpen(false);
         setSuccess('');
-      }, 1000);
+        setLoading(false);
+      }, 800);
     } catch (err: any) {
-      setError(err.message.includes('auth/invalid-credential') ? 'البريد أو كلمة المرور غير صحيحة' : 'حدث خطأ أثناء الدخول');
-    } finally {
       setLoading(false);
+      setError(err?.message?.includes('auth/invalid-credential') ? 'البريد أو كلمة المرور غير صحيحة' : 'حدث خطأ أثناء الدخول');
     }
   };
 
@@ -208,7 +244,7 @@ function NavBar() {
                   </Link>
                 )}
                 <button 
-                  onClick={() => signOut()}
+                  onClick={handleSignOut}
                   className="w-8 h-8 flex items-center justify-center rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
                   title="تسجيل الخروج"
                 >
@@ -218,7 +254,7 @@ function NavBar() {
             ) : (
               <div className="hidden sm:flex items-center gap-2">
                 <button 
-                  onClick={() => setIsLoginModalOpen(true)}
+                  onClick={openLoginModal}
                   className="text-xs font-medium text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors px-2 py-1.5"
                 >
                   تسجيل الدخول
@@ -239,7 +275,18 @@ function NavBar() {
             <Menu className="w-5 h-5" />
           </button>
           
-          <Link href="/cart" aria-label="سلة المشتريات" className="w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:border-[var(--store-border)] transition-colors relative ml-1">
+          <Link 
+            href="/cart" 
+            onClick={(e) => {
+              if (!user) {
+                e.preventDefault();
+                openLoginModal();
+                setError('سجّل أولاً لتستطيع وضع منتجاتك في السلة ومتابعة الشراء');
+              }
+            }}
+            aria-label="سلة المشتريات" 
+            className="w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:border-[var(--store-border)] transition-colors relative ml-1"
+          >
             <ShoppingCart className="w-4 h-4 text-amber-500" />
             {totalItems > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
@@ -283,7 +330,7 @@ function NavBar() {
             {/* Auth */}
             {!user ? (
               <div className="flex flex-col gap-3">
-                <button onClick={() => { setMobileMenuOpen(false); setIsLoginModalOpen(true); }} className="w-full text-center py-2.5 border border-[var(--store-border)] rounded-md text-sm font-medium text-[var(--store-text)]">
+                <button onClick={() => { setMobileMenuOpen(false); openLoginModal(); }} className="w-full text-center py-2.5 border border-[var(--store-border)] rounded-md text-sm font-medium text-[var(--store-text)]">
                   {t('nav.login')}
                 </button>
                 <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-2.5 bg-[var(--store-text)] text-[var(--store-bg)] rounded-md text-sm font-medium">
@@ -300,7 +347,7 @@ function NavBar() {
                     <Settings className="w-4 h-4" /> لوحة التحكم (Admin)
                   </Link>
                 )}
-                <button onClick={() => { signOut(); setMobileMenuOpen(false); }} className="flex items-center gap-2 text-sm font-medium text-red-500 text-right">
+                <button onClick={handleSignOut} className="flex items-center gap-2 text-sm font-medium text-red-500 text-right">
                   <LogOut className="w-4 h-4" /> تسجيل الخروج
                 </button>
               </div>
@@ -485,8 +532,6 @@ function Footer() {
     </footer>
   );
 }
-
-import { usePathname, useRouter } from 'next/navigation';
 
 function TelegramFloat() {
   return (

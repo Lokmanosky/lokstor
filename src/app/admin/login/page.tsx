@@ -1,11 +1,12 @@
 'use client';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Lock } from 'lucide-react';
+import { Lock, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -53,10 +54,19 @@ export default function AdminLoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithRedirect(auth, provider);
+      const res = await signInWithPopup(auth, provider);
+      await checkRoleAndRedirect(res.user.uid, res.user.email);
     } catch (e: any) {
-      console.error('Google redirect error:', e);
-      setError('تعذّر فتح صفحة Google، حاول مجدداً');
+      console.error('Google login error:', e);
+      if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') {
+        setError('تم إلغاء تسجيل الدخول');
+      } else if (e?.code === 'auth/popup-blocked') {
+        router.push('/google-signin');
+        return;
+      } else {
+        setError('تعذّر تسجيل الدخول عبر Google، حاول مجدداً');
+      }
+    } finally {
       setLoading(false);
     }
   };
