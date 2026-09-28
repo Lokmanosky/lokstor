@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Order } from '@/types';
 import { 
   Trash2, 
@@ -57,10 +57,69 @@ export default function OrdersPage() {
     return () => unsub();
   }, []);
 
+
+
+  // ── Complete & Fulfill Order (Deduct stock & assign deliverable) ───────────
+  const fulfillOrderAndDeductStock = async (orderId: string) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+      if (!orderSnap.exists()) return;
+      const orderData = orderSnap.data();
+
+      let downloadUrl = orderData.downloadUrl || '';
+
+      if (orderData.productId) {
+        const prodRef = doc(db, 'products', orderData.productId);
+        const prodSnap = await getDoc(prodRef);
+        if (prodSnap.exists()) {
+          const prodData = prodSnap.data();
+
+          // 1. Units Mode (take 1 item, remove from stockLinks array, decrement stock)
+          if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
+            if (!downloadUrl) downloadUrl = prodData.stockLinks[0];
+            const newStockLinks = prodData.stockLinks.slice(1);
+            await updateDoc(prodRef, {
+              stockLinks: newStockLinks,
+              stock: newStockLinks.length,
+              updatedAt: Date.now(),
+            });
+          }
+          // 2. Numeric / File Mode
+          else {
+            if (!downloadUrl && prodData.fileUrl) {
+              downloadUrl = prodData.fileUrl;
+            }
+            if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
+              const newStock = Math.max(0, Number(prodData.stock || 1) - 1);
+              await updateDoc(prodRef, {
+                stock: newStock,
+                updatedAt: Date.now(),
+              });
+            }
+          }
+        }
+      }
+
+      await updateDoc(orderRef, {
+        status: 'paid',
+        downloadUrl: downloadUrl || null,
+        paidAt: Date.now(),
+      });
+    } catch (err) {
+      console.error('Error fulfilling order and updating stock:', err);
+      await updateDoc(doc(db, 'orders', orderId), { status: 'paid', paidAt: Date.now() });
+    }
+  };
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if(!id) return;
     try {
-      await updateDoc(doc(db, 'orders', id), { status: newStatus });
+      if (newStatus === 'paid') {
+        await fulfillOrderAndDeductStock(id);
+      } else {
+        await updateDoc(doc(db, 'orders', id), { status: newStatus });
+      }
     } catch(e) {
       console.error(e);
     }
@@ -97,16 +156,22 @@ export default function OrdersPage() {
     if (selectedOrderIds.length === 0) return;
     setIsBulkProcessing(true);
     try {
-      const chunkSize = 450;
-      for (let i = 0; i < selectedOrderIds.length; i += chunkSize) {
-        const chunk = selectedOrderIds.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        chunk.forEach(id => {
-          batch.update(doc(db, 'orders', id), { status: newStatus });
-        });
-        await batch.commit();
+      if (newStatus === 'paid') {
+        for (const id of selectedOrderIds) {
+          await fulfillOrderAndDeductStock(id);
+        }
+      } else {
+        const chunkSize = 450;
+        for (let i = 0; i < selectedOrderIds.length; i += chunkSize) {
+          const chunk = selectedOrderIds.slice(i, i + chunkSize);
+          const batch = writeBatch(db);
+          chunk.forEach(id => {
+            batch.update(doc(db, 'orders', id), { status: newStatus });
+          });
+          await batch.commit();
+        }
       }
-      const label = newStatus === 'paid' ? 'تفعيلها كمكتملة' : newStatus === 'pending' ? 'تحويلها لقيد الانتظار' : 'إلغاؤها';
+      const label = newStatus === 'paid' ? 'تفعيلها واقتطاعها من المخزون كمكتملة' : newStatus === 'pending' ? 'تحويلها لقيد الانتظار' : 'إلغاؤها';
       setBulkFeedback(`تم بنجاح ${label} لـ (${selectedOrderIds.length}) طلب.`);
       setSelectedOrderIds([]);
       setTimeout(() => setBulkFeedback(null), 4500);

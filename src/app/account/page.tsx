@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { Order } from '@/types';
 import Link from 'next/link';
 import { 
@@ -66,29 +66,45 @@ export default function CustomerAccountPage() {
   }, [user]);
 
   useEffect(() => {
-    async function fetchCustomerOrders() {
-      if (!user?.email) { setOrdersLoading(false); return; }
-      try {
-        const userEmail = user.email.toLowerCase().trim();
-        const ordersRef = collection(db, 'orders');
-        const q = query(ordersRef, where('customerEmail', '==', userEmail));
-        const snap = await getDocs(q);
-        const list: Order[] = [];
-        snap.forEach(docSnap => list.push({ id: docSnap.id, ...docSnap.data() } as Order));
-        if (user.email !== userEmail) {
-          const q2 = query(ordersRef, where('customerEmail', '==', user.email));
-          const snap2 = await getDocs(q2);
-          snap2.forEach(docSnap => { if (!list.find(o => o.id === docSnap.id)) list.push({ id: docSnap.id, ...docSnap.data() } as Order); });
-        }
-        list.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-        setOrders(list);
-      } catch (err) {
-        console.error('Error fetching customer orders:', err);
-      } finally {
-        setOrdersLoading(false);
-      }
+    if (!user?.email) {
+      setOrdersLoading(false);
+      return;
     }
-    if (user) fetchCustomerOrders();
+
+    const baseEmail = user.email.trim();
+    const emailVariants = Array.from(new Set([
+      baseEmail,
+      baseEmail.toLowerCase(),
+      baseEmail.toUpperCase(),
+      baseEmail.charAt(0).toUpperCase() + baseEmail.slice(1),
+      baseEmail.charAt(0).toUpperCase() + baseEmail.slice(1).toLowerCase(),
+    ])).slice(0, 10);
+
+    const ordersRef = collection(db, 'orders');
+    const q = query(ordersRef, where('customerEmail', 'in', emailVariants));
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list: Order[] = [];
+      snap.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as Order);
+      });
+
+      list.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+      setOrders(list);
+      setOrdersLoading(false);
+
+      // Background auto-verify for pending Chargily orders (both CIB and Edahabia)
+      list.forEach(o => {
+        if (o.status === 'pending' && o.chargilyInvoiceId) {
+          fetch(`/api/orders/${o.id}`).catch(() => {});
+        }
+      });
+    }, (err) => {
+      console.error('Customer orders onSnapshot error:', err);
+      setOrdersLoading(false);
+    });
+
+    return () => unsub();
   }, [user]);
 
   const isWebUrl = (url?: string) => {
@@ -394,16 +410,16 @@ ${deliverableDetails}
                             {(order.downloadUrl || order.downloadToken) && (
                               <button
                                 onClick={() => handleDownloadDeliverable(order)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--store-primary)] text-[var(--store-bg)] text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--store-primary)] text-[var(--store-bg)] text-xs font-bold hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                                <span>{order.downloadUrl && !isWebUrl(order.downloadUrl) ? 'تحميل الملف (.txt)' : 'تحميل الملف'}</span>
+                                <span>{order.downloadUrl && !isWebUrl(order.downloadUrl) ? 'تحميل الملف (.txt)' : 'تحميل الملف / الرابط'}</span>
                               </button>
                             )}
                             {order.downloadUrl && (
                               <button
                                 onClick={() => copyToClipboard(order.downloadUrl!, `info_${order.id}`)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-400 font-bold transition-all"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-400 font-bold transition-all cursor-pointer"
                                 title={isLinkOrContainsLink(order.downloadUrl) ? 'نسخ رابط التفعيل' : 'نسخ معلومات الحساب أو التفعيل'}
                               >
                                 {copiedId === `info_${order.id}` ? (
@@ -421,7 +437,7 @@ ${deliverableDetails}
                             )}
                             <button
                               onClick={() => copyToClipboard(order.id, order.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-xs text-[var(--store-text)] transition-colors"
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-xs text-[var(--store-text)] transition-colors cursor-pointer"
                             >
                               {copiedId === order.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                               <span>{copiedId === order.id ? 'تم النسخ' : 'نسخ رقم الطلب'}</span>
@@ -434,10 +450,48 @@ ${deliverableDetails}
                               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition-all">
                               <CreditCard className="w-3.5 h-3.5" /><span>إتمام الدفع</span><ExternalLink className="w-3.5 h-3.5" />
                             </a>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrdersLoading(true);
+                                fetch(`/api/orders/${order.id}`).finally(() => setTimeout(() => setOrdersLoading(false), 800));
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-[11px] text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors cursor-pointer"
+                              title="التحقق من حالة الدفع في البنك"
+                            >
+                              <span>تحديث الدفع 🔄</span>
+                            </button>
                           </>
                         )}
                       </div>
                     </div>
+
+                    {/* Prominent Deliverable Card when Paid */}
+                    {isPaid && order.downloadUrl && (
+                      <div className="mt-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1.5 text-right animate-in fade-in">
+                        <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span>رابط أو بيانات التفعيل الخاصة بطلبك:</span>
+                        </p>
+                        <div className="flex items-center gap-2 bg-[var(--store-bg)] border border-emerald-500/30 p-2 rounded-lg">
+                          <span className="font-mono text-xs text-[var(--store-text)] break-all select-all flex-1">
+                            {order.downloadUrl}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(order.downloadUrl!, `info_${order.id}`)}
+                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0 transition-colors cursor-pointer"
+                          >
+                            {copiedId === `info_${order.id}` ? 'تم النسخ!' : 'نسخ'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {isPaid && !order.downloadUrl && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                        <span>🚀 تم استلام دفعتك بنجاح! جاري تنفيذ وتفعيل طلبك من طرف الإدارة فوراً.</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

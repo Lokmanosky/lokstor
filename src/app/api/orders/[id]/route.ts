@@ -81,8 +81,23 @@ export async function GET(
                   await updateDoc(doc(db, 'products', order.productId), { stockLinks: newStock, stock: newStock.length });
                 } catch (e) {}
               }
-            } else if (prodData.fileUrl) {
-              downloadUrl = prodData.fileUrl;
+            } else {
+              if (prodData.fileUrl) {
+                downloadUrl = prodData.fileUrl;
+              }
+              // Decrement numeric stock if limited
+              if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
+                const newStock = Math.max(0, Number(prodData.stock || 1) - 1);
+                if (adminDb) {
+                  try {
+                    await adminDb.collection('products').doc(order.productId).update({ stock: newStock, updatedAt: Date.now() });
+                  } catch (e) {}
+                } else {
+                  try {
+                    await updateDoc(doc(db, 'products', order.productId), { stock: newStock, updatedAt: Date.now() });
+                  } catch (e) {}
+                }
+              }
             }
           }
 

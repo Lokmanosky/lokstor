@@ -106,12 +106,26 @@ function SuccessContent() {
   };
 
   useEffect(() => {
-    if (orderId) {
-      fetchOrder(isMock);
-    } else {
+    if (!orderId) {
       setLoading(false);
+      return;
     }
-  }, [orderId, isMock]);
+
+    fetchOrder(isMock);
+
+    // Auto-polling every 3 seconds if order is not yet marked paid (e.g. CIB / SATIM confirmation delay)
+    let polls = 0;
+    const interval = setInterval(() => {
+      if (order?.status === 'paid' || polls >= 12) {
+        clearInterval(interval);
+        return;
+      }
+      polls++;
+      fetchOrder(false);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [orderId, isMock, order?.status]);
 
   if (loading) {
     return (

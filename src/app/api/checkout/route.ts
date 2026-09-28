@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Clean inputs
     const cleanName = sanitizeText(customerName);
-    const cleanEmail = sanitizeText(customerEmail);
+    const cleanEmail = sanitizeText(customerEmail).toLowerCase().trim();
     const cleanPhone = customerPhone ? sanitizeText(customerPhone) : undefined;
 
     // 4. Fetch Product from Firestore or local fallback

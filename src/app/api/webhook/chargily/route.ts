@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { adminDb, adminStorage } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,125 +43,159 @@ export async function POST(req: NextRequest) {
     }
 
     const orderId = body.data?.metadata?.order_id;
-    const paidAmount = body.data?.amount;
+    const paidAmount = Number(body.data?.amount);
+    const paymentMethodDetail = body.data?.payment_method || 'cib';
 
     if (!orderId) {
       return NextResponse.json({ success: false, message: 'No order_id in metadata' }, { status: 400 });
     }
 
-    if (!adminDb) {
-      throw new Error('adminDb is not configured');
+    // 2. Fetch Order Data (Supporting both adminDb and client SDK fallback)
+    let orderData = null;
+
+    if (adminDb) {
+      try {
+        const orderSnap = await adminDb.collection('orders').doc(orderId).get();
+        if (orderSnap.exists) orderData = orderSnap.data();
+      } catch (e) {
+        console.warn('adminDb order fetch error:', e);
+      }
     }
 
-    // 2 & 3. Idempotency & Amount matching (Inside Transaction)
-    const orderRef = adminDb!.collection('orders').doc(orderId);
-    
-    const result = await adminDb!.runTransaction(async (transaction) => {
-      const orderDoc = await transaction.get(orderRef);
-      if (!orderDoc.exists) {
-        throw new Error('Order not found');
+    if (!orderData) {
+      try {
+        const orderSnap = await getDoc(doc(db, 'orders', orderId));
+        if (orderSnap.exists()) orderData = orderSnap.data();
+      } catch (e) {
+        console.warn('client db order fetch error:', e);
       }
-      
-      const orderData = orderDoc.data()!;
-      
-      // Idempotency check: If already processed, skip
-      if (orderData.status === 'paid' || orderData.status === 'flagged') {
-        return { status: orderData.status, alreadyProcessed: true };
+    }
+
+    if (!orderData) {
+      console.error(`Order ${orderId} not found in database`);
+      return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
+    }
+
+    // Idempotency: If already paid, return early with 200 OK
+    if (orderData.status === 'paid') {
+      return NextResponse.json({ success: true, message: 'Already processed', status: 'paid' });
+    }
+
+    // Amount matching check
+    const expectedPrice = Number(orderData.productPrice || orderData.amount || 0);
+    if (expectedPrice > 0 && paidAmount > 0 && expectedPrice !== paidAmount) {
+      console.warn(`Amount mismatch for order ${orderId}: expected ${expectedPrice}, got ${paidAmount}`);
+      const flagUpdate = { status: 'flagged', amountPaid: paidAmount };
+      if (adminDb) {
+        await adminDb.collection('orders').doc(orderId).update(flagUpdate);
+      } else {
+        await updateDoc(doc(db, 'orders', orderId), flagUpdate);
       }
+      return NextResponse.json({ success: true, message: 'Order flagged due to amount mismatch' });
+    }
 
-      // Amount matching check
-      if (Number(orderData.productPrice) !== Number(paidAmount)) {
-        // Flag it
-        transaction.update(orderRef, { status: 'flagged', amountPaid: paidAmount });
-        return { status: 'flagged', alreadyProcessed: false, orderData };
+    // 3. Fulfill Order: Digital deliverable & Stock reduction
+    let downloadUrl = '';
+    const productId = orderData.productId;
+
+    let prodData = null;
+    if (productId) {
+      if (adminDb) {
+        try {
+          const prodSnap = await adminDb.collection('products').doc(productId).get();
+          if (prodSnap.exists) prodData = prodSnap.data();
+        } catch (e) {}
       }
+      if (!prodData) {
+        try {
+          const prodSnap = await getDoc(doc(db, 'products', productId));
+          if (prodSnap.exists()) prodData = prodSnap.data();
+        } catch (e) {}
+      }
+    }
 
-      // 4. Fulfillment: generate signed URL or pull from stockLinks
-      let downloadUrl = '';
-      
-      const productRef = adminDb!.collection('products').doc(orderData.productId);
-      const productDoc = await transaction.get(productRef);
-      let prodData = productDoc.exists ? productDoc.data() : null;
+    if (prodData) {
+      // Units Mode (Isolated accounts / stock links)
+      if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
+        downloadUrl = prodData.stockLinks[0];
+        const newStockLinks = prodData.stockLinks.slice(1);
+        const productUpdate = {
+          stockLinks: newStockLinks,
+          stock: newStockLinks.length,
+          updatedAt: Date.now(),
+        };
 
-      if (prodData) {
-        if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
-           // Assign first available content (can be a URL, account credentials, code, etc.)
-           downloadUrl = prodData.stockLinks[0];
-           const newStock = prodData.stockLinks.slice(1);
-           transaction.update(productRef, { stockLinks: newStock, stock: newStock.length });
-        } else if (prodData.fileUrl) {
-           // Generate 24h Signed URL if it's a firebase storage file
-           if (prodData.fileUrl.includes('storage.googleapis.com')) {
-              try {
-                const urlParts = new URL(prodData.fileUrl);
-                const pathParts = urlParts.pathname.split('/').filter(Boolean);
-                pathParts.shift(); // remove bucket name
-                const filePath = pathParts.join('/');
-                
-                if (adminStorage) {
-                  const bucket = adminStorage.bucket();
-                  const [signedUrl] = await bucket.file(filePath).getSignedUrl({
-                    action: 'read',
-                    expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-                  });
-                  downloadUrl = signedUrl;
-                } else {
-                  downloadUrl = prodData.fileUrl; // Fallback
-                }
-              } catch(e) {
-                 downloadUrl = prodData.fileUrl; // Fallback
-              }
-           } else {
-             downloadUrl = prodData.fileUrl;
-           }
+        if (adminDb) {
+          await adminDb.collection('products').doc(productId).update(productUpdate);
+        } else {
+          await updateDoc(doc(db, 'products', productId), productUpdate);
+        }
+      } 
+      // File or Numeric Mode
+      else {
+        if (prodData.fileUrl) {
+          downloadUrl = prodData.fileUrl;
+        }
+
+        // Decrement stock if numeric and limited
+        if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
+          const newStock = Math.max(0, Number(prodData.stock || 1) - 1);
+          const productUpdate = {
+            stock: newStock,
+            updatedAt: Date.now(),
+          };
+
+          if (adminDb) {
+            await adminDb.collection('products').doc(productId).update(productUpdate);
+          } else {
+            await updateDoc(doc(db, 'products', productId), productUpdate);
+          }
         }
       }
+    }
 
-      // Update Order
-      transaction.update(orderRef, {
-        status: 'paid',
-        downloadUrl: downloadUrl || null,
-        paidAt: Date.now()
-      });
+    // 4. Update Order to 'paid'
+    const orderUpdate = {
+      status: 'paid',
+      downloadUrl: downloadUrl || orderData.downloadUrl || null,
+      paidAt: Date.now(),
+      amountPaid: paidAmount,
+      paymentMethod: 'chargily',
+      paymentMethodDetails: paymentMethodDetail,
+    };
 
-      // Add Notification
-      const notifRef = adminDb!.collection('notifications').doc();
-      transaction.set(notifRef, {
-        id: notifRef.id,
+    if (adminDb) {
+      await adminDb.collection('orders').doc(orderId).update(orderUpdate);
+    } else {
+      await updateDoc(doc(db, 'orders', orderId), orderUpdate);
+    }
+
+    // 5. Create in-app Notification for Admin
+    try {
+      const notifData = {
         title: 'طلب جديد مدفوع! 🎉',
-        message: `تم دفع طلب بقيمة ${paidAmount} د.ج بنجاح!`,
+        message: `تم دفع طلب بقيمة ${paidAmount} د.ج بنجاح عبر شارجيلي (${paymentMethodDetail})!`,
         type: 'success',
         read: false,
         createdAt: Date.now(),
-        orderId: orderId
-      });
+        orderId: orderId,
+      };
 
-      return { status: 'paid', alreadyProcessed: false, orderData };
-    });
-
-    if (result.alreadyProcessed) {
-      return NextResponse.json({ success: true, message: 'Already processed', status: result.status });
-    }
-
-    if (result.status === 'flagged') {
-       const notifRef = adminDb!.collection('notifications').doc();
-       await notifRef.set({
-          id: notifRef.id,
-          title: 'تحذير: تلاعب محتمل بالمبلغ ⚠️',
-          message: `طلب رقم ${orderId}: المبلغ المدفوع (${paidAmount}) لا يطابق سعر المنتج الأصلي!`,
-          type: 'error',
-          read: false,
-          createdAt: Date.now(),
-          orderId: orderId
-       });
-       return NextResponse.json({ success: true, message: 'Order flagged due to amount mismatch' });
+      if (adminDb) {
+        await adminDb.collection('notifications').add(notifData);
+      } else {
+        const notifRef = doc(db, 'notifications', 'notif_' + crypto.randomBytes(6).toString('hex'));
+        await setDoc(notifRef, notifData);
+      }
+    } catch (nErr) {
+      console.warn('Failed to create notification:', nErr);
     }
 
     return NextResponse.json({ success: true, message: 'Order fulfilled successfully' });
 
   } catch (error: any) {
     console.error('Webhook Error:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return new NextResponse('Internal Server Error: ' + (error?.message || error), { status: 500 });
   }
 }
 
