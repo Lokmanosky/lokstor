@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rawBody = await req.text();
-    const secret = process.env.CHARGILY_API_SECRET || '';
+    const secret = (process.env.CHARGILY_API_SECRET || process.env.CHARGILY_API_KEY || '').trim();
 
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(rawBody);
@@ -157,4 +157,8 @@ export async function POST(req: NextRequest) {
     console.error('Webhook Error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ status: 'ok', endpoint: 'chargily-webhook' });
 }

@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
         currency: 'dzd',
         success_url: `${baseUrl}/success?order_id=${orderId}`,
         failure_url: `${baseUrl}/failure?order_id=${orderId}`,
-        webhook_endpoint: `${baseUrl}/api/webhook/chargily`,
+        webhook_endpoint: `${baseUrl}/api/chargily-webhook`,
         description: `طلب شراء: ${product.name}`,
         metadata: {
           order_id: orderId,
