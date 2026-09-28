@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn } from 'lucide-react';
+import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
@@ -21,7 +21,22 @@ function HomePageContent() {
   const [showLoginToast, setShowLoginToast] = useState(false);
   const { user } = useAuth();
   const searchParams = useSearchParams();
-  const q = searchParams.get('q') || '';
+  const urlQuery = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleGlobalSearch = (e: any) => {
+      if (typeof e.detail === 'string') {
+        setSearchQuery(e.detail);
+      }
+    };
+    window.addEventListener('store-search-query', handleGlobalSearch);
+    return () => window.removeEventListener('store-search-query', handleGlobalSearch);
+  }, []);
 
   useEffect(() => {
     async function loadProducts() {
@@ -57,9 +72,13 @@ function HomePageContent() {
   };
 
   const filteredProducts = products.filter(p => {
-    // 1. Search Query Match
-    if (q && !p.name.toLowerCase().includes(q.toLowerCase()) && !(p.description || '').toLowerCase().includes(q.toLowerCase())) {
-      return false;
+    // 1. Live Instant Search Query Match (any character typed matches name, description, or type)
+    const term = searchQuery.trim().toLowerCase();
+    if (term) {
+      const matchName = (p.name || '').toLowerCase().includes(term);
+      const matchDesc = (p.description || '').toLowerCase().includes(term);
+      const matchType = (p.type || '').toLowerCase().includes(term);
+      if (!matchName && !matchDesc && !matchType) return false;
     }
     // 2. Tab Match
     if (activeTab === 'all') return true;
@@ -108,28 +127,89 @@ function HomePageContent() {
       {/* 2. Products Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
         
-        {/* Filter Bar */}
-        <div className="flex items-center gap-6 border-b border-[var(--store-border)]">
-          <button 
-            onClick={() => setActiveTab('all')}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'all' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-          >
-            {t('nav.all')}
-          </button>
-          <button 
-            onClick={() => setActiveTab('digital')}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-          >
-            {t('nav.digital')}
-          </button>
-          <button 
-            onClick={() => setActiveTab('subscription')}
-            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-          >
-            {t('nav.subs')}
-          </button>
+        {/* Filter Bar & Live Search */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--store-border)] pb-3">
+          {/* Category Tabs */}
+          <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
+            <button 
+              onClick={() => setActiveTab('all')}
+              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'all' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+            >
+              {t('nav.all')}
+            </button>
+            <button 
+              onClick={() => setActiveTab('digital')}
+              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+            >
+              {t('nav.digital')}
+            </button>
+            <button 
+              onClick={() => setActiveTab('subscription')}
+              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+            >
+              {t('nav.subs')}
+            </button>
+          </div>
+
+          {/* In-page Live Search Input */}
+          <div className="relative w-full sm:w-80">
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                window.dispatchEvent(new CustomEvent('store-search-query', { detail: val }));
+                const url = new URL(window.location.href);
+                if (val.trim()) {
+                  url.searchParams.set('q', val);
+                } else {
+                  url.searchParams.delete('q');
+                }
+                window.history.replaceState({}, '', url.toString());
+              }}
+              placeholder="ابحث فوراً بالاسم أو الوصف..."
+              className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-xl px-4 py-2.5 pr-10 pl-8 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-[var(--store-text-muted)] shadow-xs"
+            />
+            <Search className="w-4 h-4 text-[var(--store-text-muted)] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {searchQuery && (
+              <button 
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  window.dispatchEvent(new CustomEvent('store-search-query', { detail: '' }));
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('q');
+                  window.history.replaceState({}, '', url.toString());
+                }}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] p-1 rounded-full hover:bg-[var(--store-border)] transition-colors"
+                title="مسح البحث"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Live Search Result Indicator */}
+        {searchQuery.trim() && (
+          <div className="flex items-center justify-between text-xs text-[var(--store-text-muted)] bg-[var(--store-card)] border border-[var(--store-border)] px-4 py-2 rounded-xl">
+            <span>نتائج البحث عن: <strong className="text-[var(--store-text)]">"{searchQuery}"</strong> ({filteredProducts.length} منتج)</span>
+            <button 
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                window.dispatchEvent(new CustomEvent('store-search-query', { detail: '' }));
+                const url = new URL(window.location.href);
+                url.searchParams.delete('q');
+                window.history.replaceState({}, '', url.toString());
+              }}
+              className="text-emerald-500 hover:underline font-bold"
+            >
+              إلغاء التصفية
+            </button>
+          </div>
+        )}
         {/* Development Seed Button */}
         {!loading && products.length === 0 && (
           <div className="text-center py-10">
@@ -145,6 +225,34 @@ function HomePageContent() {
             {[1,2,3,4].map(i => (
               <div key={i} className="h-64 bg-[var(--store-card)] border border-[var(--store-border)] rounded-xl animate-pulse"></div>
             ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-16 px-4 bg-[var(--store-card)] border border-[var(--store-border)] rounded-2xl space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--store-bg)] border border-[var(--store-border)] flex items-center justify-center mx-auto text-[var(--store-text-muted)]">
+              <Search className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-base text-[var(--store-text)]">لم يتم العثور على أي نتائج</h3>
+              <p className="text-sm text-[var(--store-text-muted)]">
+                {searchQuery ? `لا توجد منتجات تطابق "${searchQuery}"` : 'لا توجد منتجات متوفرة حالياً في هذا القسم'}
+              </p>
+            </div>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveTab('all');
+                  window.dispatchEvent(new CustomEvent('store-search-query', { detail: '' }));
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('q');
+                  window.history.replaceState({}, '', url.toString());
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+              >
+                <span>مسح البحث وعرض كل المنتجات</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
