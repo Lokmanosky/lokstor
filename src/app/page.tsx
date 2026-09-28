@@ -323,19 +323,25 @@ function HomePageContent() {
   );
               
               return (
-                <div key={product.id} className={`group store-card rounded-xl overflow-hidden`}>
-                  <Link href={`/product/${product.id}`} className="block" aria-label={product.name}>
-                    <div className="aspect-[4/3] bg-[var(--store-card)] relative overflow-hidden">
-                      <img src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')} alt={product.name} loading="lazy" width={400} height={300} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute top-3 right-3 flex flex-col gap-2">
-                        <span className="bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-md">
+                <div key={product.id} className="group store-card rounded-2xl overflow-hidden flex flex-col h-full border border-[var(--store-border)] hover:border-[var(--store-primary)]/50 transition-all duration-300">
+                  <Link href={`/product/${product.id}`} className="block relative bg-[var(--store-bg)]" aria-label={product.name}>
+                    <div className="aspect-square w-full relative overflow-hidden flex items-center justify-center bg-[var(--store-bg)]">
+                      <img
+                        src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
+                        alt={product.name}
+                        loading="lazy"
+                        width={400}
+                        height={400}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 pointer-events-none">
+                        <span className="bg-black/75 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
                           {product.category === 'شحن ألعاب' || product.type === 'games' ? '🎮 شحن ألعاب' : (product.type === 'digital' ? t('badge.digital') : t('badge.sub'))}
                         </span>
                       </div>
-
                     </div>
                   </Link>
-                  <div className="p-4 space-y-3">
+                  <div className="p-4 border-t border-[var(--store-border)]/60 flex-1 flex flex-col justify-between gap-3 bg-[var(--store-card)]">
                     <Link href={`/product/${product.id}`}>
                       <h2 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
                     </Link>

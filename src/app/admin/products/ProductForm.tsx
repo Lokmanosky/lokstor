@@ -946,7 +946,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
             <div className="aspect-square w-full rounded-lg border-2 border-dashed border-[var(--admin-border)] overflow-hidden flex items-center justify-center bg-[var(--admin-bg)] relative group">
               {form.imageUrl ? (
                 <>
-                  <img src={form.imageUrl.replace(/^"+|"+$/g, '').trim()} alt="صورة المنتج" className="w-full h-full object-cover" />
+                  <img src={form.imageUrl.replace(/^"+|"+$/g, '').trim()} alt="صورة المنتج" className="w-full h-full object-contain" />
                   <button
                     type="button"
                     onClick={() => { set('imageUrl', ''); set('image', ''); }}
