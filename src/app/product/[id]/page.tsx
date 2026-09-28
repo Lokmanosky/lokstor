@@ -3,13 +3,13 @@
 import { use, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, query, collection, where, onSnapshot, addDoc } from 'firebase/firestore';
 import { Product, ProductVariant, GameFieldRequirement } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { useTranslation } from '@/lib/i18n-context';
-import { 
+import { Star, 
   ArrowRight, 
   CheckCircle2, 
   ShieldCheck, 
@@ -217,6 +217,47 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
+    // ─── REVIEWS STATE ──────────────────────────
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [newReview, setNewReview] = useState({ rating: 5, comment: '', name: user?.displayName || '' });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!product) return;
+    const q = query(collection(db, 'reviews'), where('productId', '==', product.id), where('status', '==', 'approved'));
+    const unsub = onSnapshot(q, (snap) => {
+      const data: any[] = [];
+      snap.forEach(d => data.push({ id: d.id, ...d.data() }));
+      // also sort by date desc locally
+      data.sort((a,b) => b.createdAt - a.createdAt);
+      setReviews(data);
+    });
+    return () => unsub();
+  }, [product]);
+
+  const submitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReview.name.trim() || !newReview.comment.trim()) return alert('يرجى كتابة الاسم والتعليق');
+    setIsSubmittingReview(true);
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        productId: product?.id,
+        customerName: newReview.name,
+        rating: newReview.rating,
+        comment: newReview.comment,
+        status: 'pending',
+        createdAt: Date.now()
+      });
+      setReviewSubmitted(true);
+      setNewReview({ rating: 5, comment: '', name: user?.displayName || '' });
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ');
+    }
+    setIsSubmittingReview(false);
+  };
+
   const isOutOfStock = Boolean(
     product.status === 'out_of_stock' ||
     (product.stockType === 'numeric'
@@ -277,17 +318,49 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <h1 className="text-xl sm:text-2xl font-black text-[var(--store-text)] leading-snug tracking-tight">
             {product.name}
           </h1>
+          {/* Average Rating */}
+          <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center text-amber-400">
+              {[1,2,3,4,5].map(i => (
+                <Star key={i} className={`w-4 h-4 ${i <= (reviews.length > 0 ? Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) : 5) ? 'fill-current' : 'text-[var(--store-border)]'}`} />
+              ))}
+            </div>
+            <span className="text-sm font-bold text-[var(--store-text-muted)]">({reviews.length} تقييم)</span>
+          </div>
 
           {/* 2. Price Line with Share & Favorite Actions */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-black text-emerald-500 tracking-tight">
-                  {displayPrice.toLocaleString('en-US')}
-                </span>
-                <span className="text-xl font-black text-emerald-500">
-                  {t('common.currency')}
-                </span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl font-black text-emerald-500 tracking-tight">
+                    {displayPrice.toLocaleString('en-US')}
+                  </span>
+                  <span className="text-xl font-black text-emerald-500">
+                    {t('common.currency')}
+                  </span>
+                </div>
+                {/* Discount Badge */}
+                {(!selectedVariant || !selectedVariant.originalPrice) && product.originalPrice && product.originalPrice > product.price && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
+                      {product.originalPrice} د.ج
+                    </span>
+                    <span className="bg-red-500/10 text-red-500 text-xs font-bold px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1">
+                      وفر {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% 🔥
+                    </span>
+                  </div>
+                )}
+                {selectedVariant && selectedVariant.originalPrice && selectedVariant.originalPrice > selectedVariant.price && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
+                      {selectedVariant.originalPrice} د.ج
+                    </span>
+                    <span className="bg-red-500/10 text-red-500 text-xs font-bold px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1">
+                      وفر {Math.round(((selectedVariant.originalPrice - selectedVariant.price) / selectedVariant.originalPrice) * 100)}% 🔥
+                    </span>
+                  </div>
+                )}
               </div>
               {selectedVariant && (
                 <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 mt-0.5">
@@ -621,6 +694,98 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
       )}
+
+      {/* ── REVIEWS SECTION ── */}
+      <div className="mt-12 bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-6 sm:p-8 space-y-8 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black text-[var(--store-text)] flex items-center gap-2">
+            <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
+            تقييمات المنتج ({reviews.length})
+          </h2>
+        </div>
+
+        {/* Submit Review Form */}
+        {reviewSubmitted ? (
+          <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-3 font-bold">
+            <Check className="w-5 h-5" />
+            شكراً لتقييمك! سيظهر تقييمك بعد مراجعته من قبل الإدارة.
+          </div>
+        ) : (
+          <form onSubmit={submitReview} className="bg-[var(--store-bg)] border border-[var(--store-border)] p-5 rounded-2xl space-y-4">
+            <h3 className="font-bold text-[var(--store-text)]">أضف تقييمك</h3>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  type="button"
+                  key={star}
+                  onClick={() => setNewReview({ ...newReview, rating: star })}
+                  className="focus:outline-none transition-transform hover:scale-110"
+                >
+                  <Star className={`w-6 h-6 ${star <= newReview.rating ? 'fill-amber-400 text-amber-400' : 'text-[var(--store-border)]'}`} />
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input 
+                type="text" 
+                placeholder="اسمك"
+                required
+                value={newReview.name}
+                onChange={e => setNewReview({...newReview, name: e.target.value})}
+                className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--store-primary)]"
+              />
+              <input 
+                type="text" 
+                placeholder="شاركنا رأيك بالمنتج..."
+                required
+                value={newReview.comment}
+                onChange={e => setNewReview({...newReview, comment: e.target.value})}
+                className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--store-primary)]"
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={isSubmittingReview}
+              className="px-6 py-2.5 bg-[var(--store-primary)] text-[var(--store-bg)] font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 text-sm"
+            >
+              {isSubmittingReview ? 'جاري الإرسال...' : 'نشر التقييم'}
+            </button>
+          </form>
+        )}
+
+        {/* Reviews List */}
+        {reviews.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {reviews.map((r, i) => (
+              <div key={i} className="bg-[var(--store-bg)] border border-[var(--store-border)] p-5 rounded-2xl space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-emerald-500 overflow-hidden">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${r.customerName}`} alt="avatar" className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-[var(--store-text)]">{r.customerName}</h4>
+                      <span className="text-[10px] text-[var(--store-text-muted)]">تم التحقق من الشراء ✓</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-amber-400">
+                  {[1,2,3,4,5].map(star => (
+                    <Star key={star} className={`w-3.5 h-3.5 ${star <= r.rating ? 'fill-current' : 'text-[var(--store-border)]'}`} />
+                  ))}
+                </div>
+                <p className="text-sm text-[var(--store-text-muted)] font-medium leading-relaxed">
+                  "{r.comment}"
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-[var(--store-text-muted)] font-bold text-sm">لا توجد تقييمات حتى الآن. كن أول من يقيّم هذا المنتج!</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

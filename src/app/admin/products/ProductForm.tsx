@@ -24,6 +24,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     name: '',
     description: '',
     price: 0,
+    originalPrice: undefined,
     currency: 'dzd',
     imageUrl: '',
     image: '',

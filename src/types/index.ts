@@ -21,6 +21,7 @@ export interface Product {
   name: string;
   description: string;
   price: number; // Price in DZD (د.ج)
+  originalPrice?: number;
   currency: string; // 'dzd'
   fileUrl?: string; // Storage path or URL (For single file)
   stockLinks?: string[]; // Array of unique single-use links for stock-based products
@@ -97,4 +98,15 @@ export interface UserProfile {
   role: 'admin' | 'customer';
   createdAt: number;
   lastLoginAt?: number;
+}
+
+
+export interface Review {
+  id: string;
+  productId?: string;
+  customerName: string;
+  rating: number; // 1-5
+  comment: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number | string;
 }

@@ -11,6 +11,65 @@ import { useAuth } from '@/lib/auth-context';
 
 import { Suspense } from 'react';
 
+
+import { Star as StarIcon, Quote } from 'lucide-react';
+
+function ReviewsCarousel() {
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch approved reviews from all products
+    const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      const data: any[] = [];
+      snap.forEach(d => {
+        const r = d.data();
+        if (r.status === 'approved') {
+          data.push({ id: d.id, ...r });
+        }
+      });
+      setReviews(data);
+    });
+    return () => unsub();
+  }, []);
+
+  if (reviews.length === 0) return null;
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 mb-12">
+      <div className="flex items-center gap-2 mb-6">
+        <h2 className="text-2xl font-black text-[var(--store-text)]">قالوا عن متجرنا</h2>
+      </div>
+      
+      <div className="relative overflow-hidden group">
+        <div 
+          className="flex gap-4 sm:gap-6 animate-[scroll_20s_linear_infinite] hover:[animation-play-state:paused]"
+          style={{ width: 'max-content' }}
+        >
+          {/* Double the array to create seamless infinite scroll */}
+          {[...reviews, ...reviews, ...reviews].map((review, i) => (
+            <div key={`${review.id}-${i}`} className="w-72 sm:w-80 shrink-0 bg-[#161b22] border border-[#30363d] rounded-3xl p-6 relative flex flex-col">
+              <Quote className="absolute top-4 left-4 w-10 h-10 text-slate-700/50" />
+              <div className="flex flex-col items-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-slate-800 border-[3px] border-emerald-500 overflow-hidden mb-3">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${review.customerName}`} alt="avatar" className="w-full h-full object-cover" />
+                </div>
+                <h3 className="font-bold text-white text-lg">{review.customerName}</h3>
+                <div className="flex items-center gap-1 mt-1 text-amber-400">
+                  {[1,2,3,4,5].map(star => (
+                    <StarIcon key={star} className={`w-4 h-4 ${star <= review.rating ? 'fill-current' : 'text-slate-600'}`} />
+                  ))}
+                </div>
+              </div>
+              <p className="text-slate-300 text-center text-sm leading-relaxed font-medium">"{review.comment}"</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HomePageContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'all';
@@ -165,6 +224,15 @@ function HomePageContent() {
 
   return (
     <div className="pb-24">
+      <style>{
+        `
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(calc(-100% / 3)); }
+        }
+        `
+      }</style>
+
       {/* 1. Hero Section */}
       <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
         <div className="max-w-4xl mx-auto text-center space-y-4">
@@ -375,7 +443,21 @@ function HomePageContent() {
                     {product.priceUnspecified ? (
                       <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">سعر غير محدد</span>
                     ) : (
-                      <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">{product.price} <span className="text-xs font-normal">د.ج</span></span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg leading-none whitespace-nowrap">
+                          {product.price} <span className="text-[10px] font-normal">د.ج</span>
+                        </span>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-medium text-[var(--store-text-muted)] line-through decoration-red-500/50">
+                              {product.originalPrice}
+                            </span>
+                            <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1 py-0.5 rounded">
+                              وفر {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                     {outOfStock ? (
                       <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
@@ -497,6 +579,7 @@ function HomePageContent() {
         })()}
 
       </section>
+      <ReviewsCarousel />
 
     {/* Toast: Login required to add to cart */}
     {showLoginToast && (
