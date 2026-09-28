@@ -71,6 +71,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
         if (data.requiredFields && data.requiredFields.length > 0) {
           setRequiredFields(data.requiredFields || []);
         }
+
+        // Initialize stock mode & unlimitedStock
+        if (data.stockType === 'numeric' || Boolean(data.unlimitedStock) || (typeof data.stock === 'number' && (!links || links.length === 0))) {
+          setStockMode('numeric');
+          setIsUnlimitedStock(Boolean(data.unlimitedStock || (typeof data.stock === 'number' && data.stock >= 99999)));
+          setNumericStock(typeof data.stock === 'number' && data.stock < 99999 ? data.stock : 50);
+        } else {
+          setStockMode('units');
+          setIsUnlimitedStock(false);
+        }
       }
       setLoading(false);
     }).catch(err => {
@@ -307,10 +317,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
     setSaving(true);
     setError('');
 
-    // Only non-empty items
-    const stockLinks = stockItems.map(s => s.trim()).filter(Boolean);
     const features = featuresText.split('\n').map(s => s.trim()).filter(Boolean);
     const cleanImg = ((form.imageUrl || form.image || '') as string).replace(/^"+|"+$/g, '').trim();
+
+    const isNum = stockMode === 'numeric';
+    const computedStock = isNum 
+      ? (isUnlimitedStock ? 999999 : Number(numericStock || 0))
+      : stockItems.map(s => s.trim()).filter(Boolean).length;
+    const finalStockLinks = isNum 
+      ? [] 
+      : stockItems.map(s => s.trim()).filter(Boolean);
 
     const payload: Partial<Product> = {
       ...form,
@@ -320,13 +336,15 @@ export default function ProductForm({ productId }: ProductFormProps) {
       priceUnspecified: Boolean(form.priceUnspecified),
       hasVariants: Boolean(hasVariants && variants.length > 0),
       variants: hasVariants ? variants.filter(v => v.name.trim()) : [],
-      requiredFields: hasVariants ? requiredFields : [],
+      requiredFields: requiredFields.filter(f => f.label.trim()),
       currency: 'dzd',
       imageUrl: cleanImg,
       image: cleanImg,
-      stockLinks,
+      stockType: stockMode,
+      unlimitedStock: isNum ? Boolean(isUnlimitedStock) : false,
+      stock: computedStock,
+      stockLinks: finalStockLinks,
       features,
-      stock: stockLinks.length,   // stock = actual count of isolated items
       updatedAt: Date.now(),
     };
 

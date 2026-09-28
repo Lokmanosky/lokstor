@@ -309,7 +309,7 @@ export default function ProductsPage() {
               ) : (
                 filteredProducts.map(p => {
                   const imgSrc = getImageSrc(p);
-                  const isUnlimited = Boolean(p.stockType === 'numeric' && p.unlimitedStock);
+                  const isUnlimited = Boolean(p.unlimitedStock || (p.stockType === 'numeric' && (p.unlimitedStock || (typeof p.stock === 'number' && p.stock >= 99999))));
                   const stockCountNum = p.stockType === 'numeric' ? (p.stock || 0) : (p.stockLinks ? p.stockLinks.length : (p.stock || 0));
                   const isAvailable = isUnlimited || stockCountNum > 0;
                   const isDuplicating = duplicatingId === p.id;
