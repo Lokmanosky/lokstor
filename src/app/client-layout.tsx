@@ -175,19 +175,19 @@ function NavBar() {
   return (
     <>
     <header className="sticky top-0 z-50 border-b border-[var(--store-border)] text-[var(--store-text)] store-header bg-[var(--store-bg)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Right (Logo & Links) */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-3 group">
+        <div className="flex items-center gap-2 sm:gap-6 min-w-0 flex-shrink">
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-3 group min-w-0">
             {s.logoImageUrl ? (
-              <img src={s.logoImageUrl} alt="logo" className="w-9 h-9 rounded-lg object-cover border border-[var(--store-border)]" />
+              <img src={s.logoImageUrl} alt="logo" className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover border border-[var(--store-border)] flex-shrink-0" />
             ) : (
-              <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-black font-black text-xl border border-[var(--store-border)]">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white flex items-center justify-center text-black font-black text-lg sm:text-xl border border-[var(--store-border)] flex-shrink-0">
                 {s.logoLetter}
               </div>
             )}
-            <span className="font-bold text-sm tracking-wide text-[var(--store-text)] uppercase flex items-center gap-2">
+            <span className="font-bold text-xs sm:text-sm tracking-wide text-[var(--store-text)] uppercase truncate select-none max-w-[80px] xs:max-w-[120px] sm:max-w-none">
               {s.storeName}
             </span>
           </Link>
@@ -205,8 +205,8 @@ function NavBar() {
           <form onSubmit={handleSearch} className="relative group">
             <input 
               type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
               placeholder={t("nav.search")} 
               className="w-full bg-transparent border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-md px-4 py-2 focus:outline-none focus:border-[var(--store-primary)] transition-colors placeholder:text-[var(--store-text-muted)]"
             />
@@ -215,29 +215,29 @@ function NavBar() {
         </div>
 
         {/* Left (Auth, Cart, Settings) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           
           {/* Theme & Language Toggles */}
-          <div className="flex items-center gap-2 border-l border-[var(--store-border)] pl-2 ml-1 relative">
+          <div className="flex items-center gap-1 sm:gap-1.5 border-l border-[var(--store-border)] pl-1 sm:pl-2 ml-0.5 sm:ml-1 relative">
             <button 
               onClick={handleToggleTheme}
-              className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors flex-shrink-0"
               title="تغيير المظهر" aria-label="تبديل المظهر النهاري والليلي"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400" />}
             </button>
             
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <button 
                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-                className="w-8 h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors"
+                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:bg-[var(--store-card)] transition-colors flex-shrink-0"
                 title="تغيير اللغة" aria-label="تغيير لغة الموقع"
               >
-                <Globe className="w-4 h-4 text-blue-500" />
+                <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
               </button>
               
               {langDropdownOpen && (
-                <div className="absolute top-10 left-0 w-32 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-md shadow-2xl overflow-hidden z-50">
+                <div className="absolute top-9 left-0 w-32 bg-[var(--store-bg)] border border-[var(--store-border)] rounded-md shadow-2xl overflow-hidden z-50">
                   <div className="flex flex-col text-sm">
                     <button onClick={() => {setLang('ar'); setLangDropdownOpen(false)}} className={`text-right px-4 py-2 hover:bg-[var(--store-card)] transition-colors ${lang === 'ar' ? 'text-emerald-400 font-bold' : 'text-[var(--store-text)]'}`}>العربية</button>
                     <button onClick={() => {setLang('en'); setLangDropdownOpen(false)}} className={`text-right px-4 py-2 hover:bg-[var(--store-card)] transition-colors ${lang === 'en' ? 'text-emerald-400 font-bold' : 'text-[var(--store-text)]'}`}>English</button>
@@ -248,9 +248,9 @@ function NavBar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 border-l border-[var(--store-border)] pl-2 ml-1">
+          <div className="flex items-center gap-1 sm:gap-2 border-l border-[var(--store-border)] pl-1 sm:pl-2 ml-0.5 sm:ml-1">
             {user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <Link 
                   href="/account"
                   className="hidden sm:flex items-center gap-2 text-xs font-medium text-[var(--store-text)] hover:text-[var(--store-primary)] transition-colors"
@@ -264,18 +264,18 @@ function NavBar() {
                 {isAdmin && (
                   <Link 
                     href="/admin"
-                    className="w-8 h-8 flex items-center justify-center rounded-md text-amber-400 hover:bg-amber-500/10 transition-colors"
+                    className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-amber-400 hover:bg-amber-500/10 transition-colors flex-shrink-0"
                     title="لوحة تحكم المسؤول (Admin)"
                   >
-                    <Settings className="w-4 h-4" />
+                    <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Link>
                 )}
                 <button 
                   onClick={handleSignOut}
-                  className="w-8 h-8 flex items-center justify-center rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex-shrink-0"
                   title="تسجيل الخروج"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             ) : (
@@ -297,9 +297,9 @@ function NavBar() {
           <button 
             onClick={() => setMobileMenuOpen(true)}
             aria-label="فتح القائمة الرئيسية"
-            className="md:hidden w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors"
+            className="md:hidden w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors flex-shrink-0"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
           
           <Link 
@@ -312,7 +312,7 @@ function NavBar() {
               }
             }}
             aria-label="سلة المشتريات" 
-            className="w-10 h-10 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:border-[var(--store-border)] transition-colors relative ml-1"
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center border border-[var(--store-border)] rounded-md text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium hover:border-[var(--store-border)] transition-colors relative flex-shrink-0"
           >
             <ShoppingCart className="w-4 h-4 text-amber-500" />
             {totalItems > 0 && (
