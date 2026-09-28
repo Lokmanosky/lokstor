@@ -380,11 +380,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                         <span className={`text-xs sm:text-sm ${isSelected ? 'font-black text-indigo-950 dark:text-white' : 'font-bold text-[var(--store-text)]'}`}>
                           {v.name}
                         </span>
-                        <img
-                          src={v.image || '/images/game-coin.jpg'}
-                          alt=""
-                          className="w-7 h-7 rounded-lg object-contain shrink-0 bg-black/5 p-0.5 border border-[var(--store-border)] shadow-sm"
-                        />
+                        {v.image ? (
+                          <img
+                            src={v.image}
+                            alt=""
+                            className="w-7 h-7 rounded-lg object-contain shrink-0 bg-black/5 p-0.5 border border-[var(--store-border)] shadow-sm"
+                          />
+                        ) : null}
                       </div>
                     </button>
                   );

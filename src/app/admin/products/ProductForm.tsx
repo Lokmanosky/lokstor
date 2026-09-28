@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { Product, ProductVariant, GameFieldRequirement } from '@/types';
-import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers } from 'lucide-react';
+import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers, ImageIcon } from 'lucide-react';
 
 interface ProductFormProps {
   productId?: string;
@@ -183,16 +183,17 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const applyPresetTemplate = (type: 'cod' | 'pubg' | 'freefire' | 'chatgpt') => {
     if (type === 'chatgpt') {
       setHasVariants(true);
-      set('name', form.name || 'اشتراك ChatGPT Plus - تفعيل رسمي على حسابك');
+      set('name', form.name || 'تفعيل اشتراك رسمي على حسابك (Email & Password)');
       set('category', 'اشتراكات وخدمات رقمية');
       setStockMode('numeric');
       setIsUnlimitedStock(true);
       setVariants([
-        { id: 'gpt_1m', name: 'اشتراك شهر واحد (1 Month)', price: 3800, image: '/images/game-gem.jpg' },
-        { id: 'gpt_3m', name: 'اشتراك 3 أشهر (3 Months)', price: 10500, image: '/images/game-gem.jpg' },
+        { id: 'sub_1m', name: 'اشتراك شهر واحد (1 Month)', price: 3500 },
+        { id: 'sub_3m', name: 'اشتراك 3 أشهر (3 Months)', price: 9900 },
+        { id: 'sub_1y', name: 'اشتراك سنة كاملة (1 Year)', price: 29000 },
       ]);
       setRequiredFields([
-        { id: 'game_email', label: 'البريد الإلكتروني لحساب ChatGPT (Email)', placeholder: 'أدخل بريد حساب OpenAI / ChatGPT', required: true, type: 'text' },
+        { id: 'game_email', label: 'البريد الإلكتروني للحساب (Email)', placeholder: 'أدخل بريد حسابك المراد تفعيله', required: true, type: 'text' },
         { id: 'game_password', label: 'كلمة مرور الحساب (Password)', placeholder: 'أدخل كلمة مرور الحساب للتفعيل', required: true, type: 'password' },
       ]);
       return;
@@ -437,7 +438,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 <div className="p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-2">
                   <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>قوالب ألعاب سريعة التجهيز بضغطة زر:</span>
+                    <span>قوالب جاهزة سريعة التجهيز بضغطة زر:</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -445,7 +446,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       onClick={() => applyPresetTemplate('chatgpt')}
                       className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                     >
-                      🤖 تفعيل حسابات ChatGPT Plus (إيميل وباسورد)
+                      🤖 تفعيل حسابات واشتراكات (إيميل وباسورد)
                     </button>
                     <button
                       type="button"
@@ -487,23 +488,19 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
                   <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
                     {variants.map((v, idx) => (
-                      <div key={v.id || idx} className="p-3 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-bg)] flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        {/* Variant Icon preview & selector */}
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={v.image || '/images/game-coin.jpg'}
-                            alt=""
-                            className="w-10 h-10 rounded-lg object-contain bg-black/5 border border-[var(--admin-border)] shrink-0"
-                          />
-                          <select
-                            value={v.image || '/images/game-coin.jpg'}
-                            onChange={e => updateVariant(idx, 'image', e.target.value)}
-                            className="text-[11px] px-2 py-1.5 rounded border border-[var(--admin-border)] bg-[var(--admin-card)] text-[var(--admin-text)] focus:outline-none"
-                            title="اختر الأيقونة"
-                          >
-                            <option value="/images/game-coin.jpg">🪙 عملات CP/UC</option>
-                            <option value="/images/game-gem.jpg">💎 جواهر زرقاء</option>
-                          </select>
+                      <div key={v.id || idx} className="p-3 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-bg)] flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                        {/* Number Index */}
+                        <span className="w-6 h-6 rounded-md bg-[var(--admin-card)] border border-[var(--admin-border)] text-xs font-bold text-[var(--admin-text-muted)] flex items-center justify-center shrink-0 self-center sm:self-auto">
+                          {idx + 1}
+                        </span>
+
+                        {/* Live Thumbnail Preview */}
+                        <div className="w-10 h-10 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-card)] flex items-center justify-center shrink-0 overflow-hidden self-center sm:self-auto">
+                          {v.image ? (
+                            <img src={v.image} alt="" className="w-full h-full object-contain p-0.5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <ImageIcon className="w-4 h-4 text-[var(--admin-text-muted)] opacity-40" />
+                          )}
                         </div>
 
                         {/* Variant Name */}
@@ -512,13 +509,25 @@ export default function ProductForm({ productId }: ProductFormProps) {
                             type="text"
                             value={v.name}
                             onChange={e => updateVariant(idx, 'name', e.target.value)}
-                            placeholder="اسم الباقة (مثال: 80 CP أو 60 UC)"
+                            placeholder="اسم الباقة أو مدة الاشتراك (مثال: اشتراك شهر، أو 80 CP)"
                             className={inputCls + ' text-xs font-bold'}
                           />
                         </div>
 
+                        {/* Optional Custom Image URL */}
+                        <div className="w-full sm:w-48">
+                          <input
+                            type="text"
+                            value={v.image || ''}
+                            onChange={e => updateVariant(idx, 'image', e.target.value)}
+                            placeholder="رابط أيقونة/صورة (اختياري)"
+                            className={inputCls + ' text-[11px] font-mono'}
+                            title="ضع رابط صورة أو أيقونة لهذه الباقة يدوياً (اختياري)"
+                          />
+                        </div>
+
                         {/* Variant Price */}
-                        <div className="w-32 flex items-center gap-1">
+                        <div className="w-full sm:w-36 flex items-center gap-1.5 shrink-0">
                           <input
                             type="number"
                             min={0}
@@ -534,7 +543,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         <button
                           type="button"
                           onClick={() => removeVariant(idx)}
-                          className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors self-end sm:self-center"
+                          className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0 self-end sm:self-auto"
                           title="حذف هذه الباقة"
                         >
                           <Trash2 className="w-4 h-4" />
