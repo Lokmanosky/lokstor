@@ -179,6 +179,48 @@ export default function ProductForm({ productId }: ProductFormProps) {
     setVariants(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Upload and compress variant icon from local PC
+  const handleVariantIconUpload = (index: number, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const maxDim = 140; // Crisp icon size
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const base64 = canvas.toDataURL('image/png');
+            updateVariant(index, 'image', base64);
+          } else {
+            updateVariant(index, 'image', event.target?.result as string);
+          }
+        } catch {
+          updateVariant(index, 'image', event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   // Quick Preset Templates
   const applyPresetTemplate = (type: 'cod' | 'pubg' | 'freefire' | 'chatgpt') => {
     if (type === 'chatgpt') {
@@ -494,12 +536,41 @@ export default function ProductForm({ productId }: ProductFormProps) {
                           {idx + 1}
                         </span>
 
-                        {/* Live Thumbnail Preview */}
-                        <div className="w-10 h-10 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-card)] flex items-center justify-center shrink-0 overflow-hidden self-center sm:self-auto">
-                          {v.image ? (
-                            <img src={v.image} alt="" className="w-full h-full object-contain p-0.5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                          ) : (
-                            <ImageIcon className="w-4 h-4 text-[var(--admin-text-muted)] opacity-40" />
+                        {/* Click to Upload Icon from Computer */}
+                        <div className="relative shrink-0 self-center sm:self-auto">
+                          <label
+                            className="w-12 h-12 rounded-xl border-2 border-dashed border-[var(--admin-border)] hover:border-indigo-500 bg-[var(--admin-card)] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group shadow-xs"
+                            title="اضغط هنا لرفع صورة أو أيقونة من حاسوبك (سيتم ضغطها تلقائياً)"
+                          >
+                            {v.image ? (
+                              <img
+                                src={v.image}
+                                alt=""
+                                className="w-full h-full object-contain p-1"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center p-1 text-[var(--admin-text-muted)] group-hover:text-indigo-500 transition-colors">
+                                <Upload className="w-3.5 h-3.5" />
+                                <span className="text-[9px] font-bold mt-0.5">أيقونة</span>
+                              </div>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleVariantIconUpload(idx, e)}
+                            />
+                          </label>
+                          {v.image && (
+                            <button
+                              type="button"
+                              onClick={() => updateVariant(idx, 'image', '')}
+                              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-[10px] font-bold shadow cursor-pointer transition-all"
+                              title="حذف الأيقونة"
+                            >
+                              ×
+                            </button>
                           )}
                         </div>
 
@@ -511,18 +582,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
                             onChange={e => updateVariant(idx, 'name', e.target.value)}
                             placeholder="اسم الباقة أو مدة الاشتراك (مثال: اشتراك شهر، أو 80 CP)"
                             className={inputCls + ' text-xs font-bold'}
-                          />
-                        </div>
-
-                        {/* Optional Custom Image URL */}
-                        <div className="w-full sm:w-48">
-                          <input
-                            type="text"
-                            value={v.image || ''}
-                            onChange={e => updateVariant(idx, 'image', e.target.value)}
-                            placeholder="رابط أيقونة/صورة (اختياري)"
-                            className={inputCls + ' text-[11px] font-mono'}
-                            title="ضع رابط صورة أو أيقونة لهذه الباقة يدوياً (اختياري)"
                           />
                         </div>
 
