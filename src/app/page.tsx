@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
@@ -17,6 +17,7 @@ function HomePageContent() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeCategories, setStoreCategories] = useState<{id:string;name:string;slug:string;emoji?:string;sortOrder:number}[]>([]);
   const { t } = useTranslation();
   const { addToCart } = useCart();
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
@@ -79,13 +80,33 @@ function HomePageContent() {
     window.history.replaceState({}, '', url.toString());
   };
 
+  // Load custom categories from Firestore
   useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'storeCategories'), snap => {
+      const list: {id:string;name:string;slug:string;emoji?:string;sortOrder:number}[] = [];
+      snap.forEach(d => list.push({ id: d.id, ...d.data() } as any));
+      list.sort((a, b) => a.sortOrder - b.sortOrder);
+      setStoreCategories(list);
+    });
+    return () => unsub();
+  }, []);
+
+    useEffect(() => {
     async function loadProducts() {
       try {
         const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         const list: any[] = [];
         snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        // Sort by admin-set sortOrder, fallback to createdAt desc
+        list.sort((a, b) => {
+          const aO = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;
+          const bO = typeof b.sortOrder === 'number' ? b.sortOrder : 999999;
+          if (aO !== bO) return aO - bO;
+          const aT = typeof a.createdAt === 'number' ? a.createdAt : Number(a.createdAt || 0);
+          const bT = typeof b.createdAt === 'number' ? b.createdAt : Number(b.createdAt || 0);
+          return bT - aT;
+        });
         setProducts(list);
       } catch (e) {
         console.error("Failed to load products:", e);
@@ -134,6 +155,11 @@ function HomePageContent() {
     if (activeTab === 'subscription') {
       return p.type === 'subscription' || cat.includes('اشتراك') || name.includes('اشتراك') || name.includes('عرض لفترة');
     }
+    // Also match against dynamic storeCategories slugs
+    const matchingCat = storeCategories.find(c => c.slug === activeTab);
+    if (matchingCat) {
+      return p.type === activeTab || (p.category || '').toLowerCase().includes(activeTab.toLowerCase()) || p.category === matchingCat.name;
+    }
     return p.type === activeTab || p.category === activeTab;
   });
 
@@ -181,7 +207,7 @@ function HomePageContent() {
         
         {/* Filter Bar & Live Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--store-border)] pb-3">
-          {/* Category Tabs */}
+          {/* Category Tabs — dynamic from Firestore */}
           <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
             <button 
               onClick={() => selectTab('all')}
@@ -189,24 +215,21 @@ function HomePageContent() {
             >
               {t('nav.all')}
             </button>
-            <button 
-              onClick={() => selectTab('digital')}
-              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-            >
-              {t('nav.digital')}
-            </button>
-            <button 
-              onClick={() => selectTab('subscription')}
-              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-            >
-              {t('nav.subs')}
-            </button>
-            <button 
-              onClick={() => selectTab('games')}
-              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-            >
-              🎮 شحن ألعاب
-            </button>
+            {storeCategories.length > 0 ? storeCategories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => selectTab(cat.slug)}
+                className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === cat.slug ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+              >
+                {cat.emoji && <span className="ml-1">{cat.emoji}</span>}{cat.name}
+              </button>
+            )) : (
+              <>
+                <button onClick={() => selectTab('digital')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('nav.digital')}</button>
+                <button onClick={() => selectTab('subscription')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('nav.subs')}</button>
+                <button onClick={() => selectTab('games')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>🎮 شحن ألعاب</button>
+              </>
+            )}
           </div>
 
           {/* In-page Live Search Input */}

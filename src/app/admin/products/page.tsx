@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, deleteDoc, doc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, deleteDoc, doc, addDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Product } from '@/types';
 import { 
   Plus, 
@@ -16,7 +16,8 @@ import {
   Loader2, 
   Check, 
   Boxes,
-  RotateCcw
+  RotateCcw,
+  GripVertical
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,11 +32,25 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL'); // ALL, published, draft, archived
   const [selectedStock, setSelectedStock] = useState('ALL');   // ALL, in_stock, out_of_stock
+  
+  // Drag & Drop reorder state
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'products'), (snap) => {
       const list: Product[] = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() } as Product));
+      // Sort by sortOrder (admin-set), then by createdAt desc as fallback
+      list.sort((a, b) => {
+        const aOrder = typeof (a as any).sortOrder === 'number' ? (a as any).sortOrder : 999999;
+        const bOrder = typeof (b as any).sortOrder === 'number' ? (b as any).sortOrder : 999999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        const aTime = typeof a.createdAt === 'number' ? a.createdAt : Number(a.createdAt || 0);
+        const bTime = typeof b.createdAt === 'number' ? b.createdAt : Number(b.createdAt || 0);
+        return bTime - aTime;
+      });
       setProducts(list);
       setLoading(false);
     });
@@ -47,6 +62,45 @@ export default function ProductsPage() {
     setFeedback({ type, text });
     setTimeout(() => setFeedback(null), 3500);
   };
+
+  // ── Drag & Drop reorder handlers ──────────────────────────────────────────
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverId(id);
+  };
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
+    // Work on ALL products (not just filtered), to preserve correct sortOrder
+    const allList = [...products];
+    const fromIdx = allList.findIndex(p => p.id === dragId);
+    const toIdx = allList.findIndex(p => p.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) { setDragId(null); setDragOverId(null); return; }
+    const reordered = [...allList];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const updated = reordered.map((p, i) => ({ ...p, sortOrder: i }));
+    setProducts(updated);
+    setDragId(null);
+    setDragOverId(null);
+    setSavingOrder(true);
+    try {
+      const batch = writeBatch(db);
+      updated.forEach(p => {
+        if (p.id) batch.update(doc(db, 'products', p.id), { sortOrder: (p as any).sortOrder });
+      });
+      await batch.commit();
+      showNotification('تم حفظ الترتيب الجديد بنجاح');
+    } catch (err: any) {
+      showNotification('فشل حفظ الترتيب: ' + err?.message, 'error');
+    } finally { setSavingOrder(false); }
+  };
+  const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
 
   // Delete product
   const handleDelete = async (id: string, name?: string) => {
@@ -164,9 +218,12 @@ export default function ProductsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--admin-text)]">المنتجات</h1>
+          <h1 className="text-xl font-semibold text-[var(--admin-text)] flex items-center gap-2">
+            المنتجات
+            {savingOrder && <span className="flex items-center gap-1 text-xs text-[var(--admin-text-muted)] font-normal"><Loader2 className="w-3 h-3 animate-spin" />يحفظ الترتيب...</span>}
+          </h1>
           <p className="text-sm text-[var(--admin-text-muted)] mt-1">
-            إدارة منتجات المتجر وتفاصيلها ({products.length} منتج مسجل)
+            إدارة منتجات المتجر وتفاصيلها ({products.length} منتج مسجل) — اسحب ≡ لإعادة الترتيب في الصفحة الرئيسية
           </p>
         </div>
         <Link
@@ -282,6 +339,7 @@ export default function ProductsPage() {
           <table className="w-full text-sm text-right">
             <thead className="bg-[var(--admin-bg)] text-[var(--admin-text-muted)]">
               <tr className="border-b border-[var(--admin-border)]">
+                <th className="px-2 py-3 font-medium w-8"></th>
                 <th className="px-4 py-3 font-medium">صورة</th>
                 <th className="px-4 py-3 font-medium">المنتج</th>
                 <th className="px-4 py-3 font-medium">التصنيف</th>
@@ -293,10 +351,10 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-[var(--admin-border)]">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">جاري التحميل...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">جاري التحميل...</td></tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-[var(--admin-text-muted)]">
+                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--admin-text-muted)]">
                     <Boxes className="w-8 h-8 mx-auto mb-2 opacity-40" />
                     <p className="font-medium">لم يتم العثور على أي منتجات</p>
                     {hasActiveFilters && (
@@ -316,7 +374,26 @@ export default function ProductsPage() {
                   const status = p.status || 'published';
 
                   return (
-                    <tr key={p.id} className="hover:bg-[var(--admin-hover)] transition-colors">
+                    <tr key={p.id}
+                      draggable
+                      onDragStart={e => handleDragStart(e, p.id!)}
+                      onDragOver={e => handleDragOver(e, p.id!)}
+                      onDrop={e => handleDrop(e, p.id!)}
+                      onDragEnd={handleDragEnd}
+                      className={`transition-colors ${
+                        dragOverId === p.id && dragId !== p.id
+                          ? 'bg-[var(--admin-primary)]/8 border-r-2 border-[var(--admin-primary)]'
+                          : dragId === p.id
+                          ? 'opacity-40 bg-[var(--admin-hover)]'
+                          : 'hover:bg-[var(--admin-hover)]'
+                      }`}
+                    >
+                      {/* Drag Handle */}
+                      <td className="px-2 py-3">
+                        <div className="cursor-grab active:cursor-grabbing text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-colors" title="اسحب لتغيير ترتيب المنتج في الصفحة الرئيسية">
+                          <GripVertical className="w-4 h-4" />
+                        </div>
+                      </td>
                       {/* Image */}
                       <td className="px-4 py-3">
                         {imgSrc ? (
