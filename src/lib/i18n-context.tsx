@@ -24,6 +24,39 @@ const translations: Record<Lang, Record<string, string>> = {
     'store.addCart': 'الشراء',
     'badge.digital': 'رقمي',
     'badge.sub': 'اشتراك',
+
+    // Common & Breadcrumbs
+    'common.home': 'الرئيسية',
+    'common.currency': 'د.ج',
+    'common.copied': 'تم النسخ!',
+    'category.games': 'شحن ألعاب',
+    'category.digital': 'منتجات رقمية',
+    'category.subs': 'اشتراكات',
+
+    // Product Details
+    'product.selectedPackage': 'الباقة المحددة:',
+    'product.choosePackage': 'اختر ما يناسبك:',
+    'product.requiredGameInfo': 'بيانات حساب اللعبة المطلوبة للشحن:',
+    'product.confidential': 'معلومات سرية ومحمية 🔒',
+    'product.fieldRequired': 'هذا الحقل مطلوب للشحن',
+    'product.features': 'المميزات المشمولة:',
+    'product.buyAndPay': 'الشراء والدفع',
+    'product.outOfStock': 'تم نفاذ المخزون',
+    'product.outOfStockAlert': 'تم نفاذ المخزون من هذا المنتج حالياً',
+    'product.addToCart': 'إضافة إلى السلة',
+    'product.outOfStockTooltip': 'المنتج غير متوفر في المخزون',
+    'product.guaranteeSecure': 'دفع إلكتروني آمن 100% عبر Chargily',
+    'product.guaranteeInstant': 'تنفيذ وشحن فوري وسريع',
+    'product.zoomHint': 'استعراض وتكبير الصورة',
+    'product.shareTooltip': 'مشاركة رابط المنتج',
+    'product.favTooltip': 'إضافة للمفضلة',
+    'product.loginToast': 'يرجى تسجيل الدخول أولاً لإضافة المنتج إلى السلة',
+    'product.loginBtn': 'تسجيل دخول',
+
+    // Game fields
+    'field.gameEmail': 'البريد الإلكتروني للعبة (Call Of Duty / Activision)',
+    'field.gamePassword': 'كلمة المرور (Password)',
+    'field.playerId': 'معرف اللاعب (Player ID)',
   },
   en: {
     'nav.all': 'All',
@@ -45,6 +78,39 @@ const translations: Record<Lang, Record<string, string>> = {
     'store.addCart': 'Add to Cart',
     'badge.digital': 'Digital',
     'badge.sub': 'Subscription',
+
+    // Common & Breadcrumbs
+    'common.home': 'Home',
+    'common.currency': 'DZD',
+    'common.copied': 'Copied!',
+    'category.games': 'Game Top-Up',
+    'category.digital': 'Digital Products',
+    'category.subs': 'Subscriptions',
+
+    // Product Details
+    'product.selectedPackage': 'Selected Package:',
+    'product.choosePackage': 'Choose your package:',
+    'product.requiredGameInfo': 'Required game account details for recharge:',
+    'product.confidential': 'Confidential & Secure 🔒',
+    'product.fieldRequired': 'This field is required for recharge',
+    'product.features': 'Included Features:',
+    'product.buyAndPay': 'Buy & Pay',
+    'product.outOfStock': 'Out of Stock',
+    'product.outOfStockAlert': 'This product is currently out of stock',
+    'product.addToCart': 'Add to Cart',
+    'product.outOfStockTooltip': 'Product is out of stock',
+    'product.guaranteeSecure': '100% Secure Online Payment via Chargily',
+    'product.guaranteeInstant': 'Instant & Fast Execution and Recharge',
+    'product.zoomHint': 'Click to view & zoom image',
+    'product.shareTooltip': 'Share product link',
+    'product.favTooltip': 'Add to favorites',
+    'product.loginToast': 'Please log in first to add the product to cart',
+    'product.loginBtn': 'Login',
+
+    // Game fields
+    'field.gameEmail': 'Game Email (Call Of Duty / Activision)',
+    'field.gamePassword': 'Password',
+    'field.playerId': 'Player ID',
   },
   fr: {
     'nav.all': 'Tout',
@@ -66,6 +132,39 @@ const translations: Record<Lang, Record<string, string>> = {
     'store.addCart': 'Ajouter au Panier',
     'badge.digital': 'Numérique',
     'badge.sub': 'Abonnement',
+
+    // Common & Breadcrumbs
+    'common.home': 'Accueil',
+    'common.currency': 'DZD',
+    'common.copied': 'Copié !',
+    'category.games': 'Recharge de jeux',
+    'category.digital': 'Produits Numériques',
+    'category.subs': 'Abonnements',
+
+    // Product Details
+    'product.selectedPackage': 'Pack sélectionné :',
+    'product.choosePackage': 'Choisissez votre offre :',
+    'product.requiredGameInfo': 'Informations du compte de jeu requises pour la recharge :',
+    'product.confidential': 'Confidentiel et sécurisé 🔒',
+    'product.fieldRequired': 'Ce champ est requis pour la recharge',
+    'product.features': 'Fonctionnalités incluses :',
+    'product.buyAndPay': 'Acheter et Payer',
+    'product.outOfStock': 'Rupture de Stock',
+    'product.outOfStockAlert': 'Ce produit est actuellement en rupture de stock',
+    'product.addToCart': 'Ajouter au Panier',
+    'product.outOfStockTooltip': 'Produit indisponible en stock',
+    'product.guaranteeSecure': 'Paiement en ligne 100% sécurisé via Chargily',
+    'product.guaranteeInstant': 'Exécution et recharge instantanées',
+    'product.zoomHint': "Cliquer pour agrandir l'image",
+    'product.shareTooltip': 'Partager le lien du produit',
+    'product.favTooltip': 'Ajouter aux favoris',
+    'product.loginToast': 'Veuillez vous connecter pour ajouter au panier',
+    'product.loginBtn': 'Connexion',
+
+    // Game fields
+    'field.gameEmail': 'Email du jeu (Call Of Duty / Activision)',
+    'field.gamePassword': 'Mot de passe',
+    'field.playerId': 'ID Joueur (Player ID)',
   }
 };
 
@@ -101,7 +200,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: string) => {
-    return translations[lang][key] || key;
+    return translations[lang]?.[key] || translations['ar']?.[key] || key;
   };
 
   return (

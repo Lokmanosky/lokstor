@@ -8,6 +8,7 @@ import { Product, ProductVariant, GameFieldRequirement } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/lib/i18n-context';
 import { 
   ArrowRight, 
   CheckCircle2, 
@@ -48,6 +49,31 @@ const DEFAULT_COD_FIELDS: GameFieldRequirement[] = [
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: productId } = use(params);
+  const { t, lang } = useTranslation();
+
+  const getCategoryName = (cat?: string) => {
+    if (!cat) return '';
+    if (cat.includes('ألعاب') || cat.toLowerCase().includes('game')) return t('category.games');
+    if (cat.includes('رقمية') || cat.toLowerCase().includes('digital')) return t('category.digital');
+    if (cat.includes('اشتراك') || cat.toLowerCase().includes('sub')) return t('category.subs');
+    return cat;
+  };
+
+  const getFieldLabel = (field: GameFieldRequirement) => {
+    if (lang === 'ar') return field.label;
+    if (field.id === 'game_email' || field.label.includes('البريد')) return t('field.gameEmail');
+    if (field.id === 'game_password' || field.label.includes('كلمة المرور')) return t('field.gamePassword');
+    if (field.id === 'player_id' || field.label.includes('معرف')) return t('field.playerId');
+    return field.label;
+  };
+
+  const getFieldPlaceholder = (field: GameFieldRequirement) => {
+    if (lang === 'ar') return field.placeholder || `أدخل ${field.label}...`;
+    if (field.id === 'game_email') return 'Call Of Duty / Activision Email';
+    if (field.id === 'game_password') return lang === 'fr' ? 'Entrez le mot de passe' : 'Enter account password';
+    if (field.id === 'player_id') return lang === 'fr' ? 'Entrez votre Player ID' : 'Enter Player ID';
+    return lang === 'fr' ? `Entrez ${getFieldLabel(field)}...` : `Enter ${getFieldLabel(field)}...`;
+  };
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const { addToCart } = useCart();
@@ -200,16 +226,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const displayPrice = selectedVariant ? selectedVariant.price : product.price;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6" dir="rtl">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Breadcrumb Navigation */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-[var(--store-text-muted)]">
         <Link href="/" className="hover:text-[var(--store-text)] transition-colors">
-          الرئيسية
+          {t('common.home')}
         </Link>
         <span>›</span>
         {product.category && (
           <>
-            <span className="hover:text-[var(--store-text)] transition-colors">{product.category}</span>
+            <span className="hover:text-[var(--store-text)] transition-colors">{getCategoryName(product.category)}</span>
             <span>›</span>
           </>
         )}
@@ -229,7 +255,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               setZoomLevel(1);
             }}
             className="group relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm cursor-zoom-in transition-all hover:shadow-md bg-slate-50 dark:bg-slate-900/40 flex items-center justify-center min-h-[300px]"
-            title="انقر لاستعراض الصورة بالحجم الكامل"
+            title={t('product.zoomHint')}
           >
             <img
               src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
@@ -239,7 +265,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             {/* Hover overlay hint badge */}
             <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-slate-900/85 hover:bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all opacity-90 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
               <Maximize2 className="w-4 h-4 text-emerald-400" />
-              <span className="font-bold">استعراض وتكبير الصورة</span>
+              <span className="font-bold">{t('product.zoomHint')}</span>
             </div>
           </div>
         </div>
@@ -259,12 +285,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   {displayPrice.toLocaleString('en-US')}
                 </span>
                 <span className="text-xl font-black text-emerald-500">
-                  د.ج
+                  {t('common.currency')}
                 </span>
               </div>
               {selectedVariant && (
                 <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 mt-0.5">
-                  الباقة المحددة: {selectedVariant.name}
+                  {t('product.selectedPackage')} {selectedVariant.name}
                 </span>
               )}
             </div>
@@ -274,12 +300,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <button
                 onClick={handleShare}
                 className="w-10 h-10 rounded-xl border border-[var(--store-border)] hover:border-emerald-500 bg-[var(--store-bg)] flex items-center justify-center text-[var(--store-text)] hover:text-emerald-500 shadow-sm transition-all active:scale-95 cursor-pointer relative"
-                title="مشاركة رابط المنتج"
+                title={t('product.shareTooltip')}
               >
                 {copiedLink ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
                 {copiedLink && (
                   <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-2 py-0.5 rounded whitespace-nowrap shadow-md z-20">
-                    تم النسخ!
+                    {t('common.copied')}
                   </span>
                 )}
               </button>
@@ -291,7 +317,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     ? 'border-rose-500 text-rose-500 bg-rose-50 dark:bg-rose-950/30' 
                     : 'text-[var(--store-text)] hover:text-rose-500 hover:border-rose-400'
                 }`}
-                title="إضافة للمفضلة"
+                title={t('product.favTooltip')}
               >
                 <Heart className={`w-4 h-4 ${liked ? 'fill-rose-500 text-rose-500' : ''}`} />
               </button>
@@ -302,7 +328,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           {isOutOfStock && (
             <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-sm font-black flex items-center gap-2.5">
               <Ban className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />
-              <span>تم نفاذ المخزون من هذا المنتج حالياً</span>
+              <span>{t('product.outOfStockAlert')}</span>
             </div>
           )}
 
@@ -312,7 +338,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex items-center justify-between">
                 <h3 className="text-sm sm:text-base font-black text-[var(--store-text)] flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>اختر ما يناسبك:</span>
+                  <span>{t('product.choosePackage')}</span>
                 </h3>
                 {selectedVariant && (
                   <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
@@ -339,11 +365,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       {/* Left: Price in DA */}
                       <div className="flex flex-col items-start">
                         <span className={`text-sm font-black ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--store-text)]'}`}>
-                          {v.price.toLocaleString('en-US')} <span className="text-xs font-bold">د.ج</span>
+                          {v.price.toLocaleString('en-US')} <span className="text-xs font-bold">{t('common.currency')}</span>
                         </span>
                         {v.originalPrice && v.originalPrice > v.price && (
                           <span className="text-[10px] text-[var(--store-text-muted)] line-through">
-                            {v.originalPrice.toLocaleString('en-US')} د.ج
+                            {v.originalPrice.toLocaleString('en-US')} {t('common.currency')}
                           </span>
                         )}
                       </div>
@@ -372,19 +398,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-[var(--store-text)] flex items-center gap-2">
                   <Gamepad2 className="w-4 h-4 text-indigo-500" />
-                  <span>بيانات حساب اللعبة المطلوبة للشحن:</span>
+                  <span>{t('product.requiredGameInfo')}</span>
                 </h3>
-                <span className="text-[10px] text-[var(--store-text-muted)]">معلومات سرية ومحمية 🔒</span>
+                <span className="text-[10px] text-[var(--store-text-muted)]">{t('product.confidential')}</span>
               </div>
               <div className="space-y-2.5">
                 {activeRequiredFields.map((field) => (
                   <div key={field.id} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-[var(--store-text)]">
-                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                        {getFieldLabel(field)} {field.required && <span className="text-rose-500">*</span>}
                       </label>
                       {fieldErrors[field.id] && (
-                        <span className="text-[11px] text-rose-500 font-bold">{fieldErrors[field.id]}</span>
+                        <span className="text-[11px] text-rose-500 font-bold">{fieldErrors[field.id] || t('product.fieldRequired')}</span>
                       )}
                     </div>
                     <input
@@ -396,7 +422,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                           setFieldErrors(prev => ({ ...prev, [field.id]: '' }));
                         }
                       }}
-                      placeholder={field.placeholder || `أدخل ${field.label}...`}
+                      placeholder={getFieldPlaceholder(field)}
                       className="w-full px-3.5 py-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] text-xs text-[var(--store-text)] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
                     />
                   </div>
@@ -419,7 +445,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="pt-3 border-t border-[var(--store-border)] space-y-2">
               <h3 className="font-bold text-xs text-[var(--store-text-muted)] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                <span>المميزات المشمولة:</span>
+                <span>{t('product.features')}</span>
               </h3>
               <div className="space-y-1.5">
                 {product.features.map((feat, idx) => (
@@ -442,7 +468,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     const errors: Record<string, string> = {};
                     activeRequiredFields.forEach(f => {
                       if (f.required && !customFieldsData[f.id]?.trim()) {
-                        errors[f.id] = 'هذا الحقل مطلوب للشحن';
+                        errors[f.id] = t('product.fieldRequired');
                       }
                     });
                     if (Object.keys(errors).length > 0) {
@@ -465,10 +491,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 {isOutOfStock ? <Ban className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
                 <span>
                   {isOutOfStock
-                    ? 'تم نفاذ المخزون'
+                    ? t('product.outOfStock')
                     : selectedVariant
-                    ? `الشراء والدفع (${selectedVariant.price.toLocaleString('en-US')} د.ج)`
-                    : `الشراء والدفع (${product.price.toLocaleString('en-US')} د.ج)`}
+                    ? `${t('product.buyAndPay')} (${selectedVariant.price.toLocaleString('en-US')} ${t('common.currency')})`
+                    : `${t('product.buyAndPay')} (${product.price.toLocaleString('en-US')} ${t('common.currency')})`}
                 </span>
               </Link>
 
@@ -480,7 +506,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     ? 'border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 text-red-400 cursor-not-allowed opacity-60'
                     : 'border-[var(--store-border)] hover:border-emerald-500 bg-[var(--store-bg)] text-[var(--store-text)] hover:text-emerald-500 cursor-pointer'
                 }`}
-                title={isOutOfStock ? 'المنتج غير متوفر في المخزون' : 'إضافة إلى السلة'}
+                title={isOutOfStock ? t('product.outOfStockTooltip') : t('product.addToCart')}
               >
                 {addedToCart ? (
                   <Check className="w-6 h-6 text-emerald-500" />
@@ -494,11 +520,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[var(--store-text-muted)] pt-1 px-1">
               <span className="flex items-center gap-1.5 font-semibold">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                دفع إلكتروني آمن 100% عبر Chargily
+                {t('product.guaranteeSecure')}
               </span>
               <span className="flex items-center gap-1.5 font-semibold">
                 <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                تنفيذ وشحن فوري وسريع
+                {t('product.guaranteeInstant')}
               </span>
             </div>
           </div>
@@ -571,12 +597,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       {showLoginToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-neutral-900 border border-neutral-700 text-white px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom duration-300">
           <LogIn className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-xs font-bold">يرجى تسجيل الدخول أولاً لإضافة المنتج إلى السلة</span>
+          <span className="text-xs font-bold">{t('product.loginToast')}</span>
           <Link
             href="/register"
             className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-colors"
           >
-            تسجيل دخول
+            {t('product.loginBtn')}
           </Link>
         </div>
       )}
