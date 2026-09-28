@@ -10,7 +10,7 @@ import { useCart } from '@/lib/cart-context';
 import { useTranslation } from '@/lib/i18n-context';
 import { auth, db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -206,10 +206,12 @@ function NavBar() {
           await signInWithRedirect(auth, provider);
           return;
         } catch {
-          setError('تم حظر النافذة المنبثقة من المتصفح، يرجى السماح بها');
+          setError('تم حظر النافذة المنبثقة من المتصفح (Brave/Chrome). يرجى الضغط على أيقونة الدرع أو القفل في شريط العنوان والسماح بالنوافذ.');
         }
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setError('هذا النطاق غير مصرح به في Firebase Auth. يرجى إضافة lokstor.vercel.app في إعدادات Firebase.');
       } else {
-        setError('تعذّر تسجيل الدخول عبر Google، حاول مجدداً');
+        setError(err?.message || 'تعذّر تسجيل الدخول عبر Google، حاول مجدداً');
       }
     } finally {
       setGoogleLoading(false);
