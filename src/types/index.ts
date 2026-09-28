@@ -27,6 +27,8 @@ export interface Product {
   imageUrl: string;
   image?: string;
   stock?: number;
+  stockType?: 'units' | 'numeric';
+  unlimitedStock?: boolean;
   type?: string;
   status?: string;
   category?: string;

@@ -111,9 +111,10 @@ export async function POST(req: NextRequest) {
     // Check stock for strictly inventory-limited items
     // Strict stock check - no bypass
     const isOutOfStock = Boolean(
-      (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) ||
-      (product.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
-      product.status === 'out_of_stock'
+      product.status === 'out_of_stock' ||
+      (product.stockType === 'numeric'
+        ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
+        : (product.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product.stock === 'number' && product.stock <= 0))
     );
     if (isOutOfStock) {
       return NextResponse.json(

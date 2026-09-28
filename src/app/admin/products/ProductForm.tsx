@@ -38,6 +38,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
   });
 
   // Each stockLink item is its own string — completely isolated
+  const [stockMode, setStockMode] = useState<'numeric' | 'units'>('numeric');
+  const [numericStock, setNumericStock] = useState<number>(50);
+  const [isUnlimitedStock, setIsUnlimitedStock] = useState<boolean>(true);
   const [stockItems, setStockItems] = useState<string[]>(['']);
   const [featuresText, setFeaturesText] = useState('');
 
@@ -177,7 +180,23 @@ export default function ProductForm({ productId }: ProductFormProps) {
   };
 
   // Quick Preset Templates
-  const applyPresetTemplate = (type: 'cod' | 'pubg' | 'freefire') => {
+  const applyPresetTemplate = (type: 'cod' | 'pubg' | 'freefire' | 'chatgpt') => {
+    if (type === 'chatgpt') {
+      setHasVariants(true);
+      set('name', form.name || 'اشتراك ChatGPT Plus - تفعيل رسمي على حسابك');
+      set('category', 'اشتراكات وخدمات رقمية');
+      setStockMode('numeric');
+      setIsUnlimitedStock(true);
+      setVariants([
+        { id: 'gpt_1m', name: 'اشتراك شهر واحد (1 Month)', price: 3800, image: '/images/game-gem.jpg' },
+        { id: 'gpt_3m', name: 'اشتراك 3 أشهر (3 Months)', price: 10500, image: '/images/game-gem.jpg' },
+      ]);
+      setRequiredFields([
+        { id: 'game_email', label: 'البريد الإلكتروني لحساب ChatGPT (Email)', placeholder: 'أدخل بريد حساب OpenAI / ChatGPT', required: true, type: 'text' },
+        { id: 'game_password', label: 'كلمة مرور الحساب (Password)', placeholder: 'أدخل كلمة مرور الحساب للتفعيل', required: true, type: 'password' },
+      ]);
+      return;
+    }
     setHasVariants(true);
     if (type === 'cod') {
       set('name', form.name || 'شحن نقاط Call of Duty عبر الحساب - COD Mobile CP');
@@ -421,6 +440,13 @@ export default function ProductForm({ productId }: ProductFormProps) {
                     <span>قوالب ألعاب سريعة التجهيز بضغطة زر:</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applyPresetTemplate('chatgpt')}
+                      className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                    >
+                      🤖 تفعيل حسابات ChatGPT Plus (إيميل وباسورد)
+                    </button>
                     <button
                       type="button"
                       onClick={() => applyPresetTemplate('cod')}

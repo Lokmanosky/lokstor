@@ -267,9 +267,10 @@ function HomePageContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map(product => {
               const outOfStock = Boolean(
-    (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) ||
-    (product.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
-    product.status === 'out_of_stock'
+    product.status === 'out_of_stock' ||
+    (product.stockType === 'numeric'
+      ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
+      : (product.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product.stock === 'number' && product.stock <= 0))
   );
               
               return (

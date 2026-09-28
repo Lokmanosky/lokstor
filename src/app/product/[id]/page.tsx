@@ -218,9 +218,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const isOutOfStock = Boolean(
-    (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0) ||
-    (product.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
-    product.status === 'out_of_stock'
+    product.status === 'out_of_stock' ||
+    (product.stockType === 'numeric'
+      ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
+      : (product.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product.stock === 'number' && product.stock <= 0))
   );
 
   const displayPrice = selectedVariant ? selectedVariant.price : product.price;

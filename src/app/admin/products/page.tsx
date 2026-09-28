@@ -309,7 +309,9 @@ export default function ProductsPage() {
               ) : (
                 filteredProducts.map(p => {
                   const imgSrc = getImageSrc(p);
-                  const stockCount = p.stockLinks ? p.stockLinks.length : (p.stock || 0);
+                  const isUnlimited = Boolean(p.stockType === 'numeric' && p.unlimitedStock);
+                  const stockCountNum = p.stockType === 'numeric' ? (p.stock || 0) : (p.stockLinks ? p.stockLinks.length : (p.stock || 0));
+                  const isAvailable = isUnlimited || stockCountNum > 0;
                   const isDuplicating = duplicatingId === p.id;
                   const status = p.status || 'published';
 
@@ -354,12 +356,12 @@ export default function ProductsPage() {
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            stockCount > 0
+                            isAvailable
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               : 'bg-red-500/10 text-red-400 border border-red-500/20'
                           }`}
                         >
-                          {stockCount > 0 ? `${stockCount} متوفر` : 'نفذ المخزون'}
+                          {isAvailable ? isUnlimited ? "غير محدود ♾️" : `${stockCountNum} متوفر` : 'نفذ المخزون'}
                         </span>
                       </td>
 

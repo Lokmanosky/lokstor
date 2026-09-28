@@ -10,6 +10,8 @@ export const productSchema = z.object({
   image: z.string().optional(),
   fileUrl: z.string().optional(),
   stock: z.number().min(0).optional(),
+  stockType: z.enum(['units', 'numeric']).optional(),
+  unlimitedStock: z.boolean().optional(),
   // stockLinks: any text content — URL, account credentials, activation code, instructions, etc.
   stockLinks: z.array(z.string().min(1).max(5000)).optional(),
   type: z.enum(['digital', 'subscription', 'games']).optional(),

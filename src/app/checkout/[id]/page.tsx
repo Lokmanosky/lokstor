@@ -44,9 +44,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const [productId, setProductId] = useState<string>('');
   const [product, setProduct] = useState<Product | null>(null);
   const isOutOfStock = Boolean(
-    (product?.stock !== undefined && product?.stock !== null && Number(product.stock) <= 0) ||
-    (product?.stockLinks && Array.isArray(product.stockLinks) && product.stockLinks.length === 0) ||
-    product?.status === 'out_of_stock'
+    product?.status === 'out_of_stock' ||
+    (product?.stockType === 'numeric'
+      ? (!product?.unlimitedStock && typeof product?.stock === 'number' && product.stock <= 0)
+      : (product?.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product?.stock === 'number' && product.stock <= 0))
   );
   const [loadingProduct, setLoadingProduct] = useState(true);
 
