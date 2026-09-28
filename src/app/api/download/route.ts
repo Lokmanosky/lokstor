@@ -126,7 +126,7 @@ ${detailsSection}
 الموقع: ${process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app'}
 `;
 
-    return new NextResponse(demoContent, {
+    return new NextResponse('\uFEFF' + demoContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',

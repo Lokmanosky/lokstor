@@ -167,7 +167,8 @@ ${deliverableDetails}
 شكراً لتعاملكم مع Lokstor!
 رابط المتجر: https://lokstor.vercel.app
 `;
-      const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+      // Prepend UTF-8 BOM (﻿) so default Android & Windows viewers recognize Arabic UTF-8
+      const blob = new Blob(['\uFEFF' + textToSave], { type: 'text/plain;charset=utf-8' });
       const blobUrl = URL.createObjectURL(blob);
       const tempLink = document.createElement('a');
       tempLink.href = blobUrl;
