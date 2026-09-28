@@ -72,14 +72,26 @@ export default function ProductForm({ productId }: ProductFormProps) {
           setRequiredFields(data.requiredFields || []);
         }
 
-        // Initialize stock mode & unlimitedStock
-        if (data.stockType === 'numeric' || Boolean(data.unlimitedStock) || (typeof data.stock === 'number' && (!links || links.length === 0))) {
+        // Initialize stock mode & unlimitedStock correctly
+        if (data.stockType === 'units') {
+          setStockMode('units');
+          setIsUnlimitedStock(false);
+          setStockItems(links && links.length > 0 ? links : ['']);
+        } else if (data.stockType === 'numeric' || Boolean(data.unlimitedStock)) {
           setStockMode('numeric');
           setIsUnlimitedStock(Boolean(data.unlimitedStock || (typeof data.stock === 'number' && data.stock >= 99999)));
           setNumericStock(typeof data.stock === 'number' && data.stock < 99999 ? data.stock : 50);
         } else {
-          setStockMode('units');
-          setIsUnlimitedStock(false);
+          // Legacy products fallback
+          if (links && links.length > 0) {
+            setStockMode('units');
+            setIsUnlimitedStock(false);
+            setStockItems(links);
+          } else {
+            setStockMode('numeric');
+            setIsUnlimitedStock(false);
+            setNumericStock(typeof data.stock === 'number' ? data.stock : 0);
+          }
         }
       }
       setLoading(false);

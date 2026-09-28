@@ -64,10 +64,12 @@ export default function OrdersPage() {
     try {
       const orderRef = doc(db, 'orders', orderId);
       const orderSnap = await getDoc(orderRef);
-      if (!orderSnap.exists()) return;
+      if (!orderSnap.exists()) return { success: false, message: 'Order not found' };
       const orderData = orderSnap.data();
 
-      let downloadUrl = orderData.downloadUrl || '';
+      let downloadUrl = '';
+      let pulledFromStock = false;
+      let stockRemaining = 0;
 
       if (orderData.productId) {
         const prodRef = doc(db, 'products', orderData.productId);
@@ -75,30 +77,40 @@ export default function OrdersPage() {
         if (prodSnap.exists()) {
           const prodData = prodSnap.data();
 
-          // 1. Units Mode (take 1 item, remove from stockLinks array, decrement stock)
+          // 1. Units Mode (take top link, slice array, decrement stock counter)
           if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
-            if (!downloadUrl) downloadUrl = prodData.stockLinks[0];
+            downloadUrl = prodData.stockLinks[0];
             const newStockLinks = prodData.stockLinks.slice(1);
+            stockRemaining = newStockLinks.length;
             await updateDoc(prodRef, {
               stockLinks: newStockLinks,
               stock: newStockLinks.length,
               updatedAt: Date.now(),
             });
+            pulledFromStock = true;
           }
           // 2. Numeric / File Mode
           else {
-            if (!downloadUrl && prodData.fileUrl) {
+            if (prodData.fileUrl) {
               downloadUrl = prodData.fileUrl;
             }
             if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
-              const newStock = Math.max(0, Number(prodData.stock || 1) - 1);
+              const currentStock = Number(prodData.stock || 1);
+              const newStock = Math.max(0, currentStock - 1);
+              stockRemaining = newStock;
               await updateDoc(prodRef, {
                 stock: newStock,
                 updatedAt: Date.now(),
               });
+              pulledFromStock = true;
             }
           }
         }
+      }
+
+      // If no new stock unit was available, but order already had a downloadUrl, retain it
+      if (!downloadUrl && orderData.downloadUrl) {
+        downloadUrl = orderData.downloadUrl;
       }
 
       await updateDoc(orderRef, {
@@ -106,9 +118,17 @@ export default function OrdersPage() {
         downloadUrl: downloadUrl || null,
         paidAt: Date.now(),
       });
-    } catch (err) {
+
+      return {
+        success: true,
+        downloadUrl,
+        pulledFromStock,
+        stockRemaining,
+      };
+    } catch (err: any) {
       console.error('Error fulfilling order and updating stock:', err);
       await updateDoc(doc(db, 'orders', orderId), { status: 'paid', paidAt: Date.now() });
+      return { success: false, error: err };
     }
   };
 
@@ -116,12 +136,29 @@ export default function OrdersPage() {
     if(!id) return;
     try {
       if (newStatus === 'paid') {
-        await fulfillOrderAndDeductStock(id);
+        const res = await fulfillOrderAndDeductStock(id);
+        if (res && res.pulledFromStock) {
+          setBulkFeedback(`تم تفعيل الطلب بنجاح وسحب رابط/حساب من المخزون فوراً وتوصيله للعميل (المتبقي في المخزون: ${res.stockRemaining})`);
+        } else if (res && res.downloadUrl) {
+          setBulkFeedback('تم تفعيل الطلب بنجاح كمدفوع مع الاحتفاظ برابط التسليم.');
+        } else {
+          setBulkFeedback('تم تفعيل الطلب كمدفوع (تنبيه: مخزون هذا المنتج فارغ حالياً، لم يتم سحب أي رابط).');
+        }
+      } else if (newStatus === 'pending') {
+        // Clear downloadUrl so it can be re-pulled from stock when marked as paid again
+        await updateDoc(doc(db, 'orders', id), { 
+          status: 'pending',
+          downloadUrl: null,
+        });
+        setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار بنجاح وتجهيزه لإعادة سحب رابط جديد من المخزون عند إكماله');
       } else {
         await updateDoc(doc(db, 'orders', id), { status: newStatus });
+        setBulkFeedback(`تم تغيير حالة الطلب إلى ${newStatus === 'failed' ? 'ملغي' : newStatus}`);
       }
-    } catch(e) {
+      setTimeout(() => setBulkFeedback(null), 5000);
+    } catch(e: any) {
       console.error(e);
+      alert('حدث خطأ أثناء تعديل حالة الطلب: ' + e?.message);
     }
   };
 
@@ -166,7 +203,11 @@ export default function OrdersPage() {
           const chunk = selectedOrderIds.slice(i, i + chunkSize);
           const batch = writeBatch(db);
           chunk.forEach(id => {
-            batch.update(doc(db, 'orders', id), { status: newStatus });
+            const updatePayload: any = { status: newStatus };
+            if (newStatus === 'pending') {
+              updatePayload.downloadUrl = null;
+            }
+            batch.update(doc(db, 'orders', id), updatePayload);
           });
           await batch.commit();
         }
@@ -978,8 +1019,36 @@ export default function OrdersPage() {
                 </p>
               </div>
             ) : (
-              <div className="p-4 rounded-xl bg-[var(--admin-bg)] border border-[var(--admin-border)] text-xs text-center text-[var(--admin-text-muted)]">
-                لا توجد بيانات حساب إضافية لهذا الطلب (منتج رقمي عادي أو كود أو اشتراك).
+              <div className="space-y-3">
+                {selectedOrder.downloadUrl ? (
+                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-2 text-xs text-right">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <span>رابط / حساب التسليم المسلم للعميل (من المخزون):</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedOrder.downloadUrl || '');
+                          setCopiedKey('downloadUrl');
+                          setTimeout(() => setCopiedKey(null), 2000);
+                        }}
+                        className="px-2 py-1 rounded bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer hover:bg-emerald-500 transition-colors"
+                      >
+                        {copiedKey === 'downloadUrl' ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedKey === 'downloadUrl' ? 'تم النسخ' : 'نسخ الرابط'}</span>
+                      </button>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-[var(--admin-bg)] border border-emerald-500/20 font-mono text-[11px] text-[var(--admin-text)] break-all select-all max-h-24 overflow-y-auto">
+                      {selectedOrder.downloadUrl}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-[var(--admin-bg)] border border-[var(--admin-border)] text-xs text-center text-[var(--admin-text-muted)]">
+                    لا توجد بيانات حساب أو روابط إضافية مسلمة لهذا الطلب بعد.
+                  </div>
+                )}
               </div>
             )}
 
