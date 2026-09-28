@@ -451,6 +451,18 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 />
               </div>
               <div>
+                <label className={labelCls}>السعر الأصلي (اختياري)</label>
+                <input
+                  className={inputCls}
+                  type="number"
+                  min={0}
+                  disabled={Boolean(form.priceUnspecified)}
+                  value={form.priceUnspecified ? '' : (form.originalPrice || '')}
+                  onChange={e => set('originalPrice', e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="سيظهر مشطوباً"
+                />
+              </div>
+              <div>
                 <label className={labelCls}>التصنيف</label>
                 <select className={inputCls} value={form.category || ''} onChange={e => set('category', e.target.value)}>
                   <option value="">— بدون تصنيف —</option>
@@ -617,16 +629,28 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         </div>
 
                         {/* Variant Price */}
-                        <div className="w-full sm:w-36 flex items-center gap-1.5 shrink-0">
-                          <input
-                            type="number"
-                            min={0}
-                            value={v.price}
-                            onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
-                            placeholder="السعر"
-                            className={inputCls + ' text-xs font-mono font-bold'}
-                          />
-                          <span className="text-xs text-[var(--admin-text-muted)] font-bold shrink-0">د.ج</span>
+                        <div className="w-full sm:w-64 flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
+                          <div className="flex w-full items-center gap-1.5">
+                            <input
+                              type="number"
+                              min={0}
+                              value={v.price}
+                              onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
+                              placeholder="السعر"
+                              className={inputCls + ' text-xs font-mono font-bold w-full'}
+                            />
+                            <span className="text-xs text-[var(--admin-text-muted)] font-bold shrink-0">د.ج</span>
+                          </div>
+                          <div className="flex w-full items-center gap-1.5">
+                            <input
+                              type="number"
+                              min={0}
+                              value={v.originalPrice || ''}
+                              onChange={e => updateVariant(idx, 'originalPrice', e.target.value ? Number(e.target.value) : undefined)}
+                              placeholder="أصلي مشطوب"
+                              className={inputCls + ' text-xs font-mono font-bold w-full border-amber-500/30'}
+                            />
+                          </div>
                         </div>
 
                         {/* Remove button */}
