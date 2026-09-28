@@ -91,6 +91,64 @@ export default function CustomerAccountPage() {
     if (user) fetchCustomerOrders();
   }, [user]);
 
+  const isWebUrl = (url?: string) => {
+    if (!url) return false;
+    try {
+      const u = new URL(url);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleDownloadDeliverable = (order: Order) => {
+    const content = order.downloadUrl;
+    if (!content) {
+      if (order.downloadToken) {
+        window.open(`/api/download?order_id=${order.id}&token=${order.downloadToken}`, '_blank');
+      }
+      return;
+    }
+
+    if (isWebUrl(content)) {
+      window.open(content, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // Text deliverable: download clean .txt file
+    try {
+      const cleanName = (order.productName || 'digital-product').replace(/[/\\?%*:|"<>]/g, '_');
+      const textToSave = `===========================================
+Lokstor - بيانات المنتج الرقمي والتفعيل
+===========================================
+المنتج: ${order.productName || 'منتج رقمي'}
+رقم الطلب: #${order.id}
+المستلم: ${order.customerName || ''} (${order.customerEmail || ''})
+تاريخ الشراء: ${new Date(order.createdAt).toLocaleString('ar-DZ')}
+
+-------------------------------------------
+محتوى التفعيل / بيانات الحساب:
+${content}
+-------------------------------------------
+
+شكراً لتعاملكم مع Lokstor!
+رابط المتجر: https://lokstor.vercel.app
+`;
+      const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const tempLink = document.createElement('a');
+      tempLink.href = blobUrl;
+      tempLink.download = `${cleanName}_تفعيل.txt`;
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      document.body.removeChild(tempLink);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error('Download error:', e);
+      copyToClipboard(content, `deliverable_${order.id}`);
+    }
+  };
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -316,24 +374,41 @@ export default function CustomerAccountPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {isPaid && (
                           <>
-                            {order.downloadUrl ? (
-                              <a href={order.downloadUrl} target="_blank" rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--store-primary)] text-[var(--store-bg)] text-xs font-bold hover:opacity-90 transition-opacity">
-                                <Download className="w-3.5 h-3.5" /><span>تحميل الملف</span>
-                              </a>
-                            ) : order.downloadToken ? (
-                              <a href={`/api/download?token=${order.downloadToken}`} target="_blank" rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--store-primary)] text-[var(--store-bg)] text-xs font-bold hover:opacity-90 transition-opacity">
-                                <Download className="w-3.5 h-3.5" /><span>تحميل الملف</span>
-                              </a>
-                            ) : null}
-                            {order.chargilyInvoiceId && (
-                              <button onClick={() => copyToClipboard(order.id, order.id)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-xs text-[var(--store-text)] transition-colors">
-                                {copiedId === order.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                                <span>{copiedId === order.id ? 'تم النسخ' : 'نسخ رقم الطلب'}</span>
+                            {(order.downloadUrl || order.downloadToken) && (
+                              <button
+                                onClick={() => handleDownloadDeliverable(order)}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--store-primary)] text-[var(--store-bg)] text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>{order.downloadUrl && !isWebUrl(order.downloadUrl) ? 'تحميل الملف (.txt)' : 'تحميل الملف'}</span>
                               </button>
                             )}
+                            {order.downloadUrl && !isWebUrl(order.downloadUrl) && (
+                              <button
+                                onClick={() => copyToClipboard(order.downloadUrl!, `info_${order.id}`)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-400 font-bold transition-all"
+                                title="نسخ معلومات الحساب أو التفعيل"
+                              >
+                                {copiedId === `info_${order.id}` ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>تم نسخ البيانات!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>نسخ بيانات التفعيل</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => copyToClipboard(order.id, order.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-xs text-[var(--store-text)] transition-colors"
+                            >
+                              {copiedId === order.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copiedId === order.id ? 'تم النسخ' : 'نسخ رقم الطلب'}</span>
+                            </button>
                           </>
                         )}
                         {isPending && (

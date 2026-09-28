@@ -56,12 +56,12 @@ function DeliveryBox({ content }: { content: string }) {
         </pre>
         <button
           onClick={handleCopy}
-          className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold hover:bg-slate-700 transition-colors"
+          className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold text-white hover:bg-slate-700 transition-colors shadow-sm"
         >
           {copied ? (
             <><CheckCheck className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">تم النسخ</span></>
           ) : (
-            <><Copy className="w-3.5 h-3.5 text-[var(--store-text-muted)]" /><span className="text-[var(--store-text-muted)]">نسخ</span></>
+            <><Copy className="w-3.5 h-3.5 text-white" /><span className="text-white">نسخ</span></>
           )}
         </button>
       </div>

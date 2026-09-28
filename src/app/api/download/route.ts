@@ -12,20 +12,26 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get('token');
     const isDemo = searchParams.get('demo') === 'true';
 
-    if (!orderId) {
+    if (!orderId && !token) {
       return NextResponse.json({ error: 'مُعرّف الطلب غير محدد' }, { status: 400 });
     }
 
     // 1. Fetch Order from Firestore
     let order: Order | null = null;
-    if (adminDb) {
+    if (adminDb && !orderId && token) {
+      const snapToken = await adminDb.collection('orders').where('downloadToken', '==', token).limit(1).get();
+      if (!snapToken.empty) {
+        order = { id: snapToken.docs[0].id, ...snapToken.docs[0].data() } as Order;
+      }
+    }
+    if (adminDb && orderId && !order) {
       const snap = await adminDb.collection('orders').doc(orderId).get();
       if (snap.exists) {
         order = { id: snap.id, ...snap.data() } as Order;
       }
     }
 
-    if (!order) {
+    if (!order && orderId) {
       try {
         const snap = await getDoc(doc(db, 'orders', orderId));
         if (snap.exists()) {

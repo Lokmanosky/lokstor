@@ -226,7 +226,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <div className="inline-block w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mb-4" />
-        <p className="text-blue-950 font-bold text-sm">جاري تحميل بيانات الشراء...</p>
+        <p className="text-blue-950 dark:text-white font-bold text-sm">جاري تحميل بيانات الشراء...</p>
       </div>
     );
   }
@@ -247,18 +247,18 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       {/* Header back link */}
       <Link
         href={`/product/${product.id}`}
-        className="inline-flex items-center gap-2 text-sm font-bold text-blue-950 hover:text-blue-800 transition-colors"
+        className="inline-flex items-center gap-2 text-sm font-bold text-black dark:text-white hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
       >
-        <ArrowRight className="w-4 h-4 text-blue-950" />
+        <ArrowRight className="w-4 h-4 text-black dark:text-white" />
         <span>العودة لصفحة تفاصيل المنتج</span>
       </Link>
 
       {/* Main Title & Subtitle */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-black text-black tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-black text-black dark:text-white tracking-tight">
           تأكيد الطلب وإتمام الدفع
         </h1>
-        <p className="text-blue-950 text-sm sm:text-base font-semibold max-w-xl mx-auto">
+        <p className="text-black dark:text-white text-sm sm:text-base font-semibold max-w-xl mx-auto">
           اختر وسيلة الدفع المناسبة لك، وسيصلك رابط التفعيل والتحميل فوراً
         </p>
       </div>
