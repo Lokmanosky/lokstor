@@ -335,8 +335,27 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>السعر (د.ج) *</label>
-                <input className={inputCls} type="number" min={0} value={form.price || 0} onChange={e => set('price', Number(e.target.value))} />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelCls + ' mb-0'}>السعر (د.ج) *</label>
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.priceUnspecified)}
+                      onChange={e => set('priceUnspecified', e.target.checked)}
+                      className="rounded border-[var(--admin-border)] text-amber-500 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <span className="font-bold text-[11px] text-amber-500">سعر غير محدد</span>
+                  </label>
+                </div>
+                <input
+                  className={inputCls + (form.priceUnspecified ? ' opacity-60 bg-amber-500/5 border-amber-500/30' : '')}
+                  type="number"
+                  min={0}
+                  disabled={Boolean(form.priceUnspecified)}
+                  value={form.priceUnspecified ? 0 : (form.price || 0)}
+                  onChange={e => set('price', Number(e.target.value))}
+                  placeholder={form.priceUnspecified ? 'السعر غير محدد (حسب الطلب)' : '0'}
+                />
               </div>
               <div>
                 <label className={labelCls}>التصنيف</label>
