@@ -325,11 +325,23 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* Out of stock alert banner */}
-          {isOutOfStock && (
+          {/* Out of stock or low stock alert banner */}
+          {isOutOfStock ? (
             <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-sm font-black flex items-center gap-2.5">
               <Ban className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />
               <span>{t('product.outOfStockAlert')}</span>
+            </div>
+          ) : !Boolean(product.unlimitedStock || (product.stockType === 'numeric' && product.unlimitedStock)) && 
+             (product.stockType === 'numeric' ? (product.stock || 0) : (product.stockLinks ? product.stockLinks.length : (product.stock || 0))) < 20 && (
+            <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+              <span>
+                {lang === 'ar' ? 'الكمية محدودة: متبقي ' : 'Limited quantity: only '}
+                <strong className="text-sm font-black text-red-600 dark:text-red-400 underline mx-1">
+                  {product.stockType === 'numeric' ? (product.stock || 0) : (product.stockLinks ? product.stockLinks.length : (product.stock || 0))}
+                </strong>
+                {lang === 'ar' ? 'قطع فقط في المخزون ⚡' : 'items left in stock ⚡'}
+              </span>
             </div>
           )}
 

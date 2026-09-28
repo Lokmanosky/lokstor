@@ -709,14 +709,38 @@ export default function ProductForm({ productId }: ProductFormProps) {
               </div>
 
               {/* Status Badge */}
-              <span className={`text-xs font-bold px-3 py-1 rounded-full self-start sm:self-center ${
+              <span className={`text-xs font-bold px-3 py-1 rounded-full self-start sm:self-center transition-colors ${
                 stockMode === 'numeric'
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                  : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                  ? (isUnlimitedStock
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                      : numericStock < 20
+                        ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20')
+                  : (filledCount < 20
+                      ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                      : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20')
               }`}>
                 {stockMode === 'numeric' 
-                  ? (isUnlimitedStock ? 'مخزون غير محدود ♾️' : `${numericStock} متوفر بالعدد`)
-                  : `${filledCount} حساب معزول`}
+                  ? (isUnlimitedStock ? (
+                      'مخزون غير محدود ♾️'
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <span className={numericStock < 20 ? 'text-red-600 dark:text-red-400 font-black' : ''}>
+                          {numericStock}
+                        </span>
+                        <span>متوفر بالعدد</span>
+                        {numericStock < 20 && <span>⚠️</span>}
+                      </span>
+                    ))
+                  : (
+                    <span className="flex items-center gap-1">
+                      <span className={filledCount < 20 ? 'text-red-600 dark:text-red-400 font-black' : ''}>
+                        {filledCount}
+                      </span>
+                      <span>حساب معزول</span>
+                      {filledCount < 20 && <span>⚠️</span>}
+                    </span>
+                  )}
               </span>
             </div>
 
@@ -794,20 +818,39 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 </div>
 
                 {!isUnlimitedStock && (
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex-1">
-                      <input
-                        type="number"
-                        min={0}
-                        value={numericStock}
-                        onChange={(e) => setNumericStock(Math.max(0, parseInt(e.target.value) || 0))}
-                        placeholder="أدخل عدد الوحدات المتاحة (مثال: 50)"
-                        className={inputCls + ' font-mono text-sm font-bold'}
-                      />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          min={0}
+                          value={numericStock}
+                          onChange={(e) => setNumericStock(Math.max(0, parseInt(e.target.value) || 0))}
+                          placeholder="أدخل عدد الوحدات المتاحة (مثال: 50)"
+                          className={`${inputCls} font-mono text-base font-bold transition-all ${
+                            numericStock < 20
+                              ? '!text-red-600 dark:!text-red-400 border-red-500/70 bg-red-500/5 focus:!ring-red-500 focus:!border-red-500'
+                              : 'text-emerald-600 dark:text-emerald-400 border-emerald-500/40 focus:ring-emerald-500'
+                          }`}
+                        />
+                        {numericStock < 20 && (
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 pointer-events-none">
+                            <span>مخزون قليل (&lt; 20) ⚠️</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold shrink-0 ${numericStock < 20 ? 'text-red-600 dark:text-red-400' : 'text-[var(--admin-text-muted)]'}`}>
+                        وحدة متاحة
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-[var(--admin-text-muted)] shrink-0">
-                      وحدة متاحة
-                    </span>
+
+                    {numericStock < 20 && (
+                      <p className="text-[11px] text-red-600 dark:text-red-400 font-bold flex items-center gap-1.5 animate-in fade-in">
+                        <span>⚠️ تنبيه: الكمية المتبقية أقل من 20 وحدة (متبقي </span>
+                        <strong className="font-black underline">{numericStock}</strong>
+                        <span> فقط). سيظهر الرقم باللون الأحمر للفت الانتباه.</span>
+                      </p>
+                    )}
                   </div>
                 )}
 

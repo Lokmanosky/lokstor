@@ -355,13 +355,29 @@ export default function ProductsPage() {
                       {/* Stock Units Badge */}
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            isAvailable
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                            !isAvailable
+                              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                              : isUnlimited
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                              : stockCountNum < 20
+                              ? 'bg-red-500/15 text-red-500 border border-red-500/30'
+                              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                           }`}
                         >
-                          {isAvailable ? isUnlimited ? "غير محدود ♾️" : `${stockCountNum} متوفر` : 'نفذ المخزون'}
+                          {!isAvailable ? (
+                            'نفذ المخزون'
+                          ) : isUnlimited ? (
+                            'غير محدود ♾️'
+                          ) : (
+                            <span className="flex items-center gap-1 font-semibold">
+                              <span className={stockCountNum < 20 ? 'text-red-500 font-black' : ''}>
+                                {stockCountNum}
+                              </span>
+                              <span>متوفر</span>
+                              {stockCountNum < 20 && <span className="text-[10px]">⚠️</span>}
+                            </span>
+                          )}
                         </span>
                       </td>
 
