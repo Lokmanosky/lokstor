@@ -39,7 +39,12 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
   }, [isLoginPage]);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
+    window.location.href = '/';
   };
 
   const toggleTheme = (e?: React.MouseEvent) => {
@@ -92,11 +97,11 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
         ) : (
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold border border-[var(--admin-border)] rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs"
             title="العودة لصفحة المتجر"
           >
-            <Store className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="font-bold">المتجر</span>
+            <Store className="w-4 h-4 text-emerald-500" />
+            <span>المتجر</span>
           </Link>
         )}
         

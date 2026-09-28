@@ -102,6 +102,18 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
 
       {/* Nav items */}
       <nav className="flex-1 py-4 space-y-1.5 px-2 overflow-y-auto">
+        {/* Top return to store */}
+        <div className="pb-2 mb-2 border-b border-[var(--admin-border)]">
+          <Link
+            href="/"
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs"
+            title="العودة للمتجر"
+            onClick={() => { if (isMobile) setOpen(false); }}
+          >
+            <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
+            {(open || isMobile) && <span className="flex-1">العودة للمتجر</span>}
+          </Link>
+        </div>
         {navItems.map(({ href, label, icon: Icon, badge }) => {
           const isActive = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
           const showLabel = isMobile || open;
