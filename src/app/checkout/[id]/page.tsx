@@ -27,6 +27,18 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+
+const DEFAULT_COD_VARIANTS: ProductVariant[] = [
+  { id: 'cod_80', name: '80 CP', price: 290, image: '/images/game-coin.jpg' },
+  { id: 'cod_420', name: '420 CP', price: 1390, image: '/images/game-coin.jpg' },
+  { id: 'cod_880', name: '880 CP', price: 2690, image: '/images/game-coin.jpg' },
+  { id: 'cod_2400', name: '2400 CP', price: 6790, image: '/images/game-coin.jpg' },
+  { id: 'cod_5000', name: '5000 CP', price: 13990, image: '/images/game-coin.jpg' },
+  { id: 'cod_10800', name: '10800 CP', price: 29500, image: '/images/game-coin.jpg' },
+  { id: 'cod_pass_w', name: 'تذكرة الإمداد الأسبوعية', price: 290, image: '/images/game-coin.jpg' },
+  { id: 'cod_pass_m', name: 'تذكرة الإمداد الشهرية', price: 990, image: '/images/game-coin.jpg' },
+];
+
 export default function CheckoutPage({ params }: { params: Promise<{ id: string }> }) {
   const { t, lang } = useTranslation();
   const [productId, setProductId] = useState<string>('');
@@ -109,21 +121,58 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     loadProduct();
   }, [productId]);
 
-  // Load selected variant and prefilled game info
+  // Load selected variant with fallback support
   useEffect(() => {
-    if (product && variantParamId && product.variants) {
-      const v = product.variants.find((x) => x.id === variantParamId);
+    if (product && variantParamId) {
+      const vars = (product.variants && product.variants.length > 0) ? product.variants : DEFAULT_COD_VARIANTS;
+      const v = vars.find((x) => x.id === variantParamId);
       if (v) setSelectedVariant(v);
     }
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = sessionStorage.getItem('lokstor_game_info');
-        if (stored) {
-          setGameFields(JSON.parse(stored));
-        }
-      } catch {}
-    }
   }, [product, variantParamId]);
+
+  // Compute effective price based on selected variant, custom amount, or base price
+  const effectivePrice = useMemo(() => {
+    if (selectedVariant) return Number(selectedVariant.price);
+    if (product?.priceUnspecified && customAmount) return Number(customAmount);
+    return Number(product?.price || 0);
+  }, [selectedVariant, product, customAmount]);
+
+  // Dynamic USDT equivalent (approx 250 DZD = 1 USDT)
+  const cryptoUsdtEquivalent = useMemo(() => {
+    const approx = Math.max(1, Math.round((effectivePrice / 250) * 10) / 10);
+    return `~${approx}$ USDT`;
+  }, [effectivePrice]);
+
+  const isGameProduct = Boolean(
+    (product?.category && (product.category.includes('لعب') || product.category.includes('شحن'))) ||
+    product?.type === 'games' ||
+    (product?.name && (product.name.toLowerCase().includes('cod') || product.name.toLowerCase().includes('call of duty') || product.name.toLowerCase().includes('شدات') || product.name.toLowerCase().includes('نقاط')))
+  );
+
+  const activeRequiredFields = useMemo(() => {
+    if (product?.requiredFields && product.requiredFields.length > 0) {
+      return product.requiredFields;
+    }
+    if (isGameProduct) {
+      return [
+        { id: 'game_email', label: 'البريد الإلكتروني للعبة (Call Of Duty / Activision)', placeholder: 'Call Of Duty / Activision Email', required: true, type: 'text' },
+        { id: 'game_password', label: 'كلمة المرور (Password)', placeholder: 'أدخل كلمة مرور الحساب', required: true, type: 'password' },
+      ];
+    }
+    return [];
+  }, [product, isGameProduct]);
+
+  const handleGameInfoChange = (fieldId: string, value: string) => {
+    setGameInfo(prev => {
+      const updated = { ...prev, [fieldId]: value };
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('lokstor_game_info', JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+  };
 
 
   // Pre-fill user data if authenticated
@@ -206,7 +255,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         const telegramMessage = 
 `مرحباً، أرغب في تأكيد شراء منتج عبر ${methodTitle}\n\n` +
 `📦 المنتج: ${product?.name}\n` +
-`💰 المبلغ: ${product?.price?.toLocaleString('en-US')} د.ج (~4$ USDT)\n` +
+`💰 المبلغ: ${effectivePrice.toLocaleString('en-US')} د.ج (${cryptoUsdtEquivalent})\n` +
 `👤 الاسم: ${customerName}\n` +
 `📧 البريد: ${customerEmail}\n` +
 `🔖 رقم الطلب: #${orderRef}\n` +
@@ -300,7 +349,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
             />
             <div className="space-y-1">
               <h4 className="font-black text-sm text-black line-clamp-2 leading-snug">
-                {product.name}
+                {product.name} {selectedVariant ? `(${selectedVariant.name})` : ''}
               </h4>
               <span className="text-xs text-blue-950 font-bold block">
                 {product.fileType || t('checkout.defaultType')}
@@ -309,19 +358,26 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           </div>
 
           {Object.keys(gameInfo).length > 0 && (
-            <div className="p-3 bg-indigo-50 border-2 border-indigo-200 rounded-xl space-y-1.5 text-xs text-right">
+            <div className="p-3.5 bg-indigo-50/80 border-2 border-indigo-200 rounded-xl space-y-2 text-xs text-right">
               <span className="font-black text-indigo-950 flex items-center gap-1.5">
                 <Gamepad2 className="w-4 h-4 text-indigo-600" />
                 <span>{lang === 'ar' ? 'بيانات شحن الحساب المُدخلة:' : lang === 'fr' ? 'Informations du compte de jeu :' : 'Game Account Details:'}</span>
               </span>
-              {Object.entries(gameInfo).map(([k, v]) => (
-                <div key={k} className="flex justify-between items-center text-blue-950 font-bold">
-                  <span className="text-slate-600">{k}:</span>
-                  <span className="font-mono text-[11px] truncate max-w-[170px]">
-                    {k.toLowerCase().includes('pass') || k.includes('كلمة') ? '••••••••' : v}
-                  </span>
-                </div>
-              ))}
+              {Object.entries(gameInfo).map(([k, v]) => {
+                const isSecret = k.toLowerCase().includes('pass') || k.includes('كلمة');
+                const friendlyLabel = 
+                  k === 'game_email' ? (lang === 'ar' ? 'البريد الإلكتروني للعبة' : 'Game Email') :
+                  k === 'game_password' ? (lang === 'ar' ? 'كلمة المرور' : 'Password') :
+                  k === 'player_id' ? (lang === 'ar' ? 'معرف اللاعب' : 'Player ID') : k;
+                return (
+                  <div key={k} className="flex justify-between items-center text-blue-950 font-bold gap-2">
+                    <span className="text-slate-600 shrink-0">{friendlyLabel}:</span>
+                    <span className="font-mono text-[11px] truncate max-w-[180px] text-left dir-ltr">
+                      {isSecret ? '••••••••' : v}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
           <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 text-sm">
@@ -337,10 +393,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               <span>{t('checkout.totalAmount')}</span>
               <div className="text-left">
                 <span className="text-emerald-600 text-2xl font-black block leading-none">
-                  {product.price.toLocaleString('en-US')} د.ج
+                  {effectivePrice.toLocaleString('en-US')} د.ج
                 </span>
                 <span className="text-xs text-slate-500 font-bold">
-                  {t('checkout.cryptoEq')}
+                  {lang === 'ar' ? `(${cryptoUsdtEquivalent} أو ما يعادله)` : cryptoUsdtEquivalent}
                 </span>
               </div>
             </div>
@@ -394,7 +450,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 )}
                 <div className="flex justify-between font-bold">
                   <span className="text-slate-600">المبلغ المطلوب:</span>
-                  <span className="text-emerald-700 font-black">{product.price.toLocaleString('en-US')} د.ج (~4$ USDT)</span>
+                  <span className="text-emerald-700 font-black">{effectivePrice.toLocaleString('en-US')} د.ج ({cryptoUsdtEquivalent})</span>
                 </div>
               </div>
 
@@ -617,6 +673,42 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 </p>
               </div>
 
+              {/* GAME ACCOUNT REQUIRED INPUTS */}
+              {activeRequiredFields.length > 0 && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 border-2 border-indigo-300 space-y-3.5 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-indigo-200/80 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Gamepad2 className="w-5 h-5 text-indigo-600" />
+                      <span className="font-black text-sm text-indigo-950">
+                        {lang === 'ar' ? 'بيانات حساب اللعبة لشحن الطلب' : lang === 'fr' ? 'Identifiants du jeu pour la recharge' : 'Game Account Details for Recharge'}
+                      </span>
+                      <span className="text-red-600 font-bold">*</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                      {lang === 'ar' ? 'معلومات مشفرة ومحمية 🔒' : 'Encrypted & Secure 🔒'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {activeRequiredFields.map((field: any) => (
+                      <div key={field.id} className="space-y-1.5">
+                        <label className="text-xs font-black text-slate-800 flex items-center justify-between">
+                          <span>{field.label} {field.required && <span className="text-red-600">*</span>}</span>
+                        </label>
+                        <input
+                          type={field.type || (field.id.includes('pass') ? 'password' : 'text')}
+                          required={field.required}
+                          value={gameInfo[field.id] || ''}
+                          onChange={(e) => handleGameInfoChange(field.id, e.target.value)}
+                          placeholder={field.placeholder || `أدخل ${field.label}...`}
+                          className="w-full px-3.5 py-3 bg-white border-2 border-indigo-200 rounded-xl text-xs font-mono font-bold text-black focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 shadow-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* DYNAMIC CONTENT BASED ON PAYMENT METHOD */}
               {paymentMethod === 'chargily' && (
                 <>
@@ -654,7 +746,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     ) : (
                       <>
                         <Lock className="w-4 h-4" />
-                        <span>{t('checkout.payBtn')} ({product.price.toLocaleString('en-US')} {t('common.currency')})</span>
+                        <span>{t('checkout.payBtn')} ({effectivePrice.toLocaleString('en-US')} {t('common.currency')})</span>
                       </>
                     )}
                   </button>
@@ -721,7 +813,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
-                          <span>الصق المعرّف <strong className="font-mono text-rose-600">1622725404</strong> وحوّل المبلغ المطلوب (~4$ أو ما يعادله).</span>
+                          <span>الصق المعرّف <strong className="font-mono text-rose-600">1622725404</strong> وحوّل المبلغ المطلوب (${cryptoUsdtEquivalent} أو ما يعادله).</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
@@ -882,7 +974,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
-                          <span>حوّل المبلغ المطلوب (~4$ USDT أو ما يعادله).</span>
+                          <span>حوّل المبلغ المطلوب (${cryptoUsdtEquivalent} أو ما يعادله).</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
