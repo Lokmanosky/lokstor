@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://apis.google.com https://*.firebaseapp.com https://*.googleapis.com;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://*.firebaseapp.com https://*.googleapis.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
   img-src 'self' data: blob: https://images.unsplash.com https://storage.googleapis.com https://*.firebasestorage.app https://firebasestorage.googleapis.com https://*.chargily.com https://*.chargily.dz https://*.chargily.net https://lh3.googleusercontent.com https://*.googleusercontent.com;
