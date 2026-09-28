@@ -384,7 +384,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 text-sm">
             <div className="flex justify-between items-center text-blue-950 font-bold">
               <span>{t('checkout.productPrice')}</span>
-              <span className="text-black font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} {t('common.currency')}`}</span>
+              <span className="text-black font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} ${t('common.currency')}`}</span>
             </div>
             <div className="flex justify-between items-center text-blue-950 font-bold">
               <span>{t('checkout.deliveryMethod')}</span>
