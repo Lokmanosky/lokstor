@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Order } from '@/types';
 import { 
   Trash2, 
@@ -22,7 +22,10 @@ import {
   Eye,
   EyeOff,
   Copy,
-  Check
+  Check,
+  CheckSquare,
+  Square,
+  Loader2
 } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -37,6 +40,11 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'paid' | 'pending' | 'pending_manual_review' | 'failed'>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'chargily' | 'redotpay' | 'binance'>('ALL');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+
+  // Bulk Selection States
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'orders'), (snap) => {
@@ -62,6 +70,80 @@ export default function OrdersPage() {
     if(!id) return;
     if(confirm('هل أنت متأكد من حذف هذا الطلب نهائياً؟')) {
       await deleteDoc(doc(db, 'orders', id));
+      setSelectedOrderIds(prev => prev.filter(item => item !== id));
+    }
+  };
+
+  // ── Bulk Selection & Batch Actions Handlers ────────────────────────────────
+  const handleToggleSelectOrder = (id: string) => {
+    setSelectedOrderIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length) {
+      setSelectedOrderIds([]);
+    } else {
+      setSelectedOrderIds(filteredOrders.map(o => o.id));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedOrderIds([]);
+  };
+
+  const handleBulkUpdateStatus = async (newStatus: string) => {
+    if (selectedOrderIds.length === 0) return;
+    setIsBulkProcessing(true);
+    try {
+      const chunkSize = 450;
+      for (let i = 0; i < selectedOrderIds.length; i += chunkSize) {
+        const chunk = selectedOrderIds.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(id => {
+          batch.update(doc(db, 'orders', id), { status: newStatus });
+        });
+        await batch.commit();
+      }
+      const label = newStatus === 'paid' ? 'تفعيلها كمكتملة' : newStatus === 'pending' ? 'تحويلها لقيد الانتظار' : 'إلغاؤها';
+      setBulkFeedback(`تم بنجاح ${label} لـ (${selectedOrderIds.length}) طلب.`);
+      setSelectedOrderIds([]);
+      setTimeout(() => setBulkFeedback(null), 4500);
+    } catch (err: any) {
+      console.error(err);
+      alert('حدث خطأ أثناء تنفيذ الإجراء الجماعي: ' + err.message);
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedOrderIds.length === 0) return;
+    const count = selectedOrderIds.length;
+    if (!confirm(`هل أنت متأكد من حذف (${count}) طلب نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    try {
+      const chunkSize = 450;
+      for (let i = 0; i < selectedOrderIds.length; i += chunkSize) {
+        const chunk = selectedOrderIds.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(id => {
+          batch.delete(doc(db, 'orders', id));
+        });
+        await batch.commit();
+      }
+      setBulkFeedback(`تم حذف (${count}) طلب نهائياً بنجاح.`);
+      setSelectedOrderIds([]);
+      setTimeout(() => setBulkFeedback(null), 4500);
+    } catch (err: any) {
+      console.error(err);
+      alert('حدث خطأ أثناء حذف الطلبات: ' + err.message);
+    } finally {
+      setIsBulkProcessing(false);
     }
   };
 
@@ -345,7 +427,7 @@ export default function OrdersPage() {
 
         {/* Filter Summary & Reset Action */}
         <div className="flex items-center justify-between text-[11px] text-[var(--admin-text-muted)] pt-1.5 border-t border-[var(--admin-border)]">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <span>
               عرض <strong className="text-[var(--admin-text)] font-bold">{filteredOrders.length}</strong> من أصل {orders.length} طلب
             </span>
@@ -354,6 +436,18 @@ export default function OrdersPage() {
                 (تصفية نشطة)
               </span>
             )}
+            <span className="text-[var(--admin-border)] opacity-60">|</span>
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold cursor-pointer flex items-center gap-1"
+            >
+              {selectedOrderIds.length === filteredOrders.length && filteredOrders.length > 0 ? (
+                <span>إلغاء تحديد كل الطلبات</span>
+              ) : (
+                <span>تحديد كل الطلبات ({filteredOrders.length})</span>
+              )}
+            </button>
           </div>
 
           {hasActiveFilters && (
@@ -369,12 +463,112 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* ── 3. ORDERS TABLE (COMPACT WITH FULL PRODUCT NAME) ─────────────────── */}
+      {/* ── FEEDBACK NOTIFICATION ────────────────────────────────────────── */}
+      {bulkFeedback && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>{bulkFeedback}</span>
+          </div>
+          <button onClick={() => setBulkFeedback(null)} className="p-1 hover:bg-emerald-500/20 rounded cursor-pointer">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* ── BULK ACTIONS TOOLBAR (شريط الإجراءات المجمعة) ──────────────────── */}
+      {selectedOrderIds.length > 0 && (
+        <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+              {selectedOrderIds.length}
+            </span>
+            <div className="text-xs font-bold text-[var(--admin-text)]">
+              <span>تم تحديد </span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{selectedOrderIds.length}</span>
+              <span> من أصل {filteredOrders.length} طلب</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="text-[11px] text-[var(--admin-text-muted)] hover:text-rose-500 underline mr-2 cursor-pointer font-medium"
+            >
+              إلغاء التحديد
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Mark as Paid / تفعيل */}
+            <button
+              type="button"
+              disabled={isBulkProcessing}
+              onClick={() => handleBulkUpdateStatus('paid')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              title="تفعيل الطلبات المحددة وتحويل حالتها لمكتملة"
+            >
+              {isBulkProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>تفعيل كمكتمل ({selectedOrderIds.length})</span>
+            </button>
+
+            {/* Mark as Pending / تحويل لانتظار */}
+            <button
+              type="button"
+              disabled={isBulkProcessing}
+              onClick={() => handleBulkUpdateStatus('pending')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              title="تحويل الطلبات المحددة لقيد الانتظار"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>تحويل للانتظار ({selectedOrderIds.length})</span>
+            </button>
+
+            {/* Mark as Failed / إلغاء */}
+            <button
+              type="button"
+              disabled={isBulkProcessing}
+              onClick={() => handleBulkUpdateStatus('failed')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              title="إلغاء الطلبات المحددة"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>إلغاء ({selectedOrderIds.length})</span>
+            </button>
+
+            {/* Delete / حذف نهائي */}
+            <button
+              type="button"
+              disabled={isBulkProcessing}
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              title="حذف الطلبات المحددة نهائياً من قاعدة البيانات"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>حذف نهائي ({selectedOrderIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. ORDERS TABLE (WITH SELECTION & NUMBERING) ─────────────────── */}
       <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-right">
-            <thead className="bg-[var(--admin-bg)] text-[var(--admin-text-muted)] border-b border-[var(--admin-border)]">
+            <thead className="bg-[var(--admin-bg)] text-[var(--admin-text-muted)] border-b border-[var(--admin-border)] select-none">
               <tr>
+                {/* Select All Checkbox */}
+                <th className="px-2.5 py-2.5 text-center w-[40px]">
+                  <input
+                    type="checkbox"
+                    checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
+                    onChange={handleToggleSelectAll}
+                    className="w-4 h-4 rounded border-[var(--admin-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                    title={selectedOrderIds.length === filteredOrders.length ? "إلغاء تحديد الكل" : "تحديد كل الطلبات المعروضة"}
+                  />
+                </th>
+
+                {/* Numbering (ترقيم) */}
+                <th className="px-2 py-2.5 font-bold text-center w-[45px] text-[11px]">#</th>
+
                 <th className="px-3 py-2.5 font-bold min-w-[220px]">المنتج</th>
                 <th className="px-3 py-2.5 font-bold min-w-[140px]">العميل</th>
                 <th className="px-3 py-2.5 font-bold min-w-[90px] text-center">وسيلة الدفع</th>
@@ -387,7 +581,7 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-[var(--admin-border)]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">
+                  <td colSpan={9} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-[var(--admin-primary)] border-t-transparent rounded-full animate-spin" />
                       <span className="text-xs">جاري تحميل بيانات الطلبات...</span>
@@ -396,7 +590,7 @@ export default function OrdersPage() {
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">
+                  <td colSpan={9} className="px-4 py-8 text-center text-[var(--admin-text-muted)]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <SlidersHorizontal className="w-6 h-6 opacity-40 text-[var(--admin-text-muted)]" />
                       <span className="font-bold text-xs text-[var(--admin-text)]">لا توجد طلبات تطابق الفلترة الحالية</span>
@@ -414,8 +608,33 @@ export default function OrdersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map(o => (
-                  <tr key={o.id} className="hover:bg-[var(--admin-hover)] transition-colors">
+                filteredOrders.map((o, idx) => {
+                  const isSelected = selectedOrderIds.includes(o.id);
+                  return (
+                  <tr 
+                    key={o.id} 
+                    className={`transition-colors ${
+                      isSelected 
+                        ? 'bg-indigo-500/10 hover:bg-indigo-500/15' 
+                        : 'hover:bg-[var(--admin-hover)]'
+                    }`}
+                  >
+                    {/* Row Checkbox */}
+                    <td className="px-2.5 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectOrder(o.id)}
+                        className="w-4 h-4 rounded border-[var(--admin-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                        title="تحديد هذا الطلب"
+                      />
+                    </td>
+
+                    {/* Numbering Index */}
+                    <td className="px-2 py-2 text-center text-xs font-mono font-bold text-[var(--admin-text-muted)] select-none">
+                      {idx + 1}
+                    </td>
+
                     {/* Product Name - FULL VISIBILITY, NO TRUNCATION */}
                     <td className="px-3 py-2 text-[var(--admin-text)]">
                       <div className="font-bold text-xs sm:text-sm leading-snug break-words" title={o.productName}>
@@ -560,8 +779,9 @@ export default function OrdersPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })
+            )}
             </tbody>
           </table>
         </div>
