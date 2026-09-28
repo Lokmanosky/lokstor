@@ -1,6 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+.checkout-main-title {
+  color: #000000 !important;
+}
+
+.dark .checkout-main-title {
+  color: #ffffff !important;
+}
+
 :root {
   --font-cairo: 'Cairo', sans-serif;
   --background: #0f172a;

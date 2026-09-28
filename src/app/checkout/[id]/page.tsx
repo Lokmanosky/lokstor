@@ -255,7 +255,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
       {/* Main Title & Subtitle */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-black text-black dark:text-white tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight checkout-main-title">
           تأكيد الطلب وإتمام الدفع
         </h1>
         <p className="text-emerald-600 dark:text-emerald-400 text-sm sm:text-base font-semibold max-w-xl mx-auto">
