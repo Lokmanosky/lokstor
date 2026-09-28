@@ -247,9 +247,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       {/* Header back link */}
       <Link
         href={`/product/${product.id}`}
-        className="inline-flex items-center gap-2 text-sm font-bold text-black dark:text-white hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+        className="inline-flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:opacity-80 transition-opacity"
       >
-        <ArrowRight className="w-4 h-4 text-black dark:text-white" />
+        <ArrowRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         <span>العودة لصفحة تفاصيل المنتج</span>
       </Link>
 
@@ -258,7 +258,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         <h1 className="text-3xl sm:text-4xl font-black text-black dark:text-white tracking-tight">
           تأكيد الطلب وإتمام الدفع
         </h1>
-        <p className="text-black dark:text-white text-sm sm:text-base font-semibold max-w-xl mx-auto">
+        <p className="text-emerald-600 dark:text-emerald-400 text-sm sm:text-base font-semibold max-w-xl mx-auto">
           اختر وسيلة الدفع المناسبة لك، وسيصلك رابط التفعيل والتحميل فوراً
         </p>
       </div>
