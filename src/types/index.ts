@@ -1,3 +1,21 @@
+export interface ProductVariant {
+  id: string;
+  name: string;        // e.g. "80 CP", "420 CP", "تذكرة أسبوعية"
+  price: number;       // e.g. 290
+  originalPrice?: number;
+  image?: string;      // icon or image URL
+  badge?: string;      // e.g. "الأكثر طلباً", "توفير"
+  inStock?: boolean;
+}
+
+export interface GameFieldRequirement {
+  id: string;
+  label: string;       // e.g. "معرف اللاعب (Player ID)"
+  placeholder?: string;
+  required?: boolean;
+  type?: 'text' | 'password';
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -13,6 +31,9 @@ export interface Product {
   status?: string;
   category?: string;
   priceUnspecified?: boolean;
+  hasVariants?: boolean;
+  variants?: ProductVariant[];
+  requiredFields?: GameFieldRequirement[];
   features?: string[];
   fileType?: string; // PDF, ZIP, Template, etc.
   createdAt: number | string;
@@ -28,10 +49,18 @@ export interface Order {
   customerName: string;
   customerPhone?: string;
   customerEmail: string;
+  variantId?: string;
   customAmount?: number;
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
   paymentMethod?: 'chargily' | 'redotpay' | 'binance';
+  selectedVariant?: {
+    id: string;
+    name: string;
+    price: number;
+    image?: string;
+  };
+  customFieldsData?: Record<string, string>;
   binanceUid?: string;
   redotpayId?: string;
   redotpayName?: string;

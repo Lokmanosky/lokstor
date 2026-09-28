@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily', customAmount } = validationResult.data as any;
+    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData } = validationResult.data as any;
 
     // 3. Clean inputs
     const cleanName = sanitizeText(customerName);
@@ -130,16 +130,37 @@ export async function POST(req: NextRequest) {
     const proto = req.headers.get('x-forwarded-proto') || 'https';
     const baseUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app');
 
+        // 5.5. Resolve Selected Variant Price & Details
+    let finalOrderPrice = product.price;
+    let selectedVariantObj: any = undefined;
+
+    if (variantId && product.variants && Array.isArray(product.variants)) {
+      const foundVar = product.variants.find((v: any) => v.id === variantId);
+      if (foundVar) {
+        finalOrderPrice = Number(foundVar.price);
+        selectedVariantObj = {
+          id: foundVar.id,
+          name: foundVar.name,
+          price: foundVar.price,
+          image: foundVar.image,
+        };
+      }
+    } else if (product.priceUnspecified && customAmount && customAmount > 0) {
+      finalOrderPrice = Number(customAmount);
+    }
+
     // 6. Create Order object without undefined fields
     const orderData: any = {
       id: orderId,
       productId: product.id,
-      productName: product.name,
-      productPrice: (product.priceUnspecified && customAmount && customAmount > 0) ? Number(customAmount) : product.price,
+      productName: selectedVariantObj ? `${product.name} (${selectedVariantObj.name})` : product.name,
+      productPrice: finalOrderPrice,
       currency: product.currency || 'dzd',
       customerName: cleanName,
       customerEmail: cleanEmail,
       paymentMethod,
+      selectedVariant: selectedVariantObj,
+      customFieldsData: customFieldsData || undefined,
       status: 'pending',
       createdAt: Date.now(),
     };
@@ -212,7 +233,7 @@ export async function POST(req: NextRequest) {
       }
 
       const checkoutPayload: any = {
-        amount: (product.priceUnspecified && customAmount && customAmount > 0) ? Number(customAmount) : product.price,
+        amount: finalOrderPrice,
         currency: 'dzd',
         success_url: `${baseUrl}/success?order_id=${orderId}`,
         failure_url: `${baseUrl}/failure?order_id=${orderId}`,

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { Product } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { useAuth } from '@/lib/auth-context';
 import { 
   Lock,
@@ -40,6 +41,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const [customerEmail, setCustomerEmail] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'chargily' | 'redotpay' | 'binance'>('chargily');
   const [customAmount, setCustomAmount] = useState<number>(1000);
+  const searchParams = useSearchParams();
+  const variantParamId = searchParams.get('variant');
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [gameFields, setGameFields] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
@@ -87,6 +92,23 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
     loadProduct();
   }, [productId]);
+
+  // Load selected variant and prefilled game info
+  useEffect(() => {
+    if (product && variantParamId && product.variants) {
+      const v = product.variants.find((x) => x.id === variantParamId);
+      if (v) setSelectedVariant(v);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem('lokstor_game_info');
+        if (stored) {
+          setGameFields(JSON.parse(stored));
+        }
+      } catch {}
+    }
+  }, [product, variantParamId]);
+
 
   // Pre-fill user data if authenticated
   useEffect(() => {
@@ -268,7 +290,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 text-sm">
             <div className="flex justify-between items-center text-blue-950 font-bold">
               <span>سعر المنتج:</span>
-              <span className="text-black font-black">{product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} د.ج`}</span>
+              <span className="text-black font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} د.ج`}</span>
             </div>
             <div className="flex justify-between items-center text-blue-950 font-bold">
               <span>طريقة التسليم:</span>

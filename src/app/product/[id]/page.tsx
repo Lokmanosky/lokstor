@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { Product } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
@@ -25,7 +25,9 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-  LogIn
+  LogIn,
+  Gamepad2,
+  Layers
 } from 'lucide-react';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +42,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [liked, setLiked] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [customFieldsData, setCustomFieldsData] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -268,7 +273,25 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="pt-4 border-t border-[var(--store-border)] space-y-3">
             <div className="flex items-center gap-3">
               <Link
-                href={isOutOfStock ? '#' : `/checkout/${product.id}`}
+                href={isOutOfStock ? '#' : `/checkout/${product.id}${selectedVariant ? `?variant=${selectedVariant.id}` : ''}`}
+                onClick={(e) => {
+                  if (product.requiredFields && product.requiredFields.length > 0) {
+                    const errors: Record<string, string> = {};
+                    product.requiredFields.forEach(f => {
+                      if (f.required && !customFieldsData[f.id]?.trim()) {
+                        errors[f.id] = 'هذا الحقل مطلوب للشحن';
+                      }
+                    });
+                    if (Object.keys(errors).length > 0) {
+                      e.preventDefault();
+                      setFieldErrors(errors);
+                      return;
+                    }
+                  }
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('lokstor_game_info', JSON.stringify(customFieldsData));
+                  }
+                }}
                 className={`flex-1 py-4 px-6 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
                   isOutOfStock
                     ? 'bg-red-600 hover:bg-red-700 cursor-not-allowed opacity-95 shadow-red-500/20 pointer-events-none'
@@ -277,7 +300,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 aria-disabled={isOutOfStock}
               >
                 {isOutOfStock ? <Ban className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
-                <span>{isOutOfStock ? 'تم نفاذ المخزون' : (product.priceUnspecified ? 'طلب الشحن والمتابعة' : `الشراء والدفع (${product.price.toLocaleString('en-US')} د.ج)`)}</span>
+                <span>{isOutOfStock
+                  ? 'تم نفاذ المخزون'
+                  : selectedVariant
+                  ? `الشراء والدفع (${selectedVariant.price.toLocaleString('en-US')} د.ج)`
+                  : product.priceUnspecified
+                  ? 'طلب الشحن والمتابعة'
+                  : `الشراء والدفع (${product.price.toLocaleString('en-US')} د.ج)`}</span>
               </Link>
 
               <button

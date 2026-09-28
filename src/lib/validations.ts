@@ -14,6 +14,23 @@ export const productSchema = z.object({
   stockLinks: z.array(z.string().min(1).max(5000)).optional(),
   type: z.enum(['digital', 'subscription', 'games']).optional(),
   priceUnspecified: z.boolean().optional(),
+  hasVariants: z.boolean().optional(),
+  variants: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    price: z.number().min(0),
+    originalPrice: z.number().optional(),
+    image: z.string().optional(),
+    badge: z.string().optional(),
+    inStock: z.boolean().optional(),
+  })).optional(),
+  requiredFields: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    placeholder: z.string().optional(),
+    required: z.boolean().optional(),
+    type: z.enum(['text', 'password']).optional(),
+  })).optional(),
   category: z.string().optional(),
   features: z.array(z.string().max(100)).optional(),
   status: z.enum(['published', 'draft', 'archived']).default('published'),
@@ -27,7 +44,9 @@ export const checkoutSchema = z.object({
   customerPhone: z.string().max(20).optional(),
   productId: z.string().min(1),
   paymentMethod: z.enum(['chargily', 'redotpay', 'binance']).optional().default('chargily'),
-  customAmount: z.number().min(10).optional()
+  customAmount: z.number().min(10).optional(),
+  variantId: z.string().optional(),
+  customFieldsData: z.record(z.string(), z.string()).optional()
 });
 
 // Login Schema
