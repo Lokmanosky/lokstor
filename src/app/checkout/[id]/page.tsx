@@ -39,6 +39,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'chargily' | 'redotpay' | 'binance'>('chargily');
+  const [customAmount, setCustomAmount] = useState<number>(1000);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
@@ -267,7 +268,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 text-sm">
             <div className="flex justify-between items-center text-blue-950 font-bold">
               <span>سعر المنتج:</span>
-              <span className="text-black font-black">{product.price.toLocaleString('en-US')} د.ج</span>
+              <span className="text-black font-black">{product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} د.ج`}</span>
             </div>
             <div className="flex justify-between items-center text-blue-950 font-bold">
               <span>طريقة التسليم:</span>

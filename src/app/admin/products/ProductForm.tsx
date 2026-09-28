@@ -28,6 +28,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     imageUrl: '',
     image: '',
     category: '',
+    priceUnspecified: false,
     status: 'published',
     stock: 0,
     stockLinks: [],
@@ -140,7 +141,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
   // ── Save directly to Cloud Firestore Database ───────────────────────────────
   const handleSave = async () => {
     if (!form.name?.trim()) { setError('اسم المنتج مطلوب'); return; }
-    if (form.price === undefined || form.price < 0) { setError('السعر يجب أن يكون قيمة صحيحة'); return; }
+    if (!form.priceUnspecified && (form.price === undefined || form.price < 0)) { setError('السعر يجب أن يكون قيمة صحيحة'); return; }
 
     setSaving(true);
     setError('');
@@ -154,7 +155,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       ...form,
       name: form.name.trim(),
       description: form.description || '',
-      price: Number(form.price),
+      price: Number(form.price || 0),
+      priceUnspecified: Boolean(form.priceUnspecified),
       currency: 'dzd',
       imageUrl: cleanImg,
       image: cleanImg,
@@ -238,6 +240,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 <label className={labelCls}>التصنيف</label>
                 <select className={inputCls} value={form.category || ''} onChange={e => set('category', e.target.value)}>
                   <option value="">— بدون تصنيف —</option>
+                  <option value="شحن ألعاب">🎮 شحن ألعاب</option>
                   <option value="منتجات رقمية">منتجات رقمية</option>
                   <option value="اشتراكات">اشتراكات</option>
                   <option value="كتب">كتب</option>

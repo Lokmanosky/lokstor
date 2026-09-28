@@ -82,6 +82,9 @@ function HomePageContent() {
     }
     // 2. Tab Match
     if (activeTab === 'all') return true;
+    if (activeTab === 'games') {
+      return p.type === 'games' || (p.category && (p.category.includes('لعب') || p.category.includes('شحن')));
+    }
     return p.type === activeTab;
   });
 
@@ -148,6 +151,12 @@ function HomePageContent() {
               className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
             >
               {t('nav.subs')}
+            </button>
+            <button 
+              onClick={() => setActiveTab('games')}
+              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+            >
+              🎮 شحن ألعاب
             </button>
           </div>
 
@@ -270,7 +279,7 @@ function HomePageContent() {
                       <img src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')} alt={product.name} loading="lazy" width={400} height={300} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute top-3 right-3 flex flex-col gap-2">
                         <span className="bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-md">
-                          {product.type === 'digital' ? t('badge.digital') : t('badge.sub')}
+                          {product.category === 'شحن ألعاب' || product.type === 'games' ? '🎮 شحن ألعاب' : (product.type === 'digital' ? t('badge.digital') : t('badge.sub'))}
                         </span>
                       </div>
 
@@ -281,9 +290,15 @@ function HomePageContent() {
                       <h2 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
                     </Link>
                     <div className="flex items-center justify-between gap-2 pt-1">
-                      <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">
-                        {product.price} <span className="text-xs font-normal">د.ج</span>
-                      </span>
+                      {product.priceUnspecified ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          سعر غير محدد
+                        </span>
+                      ) : (
+                        <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg whitespace-nowrap">
+                          {product.price} <span className="text-xs font-normal">د.ج</span>
+                        </span>
+                      )}
                       
                       {outOfStock ? (
                         <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
@@ -298,7 +313,7 @@ function HomePageContent() {
                             className="flex items-center justify-center px-3 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
                             title="الشراء المباشر والدفع الآن"
                           >
-                            <span>الشراء</span>
+                            <span>{product.priceUnspecified ? 'طلب شحن' : 'الشراء'}</span>
                           </Link>
 
                           {/* أيقونة السلة منفصلة -> تضيف للسلة وتحدث العداد بالأعلى */}

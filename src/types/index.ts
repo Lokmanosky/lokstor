@@ -12,6 +12,7 @@ export interface Product {
   type?: string;
   status?: string;
   category?: string;
+  priceUnspecified?: boolean;
   features?: string[];
   fileType?: string; // PDF, ZIP, Template, etc.
   createdAt: number | string;
@@ -27,6 +28,7 @@ export interface Order {
   customerName: string;
   customerPhone?: string;
   customerEmail: string;
+  customAmount?: number;
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
   paymentMethod?: 'chargily' | 'redotpay' | 'binance';

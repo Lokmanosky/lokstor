@@ -12,7 +12,8 @@ export const productSchema = z.object({
   stock: z.number().min(0).optional(),
   // stockLinks: any text content — URL, account credentials, activation code, instructions, etc.
   stockLinks: z.array(z.string().min(1).max(5000)).optional(),
-  type: z.enum(['digital', 'subscription']).optional(),
+  type: z.enum(['digital', 'subscription', 'games']).optional(),
+  priceUnspecified: z.boolean().optional(),
   category: z.string().optional(),
   features: z.array(z.string().max(100)).optional(),
   status: z.enum(['published', 'draft', 'archived']).default('published'),
@@ -25,7 +26,8 @@ export const checkoutSchema = z.object({
   customerEmail: z.string().email('بريد إلكتروني غير صالح').max(100),
   customerPhone: z.string().max(20).optional(),
   productId: z.string().min(1),
-  paymentMethod: z.enum(['chargily', 'redotpay', 'binance']).optional().default('chargily')
+  paymentMethod: z.enum(['chargily', 'redotpay', 'binance']).optional().default('chargily'),
+  customAmount: z.number().min(10).optional()
 });
 
 // Login Schema

@@ -277,7 +277,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 aria-disabled={isOutOfStock}
               >
                 {isOutOfStock ? <Ban className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
-                <span>{isOutOfStock ? 'تم نفاذ المخزون' : `الشراء والدفع (${product.price.toLocaleString('en-US')} د.ج)`}</span>
+                <span>{isOutOfStock ? 'تم نفاذ المخزون' : (product.priceUnspecified ? 'طلب الشحن والمتابعة' : `الشراء والدفع (${product.price.toLocaleString('en-US')} د.ج)`)}</span>
               </Link>
 
               <button

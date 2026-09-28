@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily' } = validationResult.data as any;
+    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily', customAmount } = validationResult.data as any;
 
     // 3. Clean inputs
     const cleanName = sanitizeText(customerName);
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       id: orderId,
       productId: product.id,
       productName: product.name,
-      productPrice: product.price,
+      productPrice: (product.priceUnspecified && customAmount && customAmount > 0) ? Number(customAmount) : product.price,
       currency: product.currency || 'dzd',
       customerName: cleanName,
       customerEmail: cleanEmail,
@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
       }
 
       const checkoutPayload: any = {
-        amount: product.price,
+        amount: (product.priceUnspecified && customAmount && customAmount > 0) ? Number(customAmount) : product.price,
         currency: 'dzd',
         success_url: `${baseUrl}/success?order_id=${orderId}`,
         failure_url: `${baseUrl}/failure?order_id=${orderId}`,
