@@ -290,7 +290,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* RIGHT COLUMN: Product Image */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-5 space-y-4">
           <div 
             onClick={() => {
               setIsImagePreviewOpen(true);
@@ -302,7 +302,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <img
               src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
               alt={product.name}
-              className="w-full h-auto max-h-[700px] object-contain object-center transition-transform duration-300 group-hover:scale-[1.01]"
+              className="w-full h-auto max-h-[500px] object-contain object-center transition-transform duration-300 group-hover:scale-[1.01]"
             />
             {/* Hover overlay hint badge */}
             <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-slate-900/85 hover:bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all opacity-90 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
@@ -313,7 +313,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* LEFT COLUMN: Details Card (Title, Price, Variants Grid, Game Fields, CTA) */}
-        <div className="lg:col-span-5 bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
+        <div className="lg:col-span-7 bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
           {/* 1. Title */}
           <h1 className="text-xl sm:text-2xl font-black text-[var(--store-text)] leading-snug tracking-tight">
             {product.name}
