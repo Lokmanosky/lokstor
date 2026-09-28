@@ -1,58 +1,327 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import {
-  collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, writeBatch
+  collection, onSnapshot, writeBatch, doc, addDoc, deleteDoc, updateDoc
 } from 'firebase/firestore';
 import {
-  Plus, Trash2, Check, X, Loader2, GripVertical, FolderOpen, Pencil, Save
+  DndContext, DragOverlay, closestCorners,
+  PointerSensor, TouchSensor, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext, useSortable, arrayMove, rectSortingStrategy, verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  Plus, Trash2, GripVertical, Package, FolderOpen,
+  Pencil, X, Check, Loader2, ImageOff, ChevronDown, ChevronUp, Zap
 } from 'lucide-react';
 
 interface StoreCategory {
-  id: string;
-  name: string;
-  slug: string;
-  emoji?: string;
-  sortOrder: number;
-  createdAt: number;
+  id: string; name: string; slug: string; emoji?: string; sortOrder: number; createdAt: number;
+}
+interface Prod {
+  id: string; name: string; imageUrl?: string; image?: string;
+  category?: string; type?: string; sortOrder?: number;
+  price?: number; status?: string;
 }
 
+// ── Draggable product card ───────────────────────────────────────────────────
+function ProdCard({ prod, isOverlay }: { prod: Prod; isOverlay?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: 'prod:' + prod.id,
+    data: { type: 'product', prod },
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const img = (prod.imageUrl || prod.image || '').replace(/^"+|"+$/g, '').trim();
+  return (
+    <div ref={setNodeRef} style={style}
+      className={'relative bg-[var(--admin-card)] border rounded-lg overflow-hidden group select-none transition-all duration-200 ' + (
+        isOverlay ? 'shadow-2xl border-emerald-500 rotate-2 scale-105 z-50' :
+        isDragging ? 'opacity-25 border-dashed border-[var(--admin-primary)] scale-95' :
+        'border-[var(--admin-border)] hover:border-[var(--admin-primary)]/60 hover:shadow-md'
+      )}
+    >
+      <div {...attributes} {...listeners}
+        className="absolute top-1 right-1 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+        title="اسحب لتغيير مكان المنتج"
+      >
+        <GripVertical className="w-3 h-3" />
+      </div>
+      <div className="aspect-square bg-[var(--admin-bg)] flex items-center justify-center overflow-hidden">
+        {img
+          ? <img src={img} alt={prod.name} className="w-full h-full object-contain" />
+          : <ImageOff className="w-5 h-5 text-[var(--admin-text-muted)] opacity-30" />
+        }
+      </div>
+      <div className="p-1.5">
+        <p className="text-[10px] font-semibold text-[var(--admin-text)] line-clamp-2 leading-tight">{prod.name}</p>
+        {prod.price !== undefined && (
+          <p className="text-[9px] text-[var(--admin-primary)] font-bold mt-0.5">{prod.price} د.ج</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Category section (sortable) ──────────────────────────────────────────────
+function CategorySection({
+  cat, prods, onDelete, onRename, isOverlay,
+}: {
+  cat: StoreCategory; prods: Prod[]; onDelete: () => void;
+  onRename: (name: string, emoji: string) => void; isOverlay?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: 'cat:' + cat.id,
+    data: { type: 'category', cat },
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const [collapsed, setCollapsed] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [eName, setEName] = useState(cat.name);
+  const [eEmoji, setEEmoji] = useState(cat.emoji || '📦');
+  const prodIds = prods.map(p => 'prod:' + p.id);
+
+  return (
+    <div ref={setNodeRef} style={style}
+      className={'rounded-xl border overflow-hidden transition-all duration-200 ' + (
+        isOverlay ? 'shadow-2xl border-[var(--admin-primary)] opacity-95' :
+        isDragging ? 'opacity-40 border-dashed border-[var(--admin-primary)]' :
+        'border-[var(--admin-border)] bg-[var(--admin-card)]'
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--admin-bg)] border-b border-[var(--admin-border)]">
+        {/* Cat drag handle */}
+        <div {...attributes} {...listeners}
+          className="cursor-grab active:cursor-grabbing text-[var(--admin-text-muted)] hover:text-[var(--admin-primary)] transition-colors flex-shrink-0"
+          title="اسحب لإعادة ترتيب القسم"
+        >
+          <GripVertical className="w-5 h-5" />
+        </div>
+
+        {editing ? (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <input value={eEmoji} onChange={e => setEEmoji(e.target.value)} maxLength={4}
+              className="w-10 text-center px-1 py-1 bg-[var(--admin-card)] border border-[var(--admin-border)] rounded text-sm focus:outline-none" />
+            <input value={eName} onChange={e => setEName(e.target.value)} placeholder="اسم القسم"
+              className="flex-1 min-w-0 px-2 py-1 bg-[var(--admin-card)] border border-[var(--admin-border)] rounded text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)]" />
+            <button onClick={() => { onRename(eName, eEmoji); setEditing(false); }}
+              className="p-1.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 flex-shrink-0"><Check className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setEditing(false)}
+              className="p-1.5 rounded text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        ) : (
+          <>
+            <span className="text-xl leading-none flex-shrink-0">{cat.emoji}</span>
+            <span className="font-semibold text-[var(--admin-text)] flex-1 min-w-0 truncate">{cat.name}</span>
+            <code className="text-[10px] font-mono text-[var(--admin-text-muted)] hidden sm:block flex-shrink-0">{cat.slug}</code>
+            <span className="text-xs text-[var(--admin-text-muted)] bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-full px-2 py-0.5 flex-shrink-0">
+              {prods.length}
+            </span>
+            <button onClick={() => setEditing(true)} title="تعديل اسم القسم"
+              className="p-1.5 rounded text-[var(--admin-text-muted)] hover:text-[var(--admin-primary)] hover:bg-[var(--admin-hover)] transition-colors flex-shrink-0">
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onDelete} title="حذف القسم"
+              className="p-1.5 rounded text-[var(--admin-text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setCollapsed(v => !v)} title={collapsed ? 'توسيع' : 'طي'}
+              className="p-1.5 rounded text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors flex-shrink-0">
+              {collapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Products droppable area */}
+      {!collapsed && (
+        <div className="p-3 min-h-[100px]" id={'drop-zone-' + cat.id}>
+          {prods.length === 0 ? (
+            <div className="border-2 border-dashed border-[var(--admin-border)] rounded-lg py-8 text-center text-[var(--admin-text-muted)] text-xs transition-colors">
+              <Package className="w-6 h-6 mx-auto mb-2 opacity-30" />
+              <p className="font-medium">القسم فارغ</p>
+              <p className="mt-0.5 opacity-70">اسحب منتجاً وأفلته هنا</p>
+            </div>
+          ) : (
+            <SortableContext items={prodIds} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+                {prods.map(p => <ProdCard key={p.id} prod={p} />)}
+              </div>
+            </SortableContext>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  const [cats, setCats] = useState<StoreCategory[]>([]);
+  const [prods, setProds] = useState<Prod[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeData, setActiveData] = useState<any>(null);
+
+  // Add category modal
+  const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newSlug, setNewSlug] = useState('');
-  const [newEmoji, setNewEmoji] = useState('\u{1F4E6}');
+  const [newEmoji, setNewEmoji] = useState('📦');
   const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editSlug, setEditSlug] = useState('');
-  const [editEmoji, setEditEmoji] = useState('');
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
+  const EMOJI_PRESETS = ['📦','🎮','🔑','📱','💻','🎵','📺','🎓','📚','🎁','⭐','🛡️','⚡','🔥','🎨','🏆','🌐','🎯'];
+
+  // Realtime subscriptions
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'storeCategories'), snap => {
+    const u1 = onSnapshot(collection(db, 'storeCategories'), snap => {
       const list: StoreCategory[] = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() } as StoreCategory));
       list.sort((a, b) => a.sortOrder - b.sortOrder);
-      setCategories(list);
+      setCats(list);
       setLoading(false);
     });
-    return () => unsub();
+    const u2 = onSnapshot(collection(db, 'products'), snap => {
+      const list: Prod[] = [];
+      snap.forEach(d => list.push({ id: d.id, ...d.data() } as Prod));
+      list.sort((a, b) => (a.sortOrder ?? 999999) - (b.sortOrder ?? 999999));
+      setProds(list);
+    });
+    return () => { u1(); u2(); };
   }, []);
 
-  const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
+  const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setFeedback({ type, text });
-    setTimeout(() => setFeedback(null), 3500);
+    setTimeout(() => setFeedback(null), 3000);
   };
 
-  const slugify = (text: string) =>
-    text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w\u0600-\u06FF]/g, '');
+  const slugify = (t: string) => t.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w\u0600-\u06FF]/g, '');
 
+  // Group products by category slug
+  const prodsByCat = useMemo(() => {
+    const grouped: Record<string, Prod[]> = {};
+    const assigned = new Set<string>();
+    for (const cat of cats) {
+      grouped[cat.id] = prods.filter(p => {
+        const match = p.type === cat.slug
+          || (p.category || '').toLowerCase() === cat.name.toLowerCase()
+          || (p.category || '') === cat.slug
+          || (p.category || '').toLowerCase().includes(cat.slug.toLowerCase());
+        if (match) assigned.add(p.id);
+        return match;
+      });
+    }
+    grouped['__uncategorized__'] = prods.filter(p => !assigned.has(p.id));
+    return grouped;
+  }, [cats, prods]);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } })
+  );
+
+  const catIds = cats.map(c => 'cat:' + c.id);
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id as string);
+    setActiveData(event.active.data.current);
+  };
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setActiveData(null);
+    if (!over || active.id === over.id) return;
+
+    const activeType = active.data.current?.type;
+    const overType = over.data.current?.type;
+    const activeRaw = (active.id as string).replace(/^(cat:|prod:)/, '');
+    const overRaw = (over.id as string).replace(/^(cat:|prod:)/, '');
+
+    // ── Reorder categories ────────────────────────────────────────────────
+    if (activeType === 'category') {
+      const oldIdx = cats.findIndex(c => c.id === activeRaw);
+      const newIdx = cats.findIndex(c => c.id === overRaw);
+      if (oldIdx < 0 || newIdx < 0 || oldIdx === newIdx) return;
+      const reordered = arrayMove([...cats], oldIdx, newIdx).map((c, i) => ({ ...c, sortOrder: i }));
+      setCats(reordered);
+      setSaving(true);
+      try {
+        const batch = writeBatch(db);
+        reordered.forEach(c => batch.update(doc(db, 'storeCategories', c.id), { sortOrder: c.sortOrder }));
+        await batch.commit();
+        notify('تم حفظ ترتيب الأقسام');
+      } catch (e: any) { notify('فشل حفظ الترتيب: ' + e?.message, 'error'); }
+      finally { setSaving(false); }
+      return;
+    }
+
+    // ── Move / reorder product ────────────────────────────────────────────
+    if (activeType === 'product') {
+      const activeProd = active.data.current?.prod as Prod;
+
+      // Find which category the active product is in
+      let fromCatId: string | null = null;
+      let toCatId: string | null = null;
+
+      for (const cat of cats) {
+        if (prodsByCat[cat.id]?.some(p => p.id === activeProd.id)) fromCatId = cat.id;
+      }
+      if (!fromCatId) fromCatId = '__uncategorized__';
+
+      // Find target container
+      if (overType === 'category') {
+        // Dropped on a category header
+        toCatId = overRaw;
+      } else if (overType === 'product') {
+        // Dropped on another product - find which container it's in
+        const overProd = over.data.current?.prod as Prod;
+        for (const cat of cats) {
+          if (prodsByCat[cat.id]?.some(p => p.id === overProd.id)) { toCatId = cat.id; break; }
+        }
+        if (!toCatId) toCatId = '__uncategorized__';
+      } else {
+        toCatId = fromCatId; // same container
+      }
+
+      const targetCat = cats.find(c => c.id === toCatId);
+      setSaving(true);
+      try {
+        const updates: Record<string, any> = { sortOrder: prodsByCat[toCatId || '__uncategorized__']?.length ?? 0 };
+        if (targetCat && toCatId !== fromCatId) {
+          // Moving to a different category - update type + category fields
+          updates.type = targetCat.slug;
+          updates.category = targetCat.name;
+          notify('تم نقل "' + activeProd.name + '" إلى قسم ' + targetCat.name);
+        } else {
+          // Reorder within same category - get new position
+          const sameCatProds = [...(prodsByCat[fromCatId] || [])];
+          const fromIdx = sameCatProds.findIndex(p => p.id === activeProd.id);
+          const overProd = over.data.current?.prod as Prod | undefined;
+          const toIdx = overProd ? sameCatProds.findIndex(p => p.id === overProd.id) : sameCatProds.length - 1;
+          if (fromIdx >= 0 && toIdx >= 0 && fromIdx !== toIdx) {
+            const reordered = arrayMove(sameCatProds, fromIdx, toIdx);
+            const batch = writeBatch(db);
+            reordered.forEach((p, i) => { if (p.id) batch.update(doc(db, 'products', p.id), { sortOrder: i }); });
+            await batch.commit();
+            notify('تم حفظ ترتيب المنتجات');
+            return;
+          }
+          return;
+        }
+        if (activeProd.id) await updateDoc(doc(db, 'products', activeProd.id), updates);
+      } catch (e: any) { notify('فشل: ' + e?.message, 'error'); }
+      finally { setSaving(false); }
+    }
+  };
+
+  // Add category
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
@@ -60,190 +329,215 @@ export default function CategoriesPage() {
     try {
       const slug = newSlug.trim() || slugify(newName);
       await addDoc(collection(db, 'storeCategories'), {
-        name: newName.trim(), slug, emoji: newEmoji.trim() || '\u{1F4E6}',
-        sortOrder: categories.length, createdAt: Date.now(),
+        name: newName.trim(), slug, emoji: newEmoji.trim() || '📦',
+        sortOrder: cats.length, createdAt: Date.now(),
       });
-      setNewName(''); setNewSlug(''); setNewEmoji('\u{1F4E6}');
-      showNotification('تم إضافة القسم بنجاح');
-    } catch (err: any) {
-      showNotification('فشل إضافة القسم: ' + err?.message, 'error');
-    } finally { setAdding(false); }
+      setNewName(''); setNewSlug(''); setNewEmoji('📦');
+      setShowAdd(false);
+      notify('تم إضافة القسم "' + newName.trim() + '"');
+    } catch (e: any) { notify('فشل الإضافة: ' + e?.message, 'error'); }
+    finally { setAdding(false); }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm('هل أنت متأكد من حذف القسم "' + name + '"?')) return;
+  // Delete category
+  const handleDeleteCat = async (cat: StoreCategory) => {
+    if (!confirm('حذف قسم "' + cat.name + '"? المنتجات لن تُحذف لكنها ستصبح بدون قسم.')) return;
     try {
-      await deleteDoc(doc(db, 'storeCategories', id));
-      showNotification('تم حذف القسم');
-    } catch (err: any) { showNotification('فشل الحذف: ' + err?.message, 'error'); }
+      await deleteDoc(doc(db, 'storeCategories', cat.id));
+      notify('تم حذف القسم');
+    } catch (e: any) { notify('فشل الحذف: ' + e?.message, 'error'); }
   };
 
-  const startEdit = (cat: StoreCategory) => {
-    setEditingId(cat.id); setEditName(cat.name); setEditSlug(cat.slug); setEditEmoji(cat.emoji || '\u{1F4E6}');
-  };
-  const cancelEdit = () => { setEditingId(null); setEditName(''); setEditSlug(''); setEditEmoji(''); };
-  const saveEdit = async (id: string) => {
-    if (!editName.trim()) return;
+  // Rename category
+  const handleRename = async (cat: StoreCategory, name: string, emoji: string) => {
     try {
-      await updateDoc(doc(db, 'storeCategories', id), {
-        name: editName.trim(), slug: editSlug.trim() || slugify(editName), emoji: editEmoji.trim() || '\u{1F4E6}',
-      });
-      showNotification('تم حفظ التعديلات'); cancelEdit();
-    } catch (err: any) { showNotification('فشل الحفظ: ' + err?.message, 'error'); }
+      await updateDoc(doc(db, 'storeCategories', cat.id), { name: name.trim(), emoji: emoji.trim() || '📦' });
+      notify('تم حفظ التعديلات');
+    } catch (e: any) { notify('فشل: ' + e?.message, 'error'); }
   };
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDragId(id); e.dataTransfer.effectAllowed = 'move';
-  };
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverId(id);
-  };
-  const handleDrop = async (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
-    const oldList = [...categories];
-    const fromIdx = oldList.findIndex(c => c.id === dragId);
-    const toIdx = oldList.findIndex(c => c.id === targetId);
-    if (fromIdx < 0 || toIdx < 0) return;
-    const reordered = [...oldList];
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
-    const updated = reordered.map((c, i) => ({ ...c, sortOrder: i }));
-    setCategories(updated); setDragId(null); setDragOverId(null);
+  // Seed defaults
+  const seedDefaults = async () => {
+    const defaults = [
+      { name: 'منتجات رقمية', slug: 'digital', emoji: '💻', sortOrder: 0 },
+      { name: 'اشتراكات', slug: 'subscription', emoji: '🔑', sortOrder: 1 },
+      { name: 'شحن ألعاب', slug: 'games', emoji: '🎮', sortOrder: 2 },
+    ];
     setSaving(true);
     try {
       const batch = writeBatch(db);
-      updated.forEach(c => batch.update(doc(db, 'storeCategories', c.id), { sortOrder: c.sortOrder }));
+      defaults.forEach(d => {
+        const ref = doc(collection(db, 'storeCategories'));
+        batch.set(ref, { ...d, createdAt: Date.now() });
+      });
       await batch.commit();
-    } catch (err: any) { showNotification('فشل حفظ الترتيب: ' + err?.message, 'error'); }
+      notify('تم إضافة الأقسام الافتراضية بنجاح');
+    } catch (e: any) { notify('فشل: ' + e?.message, 'error'); }
     finally { setSaving(false); }
   };
-  const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
 
-  const EMOJI_PRESETS = ['\u{1F4E6}', '\u{1F3AE}', '\u{1F511}', '\u{1F4F1}', '\u{1F4BB}', '\u{1F3B5}', '\u{1F4FA}', '\u{1F393}', '\u{1F4DA}', '\u{1F381}', '\u{2B50}', '\u{1F6E1}', '\u26A1', '\u{1F525}', '\u{1F3A8}', '\u{1F3C6}'];
+  // Active item for overlay
+  const activeCat = activeData?.type === 'category' ? cats.find(c => c.id === (activeId || '').replace('cat:', '')) : null;
+  const activeProd = activeData?.type === 'product' ? activeData.prod as Prod : null;
 
   return (
-    <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-5" dir="rtl">
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--admin-text)]">أقسام المتجر</h1>
-          <p className="text-sm text-[var(--admin-text-muted)] mt-1">أضف وعدّل وعيّن ترتيب الأقسام — تظهر فوراً في فلاتر صفحة المتجر الرئيسية</p>
+          <h1 className="text-xl font-semibold text-[var(--admin-text)] flex items-center gap-2">
+            أقسام المتجر & ترتيب المنتجات
+            {saving && <span className="flex items-center gap-1 text-xs text-[var(--admin-text-muted)] font-normal"><Loader2 className="w-3 h-3 animate-spin" />يحفظ...</span>}
+          </h1>
+          <p className="text-sm text-[var(--admin-text-muted)] mt-0.5">
+            اسحب الأقسام لإعادة ترتيبها • اسحب المنتجات لتغيير موضعها أو قسمها
+          </p>
         </div>
-        {saving && (
-          <div className="flex items-center gap-2 text-xs text-[var(--admin-text-muted)]">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>يحفظ الترتيب...</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {cats.length === 0 && (
+            <button onClick={seedDefaults} disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/30 font-medium text-sm hover:bg-amber-500/25 transition-colors disabled:opacity-50">
+              <Zap className="w-4 h-4" />
+              <span>إضافة الأقسام الافتراضية</span>
+            </button>
+          )}
+          <button onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-[var(--admin-primary)] text-[var(--admin-bg)] font-semibold text-sm hover:opacity-90 transition-opacity">
+            <Plus className="w-4 h-4" />
+            <span>قسم جديد</span>
+          </button>
+        </div>
       </div>
 
+      {/* Notification */}
       {feedback && (
-        <div className={`flex items-center gap-2 p-3 rounded-md text-sm font-medium border transition-all ${feedback.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-red-500/10 text-red-500 border-red-500/30'}`}>
+        <div className={'flex items-center gap-2 p-3 rounded-md text-sm font-medium border ' +
+          (feedback.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-red-500/10 text-red-500 border-red-500/30')}>
           {feedback.type === 'success' ? <Check className="w-4 h-4 flex-shrink-0" /> : <X className="w-4 h-4 flex-shrink-0" />}
           <span>{feedback.text}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-2">
-          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">+ إضافة قسم جديد</h2>
+      {/* ── Add Category Modal ── */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4" dir="rtl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[var(--admin-text)]">إضافة قسم جديد</h2>
+              <button onClick={() => setShowAdd(false)} className="p-1.5 rounded text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)]"><X className="w-4 h-4" /></button>
+            </div>
             <form onSubmit={handleAdd} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[var(--admin-text-muted)] mb-1.5">الأيقونة</label>
-                <div className="flex flex-wrap gap-2 mb-2">
+                <label className="block text-xs font-medium text-[var(--admin-text-muted)] mb-2">الأيقونة</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
                   {EMOJI_PRESETS.map(e => (
                     <button key={e} type="button" onClick={() => setNewEmoji(e)}
-                      className={`w-8 h-8 text-base rounded flex items-center justify-center border transition-all ${newEmoji === e ? 'border-[var(--admin-primary)] bg-[var(--admin-primary)]/10 scale-110' : 'border-[var(--admin-border)] bg-[var(--admin-bg)] hover:border-[var(--admin-primary)]/50'}`}
+                      className={'w-8 h-8 text-base rounded-lg flex items-center justify-center border transition-all ' +
+                        (newEmoji === e ? 'border-[var(--admin-primary)] bg-[var(--admin-primary)]/15 scale-110' : 'border-[var(--admin-border)] bg-[var(--admin-bg)] hover:border-[var(--admin-primary)]/50')}
                     >{e}</button>
                   ))}
                 </div>
-                <input value={newEmoji} onChange={e => setNewEmoji(e.target.value)} placeholder="أو اكتب إيموجي" maxLength={4}
-                  className="w-full px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md text-sm text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--admin-text-muted)] mb-1.5">اسم القسم *</label>
                 <input required value={newName} onChange={e => { setNewName(e.target.value); if (!newSlug) setNewSlug(slugify(e.target.value)); }}
-                  placeholder="مثال: اشتراكات، برامج، كتب..."
-                  className="w-full px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md text-sm text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors" />
+                  placeholder="مثال: اشتراكات، برامج، بطاقات هدايا..."
+                  className="w-full px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-lg text-sm text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--admin-text-muted)] mb-1.5">مفتاح الفلتر <span className="font-normal">(يُولَّد تلقائياً)</span></label>
-                <input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="مثال: subscription" dir="ltr"
-                  className="w-full px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-md text-sm font-mono text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors" />
+                <label className="block text-xs font-medium text-[var(--admin-text-muted)] mb-1.5">
+                  مفتاح الفلتر <span className="font-normal opacity-70">(يُولَّد تلقائياً)</span>
+                </label>
+                <input value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="مثال: subscription, games" dir="ltr"
+                  className="w-full px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-lg text-sm font-mono text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-none focus:border-[var(--admin-primary)] transition-colors" />
                 <p className="text-[10px] text-[var(--admin-text-muted)] mt-1">يجب أن يطابق قيمة type في المنتج (مثال: digital, subscription, games)</p>
               </div>
-              <button type="submit" disabled={adding || !newName.trim()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md bg-[var(--admin-primary)] text-[var(--admin-bg)] font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
-                {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                <span>إضافة القسم</span>
-              </button>
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setShowAdd(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-[var(--admin-border)] text-sm font-medium text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] transition-colors">إلغاء</button>
+                <button type="submit" disabled={adding || !newName.trim()}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[var(--admin-primary)] text-[var(--admin-bg)] font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  <span>إضافة</span>
+                </button>
+              </div>
             </form>
           </div>
-          <div className="mt-4 bg-blue-500/8 border border-blue-500/20 rounded-md p-4 text-xs space-y-2">
-            <p className="font-semibold text-[var(--admin-text)]">💡 كيف تعمل الأقسام؟</p>
-            <ul className="space-y-1 list-disc list-inside text-[var(--admin-text-muted)]">
-              <li>تظهر كتبويبات فلتر في الصفحة الرئيسية والقائمة الجانبية</li>
-              <li>الـ slug يطابق حقل type في المنتج</li>
-              <li>مثال: قسم subscription يعرض المنتجات ذات type=subscription</li>
-              <li>اسحب الأقسام من أيقونة ≡ لإعادة ترتيبها</li>
-            </ul>
-          </div>
         </div>
+      )}
 
-        <div className="lg:col-span-3">
-          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-[var(--admin-border)] bg-[var(--admin-bg)] flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--admin-text)]">الأقسام المتاحة ({categories.length})</span>
-              <span className="text-xs text-[var(--admin-text-muted)]">اسحب ≡ لإعادة الترتيب</span>
-            </div>
-            {loading ? (
-              <div className="py-12 text-center text-[var(--admin-text-muted)]"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /><p className="text-sm">جاري التحميل...</p></div>
-            ) : categories.length === 0 ? (
-              <div className="py-12 text-center text-[var(--admin-text-muted)]"><FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm font-medium">لا توجد أقسام بعد</p><p className="text-xs mt-1">أضف أول قسم من النموذج</p></div>
-            ) : (
-              <ul className="divide-y divide-[var(--admin-border)]">
-                {categories.map(cat => (
-                  <li key={cat.id} draggable onDragStart={e => handleDragStart(e, cat.id)} onDragOver={e => handleDragOver(e, cat.id)}
-                    onDrop={e => handleDrop(e, cat.id)} onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 px-4 py-3 transition-all group ${dragOverId === cat.id && dragId !== cat.id ? 'bg-[var(--admin-primary)]/8 border-r-2 border-[var(--admin-primary)]' : dragId === cat.id ? 'opacity-40 bg-[var(--admin-hover)]' : 'hover:bg-[var(--admin-hover)]'}`}
-                  >
-                    <div className="cursor-grab active:cursor-grabbing text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-colors flex-shrink-0" title="اسحب لإعادة الترتيب">
-                      <GripVertical className="w-4 h-4" />
-                    </div>
-                    <span className="w-5 h-5 rounded-full bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[10px] font-bold text-[var(--admin-text-muted)] flex items-center justify-center flex-shrink-0">{cat.sortOrder + 1}</span>
-                    {editingId === cat.id ? (
-                      <div className="flex-1 flex items-center gap-2 flex-wrap">
-                        <input value={editEmoji} onChange={e => setEditEmoji(e.target.value)} maxLength={4}
-                          className="w-12 px-2 py-1 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded text-sm text-center" />
-                        <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="اسم القسم"
-                          className="flex-1 min-w-[100px] px-2 py-1 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded text-sm text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)]" />
-                        <input value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="slug" dir="ltr"
-                          className="w-32 px-2 py-1 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded text-sm font-mono text-[var(--admin-text)] focus:outline-none focus:border-[var(--admin-primary)]" />
-                        <button onClick={() => saveEdit(cat.id)} className="p-1.5 rounded bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors" title="حفظ"><Save className="w-3.5 h-3.5" /></button>
-                        <button onClick={cancelEdit} className="p-1.5 rounded bg-[var(--admin-bg)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-colors" title="إلغاء"><X className="w-3.5 h-3.5" /></button>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-lg leading-none flex-shrink-0">{cat.emoji}</span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-[var(--admin-text)] truncate">{cat.name}</p>
-                            <p className="text-[11px] text-[var(--admin-text-muted)] font-mono">{cat.slug}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                          <button onClick={() => startEdit(cat)} className="p-1.5 rounded text-[var(--admin-text-muted)] hover:text-[var(--admin-primary)] hover:bg-[var(--admin-bg)] transition-colors" title="تعديل"><Pencil className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDelete(cat.id, cat.name)} className="p-1.5 rounded text-[var(--admin-text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors" title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+      {/* ── DnD Layout ── */}
+      {loading ? (
+        <div className="py-16 text-center text-[var(--admin-text-muted)]">
+          <Loader2 className="w-7 h-7 animate-spin mx-auto mb-3" />
+          <p>جاري التحميل...</p>
         </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCorners}
+          onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          
+          {/* Categories sortable list */}
+          <SortableContext items={catIds} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {cats.length === 0 ? (
+                <div className="py-16 text-center border-2 border-dashed border-[var(--admin-border)] rounded-xl text-[var(--admin-text-muted)]">
+                  <FolderOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-semibold text-[var(--admin-text)]">لا توجد أقسام بعد</p>
+                  <p className="text-sm mt-1 mb-4">أضف أقسامك أو استخدم الأقسام الافتراضية</p>
+                  <button onClick={seedDefaults} disabled={saving}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/15 text-amber-500 border border-amber-500/30 font-semibold text-sm hover:bg-amber-500/25 transition-colors">
+                    <Zap className="w-4 h-4" />
+                    <span>إضافة الأقسام الافتراضية (رقمية + اشتراكات + ألعاب)</span>
+                  </button>
+                </div>
+              ) : (
+                cats.map(cat => (
+                  <CategorySection key={cat.id} cat={cat} prods={prodsByCat[cat.id] || []}
+                    onDelete={() => handleDeleteCat(cat)}
+                    onRename={(name, emoji) => handleRename(cat, name, emoji)}
+                  />
+                ))
+              )}
+            </div>
+          </SortableContext>
+
+          {/* Uncategorized section (not draggable as a section, but products inside are) */}
+          {cats.length > 0 && (prodsByCat['__uncategorized__'] || []).length > 0 && (
+            <div className="rounded-xl border border-dashed border-[var(--admin-border)] overflow-hidden mt-4">
+              <div className="flex items-center gap-3 px-4 py-3 bg-[var(--admin-hover)]">
+                <span className="text-xl">📁</span>
+                <span className="font-semibold text-[var(--admin-text-muted)]">بدون قسم</span>
+                <span className="text-xs text-[var(--admin-text-muted)] bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-full px-2 py-0.5">
+                  {(prodsByCat['__uncategorized__'] || []).length}
+                </span>
+                <span className="text-xs text-[var(--admin-text-muted)] mr-auto">اسحب منتجاً لأي قسم لتصنيفه</span>
+              </div>
+              <div className="p-3">
+                <SortableContext items={(prodsByCat['__uncategorized__'] || []).map(p => 'prod:' + p.id)} strategy={rectSortingStrategy}>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+                    {(prodsByCat['__uncategorized__'] || []).map(p => <ProdCard key={p.id} prod={p} />)}
+                  </div>
+                </SortableContext>
+              </div>
+            </div>
+          )}
+
+          {/* Drag Overlay (visual ghost while dragging) */}
+          <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
+            {activeCat && (
+              <CategorySection cat={activeCat} prods={prodsByCat[activeCat.id] || []}
+                onDelete={() => {}} onRename={() => {}} isOverlay />
+            )}
+            {activeProd && <ProdCard prod={activeProd} isOverlay />}
+          </DragOverlay>
+        </DndContext>
+      )}
+
+      {/* Info bar */}
+      <div className="flex items-center gap-4 text-xs text-[var(--admin-text-muted)] pt-2 border-t border-[var(--admin-border)]">
+        <span>🔷 إجمالي الأقسام: <strong className="text-[var(--admin-text)]">{cats.length}</strong></span>
+        <span>📦 إجمالي المنتجات: <strong className="text-[var(--admin-text)]">{prods.length}</strong></span>
+        <span>📁 بدون قسم: <strong className="text-[var(--admin-text)]">{(prodsByCat['__uncategorized__'] || []).length}</strong></span>
       </div>
     </div>
   );
