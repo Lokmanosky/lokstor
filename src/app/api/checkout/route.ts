@@ -130,26 +130,40 @@ export async function POST(req: NextRequest) {
     const proto = req.headers.get('x-forwarded-proto') || 'https';
     const baseUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app');
 
-        // 5.5. Resolve Selected Variant Price & Details
-    let finalOrderPrice = product.price;
-    let selectedVariantObj: any = undefined;
+            // 5.5. Resolve Selected Variant Price & Details
+    const DEFAULT_COD_VARIANTS = [
+      { id: 'cod_80', name: '80 CP', price: 290, image: '/images/game-coin.jpg' },
+      { id: 'cod_420', name: '420 CP', price: 1390, image: '/images/game-coin.jpg' },
+      { id: 'cod_880', name: '880 CP', price: 2690, image: '/images/game-coin.jpg' },
+      { id: 'cod_2400', name: '2400 CP', price: 6790, image: '/images/game-coin.jpg' },
+      { id: 'cod_5000', name: '5000 CP', price: 13990, image: '/images/game-coin.jpg' },
+      { id: 'cod_10800', name: '10800 CP', price: 29500, image: '/images/game-coin.jpg' },
+      { id: 'cod_pass_w', name: 'تذكرة الإمداد الأسبوعية', price: 290, image: '/images/game-coin.jpg' },
+      { id: 'cod_pass_m', name: 'تذكرة الإمداد الشهرية', price: 990, image: '/images/game-coin.jpg' },
+    ];
 
-    if (variantId && product.variants && Array.isArray(product.variants)) {
-      const foundVar = product.variants.find((v: any) => v.id === variantId);
+    let finalOrderPrice = product.price;
+    let selectedVariantObj: any = null;
+
+    if (variantId) {
+      let foundVar = product.variants?.find((v: any) => v.id === variantId);
+      if (!foundVar) {
+        foundVar = DEFAULT_COD_VARIANTS.find((v: any) => v.id === variantId);
+      }
       if (foundVar) {
         finalOrderPrice = Number(foundVar.price);
         selectedVariantObj = {
           id: foundVar.id,
           name: foundVar.name,
-          price: foundVar.price,
-          image: foundVar.image,
+          price: Number(foundVar.price),
+          image: foundVar.image || '/images/game-coin.jpg',
         };
       }
     } else if (product.priceUnspecified && customAmount && customAmount > 0) {
       finalOrderPrice = Number(customAmount);
     }
 
-    // 6. Create Order object without undefined fields
+    // 6. Create Order object without undefined fields (Strictly sanitized for Firestore)
     const orderData: any = {
       id: orderId,
       productId: product.id,
@@ -159,15 +173,26 @@ export async function POST(req: NextRequest) {
       customerName: cleanName,
       customerEmail: cleanEmail,
       paymentMethod,
-      selectedVariant: selectedVariantObj,
-      customFieldsData: customFieldsData || undefined,
       status: 'pending',
       createdAt: Date.now(),
     };
 
+    if (selectedVariantObj) {
+      orderData.selectedVariant = selectedVariantObj;
+    }
+    if (customFieldsData && typeof customFieldsData === 'object' && Object.keys(customFieldsData).length > 0) {
+      orderData.customFieldsData = customFieldsData;
+    }
     if (cleanPhone) {
       orderData.customerPhone = cleanPhone;
     }
+
+    // Safety check: remove any undefined keys
+    Object.keys(orderData).forEach(key => {
+      if (orderData[key] === undefined) {
+        delete orderData[key];
+      }
+    });
 
     // 6.5. Handle Binance Checkout
     if (paymentMethod === 'binance') {
