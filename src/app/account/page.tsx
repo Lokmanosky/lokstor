@@ -101,8 +101,14 @@ export default function CustomerAccountPage() {
     }
   };
 
+  const isLinkOrContainsLink = (text?: string) => {
+    if (!text) return false;
+    const trimmed = text.trim();
+    return isWebUrl(trimmed) || /https?:\/\/[^\s]+/i.test(trimmed);
+  };
+
   const handleDownloadDeliverable = (order: Order) => {
-    const content = order.downloadUrl;
+    const content = (order.downloadUrl || '').trim();
     if (!content) {
       if (order.downloadToken) {
         window.open(`/api/download?order_id=${order.id}&token=${order.downloadToken}`, '_blank');
@@ -110,14 +116,28 @@ export default function CustomerAccountPage() {
       return;
     }
 
+    const hasLink = isLinkOrContainsLink(content);
+
+    // If it is a direct URL, open it in a new tab as well
     if (isWebUrl(content)) {
       window.open(content, '_blank', 'noopener,noreferrer');
-      return;
     }
 
-    // Text deliverable: download clean .txt file
+    // Generate smart text file
     try {
       const cleanName = (order.productName || 'digital-product').replace(/[/\\?%*:|"<>]/g, '_');
+      
+      const deliverableDetails = hasLink
+        ? `-------------------------------------------
+رابط التفعيل / التحميل:
+يرجى الدخول إلى الرابط التالي للتفعيل:
+${content}
+-------------------------------------------`
+        : `-------------------------------------------
+محتوى التفعيل / بيانات الحساب:
+${content}
+-------------------------------------------`;
+
       const textToSave = `===========================================
 Lokstor - بيانات المنتج الرقمي والتفعيل
 ===========================================
@@ -126,10 +146,7 @@ Lokstor - بيانات المنتج الرقمي والتفعيل
 المستلم: ${order.customerName || ''} (${order.customerEmail || ''})
 تاريخ الشراء: ${new Date(order.createdAt).toLocaleString('ar-DZ')}
 
--------------------------------------------
-محتوى التفعيل / بيانات الحساب:
-${content}
--------------------------------------------
+${deliverableDetails}
 
 شكراً لتعاملكم مع Lokstor!
 رابط المتجر: https://lokstor.vercel.app
@@ -383,21 +400,21 @@ ${content}
                                 <span>{order.downloadUrl && !isWebUrl(order.downloadUrl) ? 'تحميل الملف (.txt)' : 'تحميل الملف'}</span>
                               </button>
                             )}
-                            {order.downloadUrl && !isWebUrl(order.downloadUrl) && (
+                            {order.downloadUrl && (
                               <button
                                 onClick={() => copyToClipboard(order.downloadUrl!, `info_${order.id}`)}
                                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-400 font-bold transition-all"
-                                title="نسخ معلومات الحساب أو التفعيل"
+                                title={isLinkOrContainsLink(order.downloadUrl) ? 'نسخ رابط التفعيل' : 'نسخ معلومات الحساب أو التفعيل'}
                               >
                                 {copiedId === `info_${order.id}` ? (
                                   <>
                                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>تم نسخ البيانات!</span>
+                                    <span>تم النسخ!</span>
                                   </>
                                 ) : (
                                   <>
                                     <Copy className="w-3.5 h-3.5" />
-                                    <span>نسخ بيانات التفعيل</span>
+                                    <span>{isLinkOrContainsLink(order.downloadUrl) ? 'نسخ رابط التفعيل' : 'نسخ بيانات التفعيل'}</span>
                                   </>
                                 )}
                               </button>

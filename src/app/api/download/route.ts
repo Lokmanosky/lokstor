@@ -95,24 +95,42 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 6. Demo / Fallback digital deliverable stream / file content
-    const seedProd = INITIAL_PRODUCTS.find((p) => p.id === order.productId) || INITIAL_PRODUCTS[0];
-    const demoContent = `=== lokstor Digital Product Deliverable ===
+    // 6. Digital deliverable stream / file content
+    const deliverable = (order.downloadUrl || '').trim();
+    const isLink = deliverable && (/https?:\/\/[^\s]+/i.test(deliverable));
+    
+    const detailsSection = deliverable
+      ? (isLink
+          ? `-------------------------------------------
+رابط التفعيل / التحميل:
+يرجى الدخول إلى الرابط التالي للتفعيل:
+${deliverable}
+-------------------------------------------`
+          : `-------------------------------------------
+محتوى التفعيل / بيانات الحساب:
+${deliverable}
+-------------------------------------------`)
+      : 'تم تأكيد طلبك وتجهيزه بنجاح.';
+
+    const demoContent = `===========================================
+Lokstor - بيانات المنتج الرقمي والتفعيل
+===========================================
 المنتج: ${order.productName}
-رقم الطلب: ${order.id}
+رقم الطلب: #${order.id}
 العميل: ${order.customerName} (${order.customerEmail})
 تاريخ الشراء: ${new Date(order.createdAt).toLocaleString('ar-DZ')}
-حالة الدفع: مؤكد مدفوع عبر Chargily Pay
 
-شكراً لتسوقكم من Lokstor! هذا الملف الرقمي تجريبي تم توليده تلقائياً لتأكيد نجاح عملية الشراء والتحميل.
-تصفح المنتجات القادمة: ${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}
+${detailsSection}
+
+شكراً لتسوقكم من Lokstor!
+الموقع: ${process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app'}
 `;
 
     return new NextResponse(demoContent, {
       status: 200,
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(seedProd.name)}.txt"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(order.productName || "digital_product")}.txt"`,
       },
     });
   } catch (error: any) {
