@@ -627,9 +627,14 @@ export default function OrdersPage() {
                   {Object.entries(selectedOrder.customFieldsData).map(([key, val]) => {
                     const isSecret = key.toLowerCase().includes('pass') || key.includes('كلمة');
                     const displayVal = (isSecret && !showPassword) ? '••••••••••••' : val;
+                    const friendlyLabel = 
+                      key === 'game_email' ? 'البريد الإلكتروني للعبة (Call Of Duty / Activision)' :
+                      key === 'game_password' ? 'كلمة المرور (Password)' :
+                      key === 'player_id' ? 'معرف اللاعب (Player ID)' : key;
+
                     return (
                       <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--admin-card)] border border-indigo-500/20 text-xs">
-                        <span className="font-bold text-[var(--admin-text-muted)]">{key}:</span>
+                        <span className="font-bold text-[var(--admin-text-muted)]">{friendlyLabel}:</span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-[var(--admin-text)] select-all">{displayVal}</span>
                           <button
@@ -655,7 +660,10 @@ export default function OrdersPage() {
                   type="button"
                   onClick={() => {
                     const allText = Object.entries(selectedOrder.customFieldsData || {})
-                      .map(([k, v]) => `${k}: ${v}`).join('\n');
+                      .map(([k, v]) => {
+                        const l = k === 'game_email' ? 'الإيميل' : k === 'game_password' ? 'كلمة المرور' : k;
+                        return `${l}: ${v}`;
+                      }).join('\n');
                     navigator.clipboard.writeText(allText);
                     setCopiedKey('all');
                     setTimeout(() => setCopiedKey(null), 2000);
@@ -666,9 +674,27 @@ export default function OrdersPage() {
                   <span>{copiedKey === 'all' ? 'تم نسخ جميع بيانات الحساب!' : 'نسخ جميع بيانات الحساب دفعة واحدة 📋'}</span>
                 </button>
               </div>
+            ) : Boolean(
+              selectedOrder.productName && (
+                selectedOrder.productName.toLowerCase().includes('cod') ||
+                selectedOrder.productName.toLowerCase().includes('call of duty') ||
+                selectedOrder.productName.includes('شحن') ||
+                selectedOrder.productName.includes('نقاط') ||
+                selectedOrder.productName.includes('شدات')
+              )
+            ) ? (
+              <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30 space-y-1.5 text-xs text-right">
+                <div className="font-black flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>طلب قديم (تم قبل تفعيل الحفظ التلقائي):</span>
+                </div>
+                <p className="text-[11px] text-[var(--admin-text-muted)] leading-relaxed">
+                  هذا الطلب تم إنشاؤه مسبقاً قبل التحديث الأخير، لذلك لم تكن بيانات حسابه محفوظة بقاعدة البيانات. في كافة الطلبات الجديدة، تظهر هنا بيانات الإيميل وكلمة المرور مباشرة مع زر النسخ الفوري.
+                </p>
+              </div>
             ) : (
               <div className="p-4 rounded-xl bg-[var(--admin-bg)] border border-[var(--admin-border)] text-xs text-center text-[var(--admin-text-muted)]">
-                لا توجد بيانات حساب إضافية لهذا الطلب (منتج رقمي عادي أو اشتراك).
+                لا توجد بيانات حساب إضافية لهذا الطلب (منتج رقمي عادي أو كود أو اشتراك).
               </div>
             )}
 
