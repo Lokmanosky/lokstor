@@ -138,9 +138,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     return Number(product?.price || 0);
   }, [selectedVariant, product, customAmount]);
 
-  // Dynamic USDT equivalent (approx 250 DZD = 1 USDT)
+  // Dynamic USDT equivalent (approx 265 DZD = 1 USDT)
   const cryptoUsdtEquivalent = useMemo(() => {
-    const approx = Math.max(1, Math.round((effectivePrice / 250) * 10) / 10);
+    const approx = Math.max(1, Math.round((effectivePrice / 265) * 100) / 100);
     return `~${approx}$ USDT`;
   }, [effectivePrice]);
 
@@ -256,7 +256,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         const telegramMessage = 
 `مرحباً، أرغب في تأكيد شراء منتج عبر ${methodTitle}\n\n` +
 `📦 المنتج: ${product?.name}\n` +
-`💰 المبلغ: ${effectivePrice.toLocaleString('en-US')} د.ج (${cryptoUsdtEquivalent})\n` +
+`💰 المبلغ: ${effectivePrice.toLocaleString('en-US')} د.ج ({cryptoUsdtEquivalent})\n` +
 `👤 الاسم: ${customerName}\n` +
 `📧 البريد: ${customerEmail}\n` +
 `🔖 رقم الطلب: #${orderRef}\n` +
@@ -397,7 +397,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   {effectivePrice.toLocaleString('en-US')} د.ج
                 </span>
                 <span className="text-xs text-slate-500 font-bold">
-                  {lang === 'ar' ? `(${cryptoUsdtEquivalent} أو ما يعادله)` : cryptoUsdtEquivalent}
+                  ({cryptoUsdtEquivalent})
                 </span>
               </div>
             </div>
@@ -814,7 +814,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
-                          <span>الصق المعرّف <strong className="font-mono text-rose-600">1622725404</strong> وحوّل المبلغ المطلوب (${cryptoUsdtEquivalent} أو ما يعادله).</span>
+                          <span>الصق المعرّف <strong className="font-mono text-rose-600">1622725404</strong> وحوّل المبلغ المطلوب ({cryptoUsdtEquivalent}).</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
@@ -975,7 +975,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
-                          <span>حوّل المبلغ المطلوب (${cryptoUsdtEquivalent} أو ما يعادله).</span>
+                          <span>حوّل المبلغ المطلوب ({cryptoUsdtEquivalent}).</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
