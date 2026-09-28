@@ -51,9 +51,9 @@ export default function AdminLoginPage() {
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
       const res = await signInWithPopup(auth, provider);
       await checkRoleAndRedirect(res.user.uid, res.user.email);
     } catch (e: any) {
@@ -61,8 +61,12 @@ export default function AdminLoginPage() {
       if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') {
         setError('تم إلغاء تسجيل الدخول');
       } else if (e?.code === 'auth/popup-blocked') {
-        router.push('/google-signin');
-        return;
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch {
+          setError('تم حظر النافذة المنبثقة من المتصفح');
+        }
       } else {
         setError('تعذّر تسجيل الدخول عبر Google، حاول مجدداً');
       }

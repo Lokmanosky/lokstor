@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useTranslation } from '@/lib/i18n-context';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, sendPasswordResetEmail } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -39,12 +39,14 @@ function NavBar() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Open login modal with fresh, clean state
   const openLoginModal = () => {
     setError('');
     setSuccess('');
     setLoading(false);
+    setGoogleLoading(false);
     setIsLoginModalOpen(true);
   };
 
@@ -59,6 +61,7 @@ function NavBar() {
       setEmail('');
       setPassword('');
       setLoading(false);
+      setGoogleLoading(false);
     } catch (e) {
       console.error('Sign out error:', e);
     }
@@ -140,9 +143,33 @@ function NavBar() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    router.push('/google-signin');
-    setIsLoginModalOpen(false);
+  const handleGoogleLogin = async () => {
+    setError('');
+    setGoogleLoading(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    try {
+      await signInWithPopup(auth, provider);
+      setIsLoginModalOpen(false);
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        return;
+      }
+      if (err?.code === 'auth/popup-blocked') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch {
+          setError('تم حظر النافذة المنبثقة من المتصفح، يرجى السماح بها');
+        }
+      } else {
+        setError('تعذّر تسجيل الدخول عبر Google، حاول مجدداً');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -449,11 +476,17 @@ function NavBar() {
             </div>
 
             <button 
+              type="button"
               onClick={handleGoogleLogin}
-              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
+              disabled={googleLoading || loading}
+              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
             >
-              <GoogleIcon />
-              <span>المتابعة باستخدام Google</span>
+              {googleLoading ? (
+                <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة باستخدام Google'}</span>
             </button>
             
             <div className="mt-6 text-center text-xs text-[var(--store-text-muted)]">

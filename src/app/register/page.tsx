@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { UserPlus, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -49,8 +50,33 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleRegister = () => {
-    router.push('/google-signin');
+  const handleGoogleRegister = async () => {
+    setError('');
+    setGoogleLoading(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    try {
+      await signInWithPopup(auth, provider);
+      router.push('/account');
+    } catch (err: any) {
+      console.error('Google register error:', err);
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        return;
+      }
+      if (err?.code === 'auth/popup-blocked') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch {
+          setError('تم حظر النافذة المنبثقة من المتصفح، يرجى السماح بها');
+        }
+      } else {
+        setError('تعذّر التسجيل عبر Google، حاول مجدداً');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   // Redirect if already logged in
@@ -168,11 +194,16 @@ export default function RegisterPage() {
         {/* Google sign up */}
         <button 
           onClick={handleGoogleRegister}
+          disabled={googleLoading || loading}
           type="button"
-          className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-xs sm:text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95"
+          className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-xs sm:text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
         >
-          <GoogleIcon />
-          <span>المتابعة والتسجيل باستخدام Google</span>
+          {googleLoading ? (
+            <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+          ) : (
+            <GoogleIcon />
+          )}
+          <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة والتسجيل باستخدام Google'}</span>
         </button>
         
         {/* Footer links */}
