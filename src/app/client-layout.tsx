@@ -435,16 +435,27 @@ function NavBar() {
 
     {/* Mobile Menu Sidebar */}
     {mobileMenuOpen && (
-      <div className="md:hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm">
-        <div className="absolute top-0 right-0 h-full w-64 bg-[var(--store-bg)] border-l border-[var(--store-border)] shadow-2xl flex flex-col">
-          <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--store-border)]">
-            <span className="font-bold text-[var(--store-text)]">القائمة</span>
-            <button onClick={() => setMobileMenuOpen(false)} aria-label="إغلاق القائمة" className="p-2 text-[var(--store-text-muted)] hover:text-[var(--store-text)]">
+      <div 
+        className="md:hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm cursor-pointer animate-in fade-in duration-200"
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        <div 
+          className="absolute top-0 right-0 h-full w-72 sm:w-80 bg-[var(--store-bg)] border-l border-[var(--store-border)] shadow-2xl flex flex-col cursor-default animate-in slide-in-from-right duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="h-16 flex items-center justify-between px-5 border-b border-[var(--store-border)]">
+            <span className="font-black text-base text-[var(--store-text)]">القائمة</span>
+            <button 
+              onClick={() => setMobileMenuOpen(false)} 
+              aria-label="إغلاق القائمة" 
+              className="p-2 rounded-lg text-[var(--store-text-muted)] hover:text-[var(--store-text)] hover:bg-[var(--store-card)] transition-colors cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
           
-          <div className="p-4 flex-1 flex flex-col gap-6 overflow-y-auto">
+          <div className="p-4 flex-1 flex flex-col gap-5 overflow-y-auto">
             {/* Search */}
             <div className="relative">
               <form onSubmit={handleSearch} className="relative">
@@ -453,14 +464,14 @@ function NavBar() {
                   value={searchQuery} 
                   onChange={(e) => handleSearchChange(e.target.value)} 
                   placeholder={t("nav.search")} 
-                  className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm rounded-xl px-4 py-2.5 pr-10 pl-8 focus:outline-none focus:border-emerald-500 transition-colors text-[var(--store-text)]" 
+                  className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm rounded-xl px-4 py-3 pr-10 pl-8 focus:outline-none focus:border-emerald-500 transition-colors text-[var(--store-text)]" 
                 />
                 <Search className="w-4 h-4 text-[var(--store-text-muted)] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 {searchQuery && (
                   <button 
                     type="button" 
                     onClick={() => handleSearchChange('')}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] p-1"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] p-1 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -502,7 +513,7 @@ function NavBar() {
                     <button
                       type="button"
                       onClick={(e) => handleSearch(e)}
-                      className="w-full text-center py-1.5 text-xs font-bold text-emerald-500 border-t border-[var(--store-border)] mt-1"
+                      className="w-full text-center py-1.5 text-xs font-bold text-emerald-500 border-t border-[var(--store-border)] mt-1 cursor-pointer"
                     >
                       عرض النتائج بالصفحة ←
                     </button>
@@ -511,50 +522,122 @@ function NavBar() {
               )}
             </div>
             
-            {/* Links */}
-            <nav className="flex flex-col gap-4 text-sm font-medium text-[var(--store-text)]">
-              <Link href="/" onClick={() => setMobileMenuOpen(false)}>{t('nav.all')}</Link>
-              <Link href="/" onClick={() => setMobileMenuOpen(false)}>{t('nav.digital')}</Link>
-              <Link href="/" onClick={() => setMobileMenuOpen(false)}>{t('nav.subs')}</Link>
-            </nav>
+            {/* الأقسام الرئيسية (Larger, comfortable touch targets) */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">الأقسام</span>
+              <nav className="flex flex-col gap-2">
+                <Link 
+                  href="/" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>{t('nav.all')}</span>
+                  </div>
+                  <span className="text-xs text-[var(--store-text-muted)] opacity-60">←</span>
+                </Link>
 
-            <div className="h-px bg-[var(--store-border)] w-full my-2"></div>
+                <Link 
+                  href="/" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                    <span>{t('nav.digital')}</span>
+                  </div>
+                  <span className="text-xs text-[var(--store-text-muted)] opacity-60">←</span>
+                </Link>
 
-            {/* Auth */}
-            {!user ? (
-              <div className="flex flex-col gap-3">
-                <button onClick={() => { setMobileMenuOpen(false); openLoginModal(); }} className="w-full text-center py-2.5 border border-[var(--store-border)] rounded-md text-sm font-medium text-[var(--store-text)]">
+                <Link 
+                  href="/" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 hover:bg-emerald-500/5 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                    <span>{t('nav.subs')}</span>
+                  </div>
+                  <span className="text-xs text-[var(--store-text-muted)] opacity-60">←</span>
+                </Link>
+              </nav>
+            </div>
+
+            {/* الحساب الشخصي (Account & Admin Navigation) */}
+            {user ? (
+              <div className="space-y-2 pt-1">
+                <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">الحساب الشخصي</span>
+                <div className="flex flex-col gap-2">
+                  <Link 
+                    href="/account" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] hover:border-emerald-500/50 text-sm sm:text-base font-bold text-[var(--store-text)] transition-all active:scale-[0.98] cursor-pointer shadow-xs"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <span>حسابي وطلباتي</span>
+                  </Link>
+
+                  {isAdmin && (
+                    <Link 
+                      href="/admin" 
+                      onClick={() => setMobileMenuOpen(false)} 
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/15 text-sm sm:text-base font-bold text-amber-500 transition-all active:scale-[0.98] cursor-pointer shadow-xs"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                        <Settings className="w-4 h-4" />
+                      </div>
+                      <span>لوحة التحكم (Admin)</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5 pt-2">
+                <button 
+                  onClick={() => { setMobileMenuOpen(false); openLoginModal(); }} 
+                  className="w-full text-center py-3 px-4 border border-[var(--store-border)] hover:bg-[var(--store-card)] rounded-xl text-sm font-bold text-[var(--store-text)] transition-all cursor-pointer"
+                >
                   {t('nav.login')}
                 </button>
-                <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-2.5 bg-[var(--store-text)] text-[var(--store-bg)] rounded-md text-sm font-medium">
+                <Link 
+                  href="/register" 
+                  onClick={() => setMobileMenuOpen(false)} 
+                  className="w-full text-center py-3 px-4 bg-[var(--store-text)] text-[var(--store-bg)] rounded-xl text-sm font-bold transition-all shadow-sm cursor-pointer"
+                >
                   {t('nav.register')}
                 </Link>
               </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <Link href="/account" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-sm font-medium text-[var(--store-text)]">
-                  <User className="w-4 h-4" /> حسابي وطلباتي
-                </Link>
-                {isAdmin && (
-                  <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-sm font-medium text-amber-400">
-                    <Settings className="w-4 h-4" /> لوحة التحكم (Admin)
-                  </Link>
-                )}
-                <button onClick={handleSignOut} className="flex items-center gap-2 text-sm font-medium text-red-500 text-right">
-                  <LogOut className="w-4 h-4" /> تسجيل الخروج
-                </button>
-              </div>
             )}
 
-            <div className="mt-auto flex justify-between items-center pt-4 border-t border-[var(--store-border)]">
-              <button onClick={handleToggleTheme} className="p-2 border border-[var(--store-border)] rounded-md text-[var(--store-text)]">
-                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-              
-              <div className="flex gap-2 text-xs">
-                <button onClick={() => setLang('ar')} className={`px-2 py-1 border rounded-md ${lang === 'ar' ? 'bg-[var(--store-text)] text-[var(--store-bg)]' : 'border-[var(--store-border)] text-[var(--store-text)]'}`}>AR</button>
-                <button onClick={() => setLang('en')} className={`px-2 py-1 border rounded-md ${lang === 'en' ? 'bg-[var(--store-text)] text-[var(--store-bg)]' : 'border-[var(--store-border)] text-[var(--store-text)]'}`}>EN</button>
-                <button onClick={() => setLang('fr')} className={`px-2 py-1 border rounded-md ${lang === 'fr' ? 'bg-[var(--store-text)] text-[var(--store-bg)]' : 'border-[var(--store-border)] text-[var(--store-text)]'}`}>FR</button>
+            {/* Bottom Section (أسفل شيء: تسجيل الخروج + المظهر واللغة) */}
+            <div className="mt-auto pt-4 border-t border-[var(--store-border)] flex flex-col gap-3">
+              {user && (
+                <button 
+                  onClick={handleSignOut} 
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-sm font-bold text-red-500 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                >
+                  <LogOut className="w-4 h-4" /> 
+                  <span>تسجيل الخروج</span>
+                </button>
+              )}
+
+              <div className="flex justify-between items-center pt-1">
+                <button 
+                  onClick={handleToggleTheme} 
+                  className="p-2.5 border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:bg-[var(--store-card)] transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+                  <span className="text-[11px] text-[var(--store-text-muted)]">{theme === 'dark' ? 'نهاري' : 'ليلي'}</span>
+                </button>
+                
+                <div className="flex gap-1.5 text-xs">
+                  <button onClick={() => setLang('ar')} className={`px-2.5 py-1.5 border rounded-lg font-bold cursor-pointer ${lang === 'ar' ? 'bg-[var(--store-text)] text-[var(--store-bg)] border-[var(--store-text)]' : 'border-[var(--store-border)] text-[var(--store-text)] hover:bg-[var(--store-card)]'}`}>AR</button>
+                  <button onClick={() => setLang('en')} className={`px-2.5 py-1.5 border rounded-lg font-bold cursor-pointer ${lang === 'en' ? 'bg-[var(--store-text)] text-[var(--store-bg)] border-[var(--store-text)]' : 'border-[var(--store-border)] text-[var(--store-text)] hover:bg-[var(--store-card)]'}`}>EN</button>
+                  <button onClick={() => setLang('fr')} className={`px-2.5 py-1.5 border rounded-lg font-bold cursor-pointer ${lang === 'fr' ? 'bg-[var(--store-text)] text-[var(--store-bg)] border-[var(--store-text)]' : 'border-[var(--store-border)] text-[var(--store-text)] hover:bg-[var(--store-card)]'}`}>FR</button>
+                </div>
               </div>
             </div>
 
