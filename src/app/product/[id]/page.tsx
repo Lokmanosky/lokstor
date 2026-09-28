@@ -255,10 +255,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col">
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-black text-red-600 dark:text-red-500 font-mono">
+                <span className="text-3xl sm:text-4xl font-black text-emerald-500 tracking-tight">
                   {displayPrice.toLocaleString('en-US')}
                 </span>
-                <span className="text-xl font-black text-red-600 dark:text-red-500">
+                <span className="text-xl font-black text-emerald-500">
                   د.ج
                 </span>
               </div>
@@ -338,7 +338,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     >
                       {/* Left: Price in DA */}
                       <div className="flex flex-col items-start">
-                        <span className={`text-sm font-black font-mono ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--store-text)]'}`}>
+                        <span className={`text-sm font-black ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--store-text)]'}`}>
                           {v.price.toLocaleString('en-US')} <span className="text-xs font-bold">د.ج</span>
                         </span>
                         {v.originalPrice && v.originalPrice > v.price && (
