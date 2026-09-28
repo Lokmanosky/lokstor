@@ -18,6 +18,7 @@ import {
   Wallet,
   Calendar,
   AlertCircle,
+  AlertTriangle,
   Gamepad2,
   Eye,
   EyeOff,
@@ -45,6 +46,10 @@ export default function OrdersPage() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
+
+  // Red Warning Confirmation Modals for Setting to Pending
+  const [pendingTargetOrder, setPendingTargetOrder] = useState<Order | null>(null);
+  const [isBulkPendingConfirmOpen, setIsBulkPendingConfirmOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'orders'), (snap) => {
@@ -130,6 +135,28 @@ export default function OrdersPage() {
       await updateDoc(doc(db, 'orders', orderId), { status: 'paid', paidAt: Date.now() });
       return { success: false, error: err };
     }
+  };
+
+  const confirmSetToPending = async () => {
+    if (!pendingTargetOrder?.id) return;
+    const orderId = pendingTargetOrder.id;
+    setPendingTargetOrder(null);
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { 
+        status: 'pending',
+        downloadUrl: null,
+      });
+      setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار وتفريغ الرابط بنجاح (سيتم سحب اشتراك جديد عند إكماله)');
+      setTimeout(() => setBulkFeedback(null), 5000);
+    } catch(e: any) {
+      console.error(e);
+      alert('حدث خطأ أثناء تعديل حالة الطلب: ' + e?.message);
+    }
+  };
+
+  const confirmBulkSetToPending = async () => {
+    setIsBulkPendingConfirmOpen(false);
+    await handleBulkUpdateStatus('pending');
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -616,13 +643,13 @@ export default function OrdersPage() {
               <span>تفعيل كمكتمل ({selectedOrderIds.length})</span>
             </button>
 
-            {/* Mark as Pending / تحويل لانتظار */}
+            {/* Mark as Pending / تحويل لانتظار (Shows Red Danger Modal) */}
             <button
               type="button"
               disabled={isBulkProcessing}
-              onClick={() => handleBulkUpdateStatus('pending')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
-              title="تحويل الطلبات المحددة لقيد الانتظار"
+              onClick={() => setIsBulkPendingConfirmOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              title="تحويل الطلبات المحددة لقيد الانتظار (تحذير تفريغ المخزون)"
             >
               <Clock className="w-3.5 h-3.5" />
               <span>تحويل للانتظار ({selectedOrderIds.length})</span>
@@ -849,13 +876,13 @@ export default function OrdersPage() {
                           </button>
                         )}
 
-                        {/* Set to Pending */}
+                        {/* Set to Pending (Shows Red Alert Modal) */}
                         {o.status !== 'pending' && (
                           <button
                             type="button"
-                            onClick={() => handleUpdateStatus(o.id!, 'pending')}
-                            title="تعيين كمعلق"
-                            className="p-1 rounded text-[var(--admin-text-muted)] hover:text-amber-500 hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
+                            onClick={() => setPendingTargetOrder(o)}
+                            title="تعيين كمعلق (تحذير تفريغ الرابط وسحب اشتراك جديد)"
+                            className="p-1 rounded text-[var(--admin-text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                           >
                             <Clock className="w-3.5 h-3.5" />
                           </button>
@@ -1070,6 +1097,174 @@ export default function OrdersPage() {
                 className="px-4 py-2 rounded-lg border border-[var(--admin-border)] text-xs font-bold text-[var(--admin-text)] hover:bg-[var(--admin-hover)] cursor-pointer"
               >
                 إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── RED DANGER CONFIRMATION MODAL: SET TO PENDING (تأكيد الإرجاع لمعلق) ── */}
+      {pendingTargetOrder && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" 
+          onClick={() => setPendingTargetOrder(null)}
+        >
+          <div 
+            className="bg-[var(--admin-card)] border-2 border-rose-500/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-right ring-4 ring-rose-500/20 animate-in zoom-in-95 duration-150" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-rose-500/30 pb-3 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border-2 border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
+                  <AlertTriangle className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-rose-600 dark:text-rose-400">
+                    تنبيه أمني ومخزوني حرج! ⚠️
+                  </h3>
+                  <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                    إعادة الطلب إلى "قيد الانتظار" وتفريغ رابط التسليم
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPendingTargetOrder(null)} 
+                className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Target Order Summary Card */}
+            <div className="grid grid-cols-2 gap-2 text-xs bg-[var(--admin-bg)] p-3 rounded-xl border border-[var(--admin-border)]">
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">رقم الطلب:</span>
+                <span className="font-mono font-bold text-[var(--admin-text)]">#{pendingTargetOrder.id?.slice(0, 8)}</span>
+              </div>
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">المنتج:</span>
+                <span className="font-bold text-[var(--admin-text)] line-clamp-1">{pendingTargetOrder.productName}</span>
+              </div>
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">العميل:</span>
+                <span className="font-bold text-[var(--admin-text)]">{pendingTargetOrder.customerName}</span>
+              </div>
+              <div>
+                <span className="text-[var(--admin-text-muted)] block text-[11px]">الإيميل:</span>
+                <span className="font-mono text-[var(--admin-text)] text-[11px] truncate block">{pendingTargetOrder.customerEmail}</span>
+              </div>
+            </div>
+
+            {/* If Order had a deliverable, show it */}
+            {pendingTargetOrder.downloadUrl && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1.5 text-xs">
+                <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>الرابط / الحساب الحالي الذي سيتم إلغاؤه وتفريغه:</span>
+                </span>
+                <div className="font-mono text-[11px] p-2 bg-[var(--admin-bg)] rounded-lg border border-rose-500/20 text-[var(--admin-text)] break-all max-h-16 overflow-y-auto select-all">
+                  {pendingTargetOrder.downloadUrl}
+                </div>
+              </div>
+            )}
+
+            {/* High-Alert Warning Banner */}
+            <div className="p-4 rounded-xl bg-rose-500/15 border-2 border-rose-500/40 text-xs text-right space-y-2.5">
+              <div className="font-black text-rose-600 dark:text-rose-400 flex items-center gap-1.5 text-sm">
+                <span>🛑 خطر استهلاك اشتراك إضافي مضاعف:</span>
+              </div>
+              <p className="text-xs text-[var(--admin-text)] leading-relaxed">
+                إذا قمت بإعادة هذا الطلب إلى قيد الانتظار، فسيتم <strong>تفريغ وحذف الرابط الحالي</strong> المرتبط بالطلب.
+              </p>
+              <div className="p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold leading-relaxed text-xs">
+                ⚠️ <strong>تنبيه هام جداً:</strong> عندما تقوم لاحقاً بإعادة تعيين هذا الطلب إلى <strong>"مكتمل"</strong>، سيقوم النظام تلقائياً <strong>بسحب واقتطاع اشتراك جديد كلياً من المخزون</strong> وتسليمه للعميل. إذا كان العميل قد احتفظ بالاشتراك الأول، فإنه سيحصل على اشتراكين!
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-[var(--admin-border)]">
+              <button
+                type="button"
+                onClick={confirmSetToPending}
+                className="flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
+              >
+                <Clock className="w-4 h-4" />
+                <span>نعم، إعادة لمعلق (سحب اشتراك جديد لاحقاً)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingTargetOrder(null)}
+                className="py-3 px-4 rounded-xl border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text)] font-bold text-xs cursor-pointer transition-all text-center"
+              >
+                إلغاء التراجع (إبقاء الطلب كما هو)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BULK PENDING CONFIRMATION MODAL (الإرجاع الجماعي لمعلق) ── */}
+      {isBulkPendingConfirmOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" 
+          onClick={() => setIsBulkPendingConfirmOpen(false)}
+        >
+          <div 
+            className="bg-[var(--admin-card)] border-2 border-rose-500/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-right ring-4 ring-rose-500/20 animate-in zoom-in-95 duration-150" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-rose-500/30 pb-3 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border-2 border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
+                  <AlertTriangle className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-rose-600 dark:text-rose-400">
+                    تحذير إرجاع جماعي لقيد الانتظار! ⚠️
+                  </h3>
+                  <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                    أنت على وشك تحويل ({selectedOrderIds.length}) طلب إلى قيد الانتظار
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsBulkPendingConfirmOpen(false)} 
+                className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Warning Message */}
+            <div className="p-4 rounded-xl bg-rose-500/15 border-2 border-rose-500/40 text-xs text-right space-y-2.5">
+              <div className="font-black text-rose-600 dark:text-rose-400 flex items-center gap-1.5 text-sm">
+                <span>🛑 تنبيه بشأن المخزون لـ ({selectedOrderIds.length}) طلب:</span>
+              </div>
+              <p className="text-xs text-[var(--admin-text)] leading-relaxed">
+                تحويل هذه الطلبات دفعة واحدة إلى قيد الانتظار سيقوم بـ <strong>تفريغ كافة روابط التسليم المسلمة لها</strong>.
+              </p>
+              <div className="p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-bold leading-relaxed text-xs">
+                ⚠️ عند إعادة تفعيل هذه الطلبات كمكتملة لاحقاً، <strong>سيقوم النظام باقتطاع ({selectedOrderIds.length}) اشتراك جديد كلياً من المخزون</strong> وتسليمها للعملاء مجدداً!
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-[var(--admin-border)]">
+              <button
+                type="button"
+                onClick={confirmBulkSetToPending}
+                className="flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
+              >
+                <Clock className="w-4 h-4" />
+                <span>تأكيد تحويل ({selectedOrderIds.length}) طلب لمعلق</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBulkPendingConfirmOpen(false)}
+                className="py-3 px-4 rounded-xl border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text)] font-bold text-xs cursor-pointer transition-all text-center"
+              >
+                إلغاء
               </button>
             </div>
           </div>
