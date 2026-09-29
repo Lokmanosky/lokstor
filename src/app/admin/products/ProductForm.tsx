@@ -370,13 +370,13 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
     const isNum = stockMode === 'numeric';
     const computedStock = isNum 
-      ? (isUnlimitedStock ? 999999 : Number(numericStock || 0))
+      ? (isUnlimitedStock ? 999999 : Number(numericStock !== undefined ? numericStock : 0))
       : stockItems.map(s => s.trim()).filter(Boolean).length;
     const finalStockLinks = isNum 
       ? [] 
       : stockItems.map(s => s.trim()).filter(Boolean);
 
-    const payload: Partial<Product> = {
+    const payload: Record<string, any> = {
       ...form,
       name: form.name.trim(),
       description: form.description || '',
@@ -397,11 +397,36 @@ export default function ProductForm({ productId }: ProductFormProps) {
       updatedAt: Date.now(),
     };
 
+    if (form.originalPrice) {
+      payload.originalPrice = Number(form.originalPrice);
+    } else {
+      delete payload.originalPrice;
+    }
+
+    // Recursively remove any undefined values so Firestore never throws 'Unsupported field value: undefined'
+    const sanitizeForFirestore = (obj: any): any => {
+      if (Array.isArray(obj)) {
+        return obj.map(sanitizeForFirestore).filter(v => v !== undefined);
+      }
+      if (obj !== null && typeof obj === 'object') {
+        const cleaned: Record<string, any> = {};
+        for (const [k, v] of Object.entries(obj)) {
+          if (v !== undefined) {
+            cleaned[k] = sanitizeForFirestore(v);
+          }
+        }
+        return cleaned;
+      }
+      return obj;
+    };
+
+    const cleanPayload = sanitizeForFirestore(payload);
+
     try {
       if (isEdit && productId) {
-        await setDoc(doc(db, 'products', productId), { ...payload, createdAt: form.createdAt || Date.now() });
+        await setDoc(doc(db, 'products', productId), { ...cleanPayload, createdAt: form.createdAt || Date.now() });
       } else {
-        await addDoc(collection(db, 'products'), { ...payload, createdAt: Date.now() });
+        await addDoc(collection(db, 'products'), { ...cleanPayload, createdAt: Date.now() });
       }
       router.push('/admin/products');
     } catch (err: any) {
@@ -982,19 +1007,28 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 stockMode === 'numeric'
                   ? (isUnlimitedStock
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                      : numericStock < 20
-                        ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
-                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20')
-                  : (filledCount < 20
-                      ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
-                      : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20')
+                      : numericStock === 0
+                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                        : numericStock < 20
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20')
+                  : (filledCount === 0
+                      ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                      : filledCount < 20
+                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                        : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20')
               }`}>
                 {stockMode === 'numeric' 
                   ? (isUnlimitedStock ? (
                       'مخزون غير محدود ♾️'
+                    ) : numericStock === 0 ? (
+                      <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold">
+                        <span>نفذ المخزون (0)</span>
+                        <span>🔴</span>
+                      </span>
                     ) : (
                       <span className="flex items-center gap-1">
-                        <span className={numericStock < 20 ? 'text-red-600 dark:text-red-400 font-black' : ''}>
+                        <span className={numericStock < 20 ? 'text-amber-600 dark:text-amber-400 font-black' : ''}>
                           {numericStock}
                         </span>
                         <span>متوفر بالعدد</span>
@@ -1002,13 +1036,20 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       </span>
                     ))
                   : (
-                    <span className="flex items-center gap-1">
-                      <span className={filledCount < 20 ? 'text-red-600 dark:text-red-400 font-black' : ''}>
-                        {filledCount}
+                    filledCount === 0 ? (
+                      <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold">
+                        <span>نفذ المخزون (0)</span>
+                        <span>🔴</span>
                       </span>
-                      <span>حساب معزول</span>
-                      {filledCount < 20 && <span>⚠️</span>}
-                    </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <span className={filledCount < 20 ? 'text-amber-600 dark:text-amber-400 font-black' : ''}>
+                          {filledCount}
+                        </span>
+                        <span>حساب معزول</span>
+                        {filledCount < 20 && <span>⚠️</span>}
+                      </span>
+                    )
                   )}
               </span>
             </div>
