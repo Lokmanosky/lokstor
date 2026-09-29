@@ -236,25 +236,25 @@ function NavBar() {
   return (
     <>
     <header className="sticky top-0 z-50 border-b border-[var(--store-border)] text-[var(--store-text)] store-header bg-[var(--store-bg)]">
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1 sm:gap-4">
         
         {/* Right (Menu Toggle & Logo & Links) */}
-        <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 flex-shrink">
+        <div className="flex items-center gap-1 sm:gap-4 min-w-0 flex-shrink">
           {/* Mobile Menu Toggle Button (في الزاوية قبل صورة اللوغو) */}
           <button 
             onClick={() => setMobileMenuOpen(true)}
             aria-label="فتح القائمة الرئيسية"
-            className="md:hidden w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+            className="md:hidden w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
             title="القائمة"
           >
-            <Menu className="w-5 h-5 text-[var(--store-text)]" />
+            <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--store-text)]" />
           </button>
 
-          <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 group min-w-0">
+          <Link href="/" className="flex items-center gap-1 sm:gap-2.5 group min-w-0">
             {s.logoImageUrl ? (
-              <img src={s.logoImageUrl} alt="logo" className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover border border-[var(--store-border)] flex-shrink-0 shadow-2xs" />
+              <img src={s.logoImageUrl} alt="logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-cover border border-[var(--store-border)] flex-shrink-0 shadow-2xs" />
             ) : (
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center text-black font-black text-lg sm:text-xl border border-[var(--store-border)] flex-shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center text-black font-black text-lg sm:text-xl border border-[var(--store-border)] flex-shrink-0">
                 {s.logoLetter}
               </div>
             )}
@@ -347,25 +347,25 @@ function NavBar() {
         </div>
 
         {/* Left (Theme, Lang, Auth, Cart) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           
           {/* Theme & Language Toggles */}
-          <div className="flex items-center gap-1.5 border-l border-[var(--store-border)] pl-1.5 sm:pl-2 ml-0.5 sm:ml-1 relative">
+          <div className="flex items-center gap-1 border-l border-[var(--store-border)] pl-1 sm:pl-2 ml-0.5 sm:ml-1 relative">
             <button 
               onClick={handleToggleTheme}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-amber-400 hover:border-amber-400/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-amber-400 hover:border-amber-400/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
               title="تغيير المظهر" aria-label="تبديل المظهر النهاري والليلي"
             >
-              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-400" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />}
             </button>
             
             <div className="relative flex-shrink-0">
               <button 
                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-blue-500 hover:border-blue-500/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-blue-500 hover:border-blue-500/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
                 title="تغيير اللغة" aria-label="تغيير لغة الموقع"
               >
-                <Globe className="w-5 h-5 text-blue-500" />
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               </button>
               
               {langDropdownOpen && (
@@ -381,7 +381,7 @@ function NavBar() {
           </div>
 
           {/* Auth section */}
-          <div className="flex items-center gap-1.5 sm:gap-2 border-l border-[var(--store-border)] pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
+          <div className="flex items-center gap-1 sm:gap-2 border-l border-[var(--store-border)] pl-1 sm:pl-2 ml-0.5 sm:ml-1">
             {user ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link 
@@ -398,29 +398,29 @@ function NavBar() {
                 {isAdmin && (
                   <Link 
                     href="/admin"
-                    className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+                    className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
                     title="لوحة تحكم المسؤول (Admin)"
                   >
-                    <Settings className="w-5 h-5 text-amber-400" />
+                    <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                   </Link>
                 )}
 
                 <button 
                   onClick={handleSignOut}
-                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+                  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
                   title="تسجيل الخروج"
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <button 
                   onClick={openLoginModal}
-                  className="w-9 h-9 sm:w-auto sm:px-3 sm:py-2 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-xs font-bold text-[var(--store-text)] hover:bg-[var(--store-card)] hover:border-emerald-500/40 transition-all flex-shrink-0 cursor-pointer shadow-2xs"
+                  className="w-8 h-8 sm:w-auto sm:px-3 sm:py-2 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-xs font-bold text-[var(--store-text)] hover:bg-[var(--store-card)] hover:border-emerald-500/40 transition-all flex-shrink-0 cursor-pointer shadow-2xs"
                   title="تسجيل الدخول"
                 >
-                  <User className="w-5 h-5 sm:hidden text-[var(--store-text-muted)]" />
+                  <User className="w-4 h-4 sm:hidden text-[var(--store-text-muted)]" />
                   <span className="hidden sm:inline">تسجيل الدخول</span>
                 </button>
                 <Link 
@@ -445,10 +445,10 @@ function NavBar() {
               }
             }}
             aria-label="سلة المشتريات" 
-            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text-muted)] hover:text-amber-500 hover:border-amber-500/40 hover:bg-[var(--store-card)] transition-all relative flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+            className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text-muted)] hover:text-amber-500 hover:border-amber-500/40 hover:bg-[var(--store-card)] transition-all relative flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
             title="سلة المشتريات"
           >
-            <ShoppingCart className="w-5 h-5 text-amber-500" />
+            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
             {totalItems > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-black flex items-center justify-center rounded-full ring-2 ring-[var(--store-bg)] shadow-xs">
                 {totalItems > 9 ? '+9' : totalItems}
