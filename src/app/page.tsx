@@ -554,11 +554,11 @@ function HomePageContent() {
                     </div>
                   </div>
                 </Link>
-                <div className="p-4 border-t border-[var(--store-border)]/60 flex-1 flex flex-col justify-between gap-3 bg-[var(--store-card)]">
+                <div className="p-3 sm:p-4 border-t border-[var(--store-border)]/60 flex-1 flex flex-col justify-between gap-2.5 bg-[var(--store-card)]">
                   <Link href={`/product/${product.id}`}>
-                    <h2 className="font-bold text-[var(--store-text)] text-sm line-clamp-2 min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
+                    <h2 className="font-bold text-[var(--store-text)] text-[13px] sm:text-sm line-clamp-2 min-h-[2.25rem] sm:min-h-[2.5rem] leading-snug hover:text-[var(--store-primary)] transition-colors" title={product.name}>{product.name}</h2>
                   </Link>
-                  <div className="flex items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center justify-between gap-1 sm:gap-2 pt-1 mt-auto">
                     {product.priceUnspecified ? (
                       <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">سعر غير محدد</span>
                     ) : (
@@ -572,16 +572,16 @@ function HomePageContent() {
                               {product.originalPrice}
                             </span>
                             <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1 py-0.5 rounded">
-                              وفر {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                              <span className="hidden sm:inline">وفر </span>{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
                             </span>
                           </div>
                         )}
                       </div>
                     )}
                     {outOfStock ? (
-                      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
+                      <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-md font-bold text-[10px] sm:text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
                         <PackageX className="w-3.5 h-3.5" />
-                        <span>نفذ المخزون</span>
+                        <span>نفذ<span className="hidden sm:inline"> المخزون</span></span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
@@ -605,11 +605,11 @@ function HomePageContent() {
                                 setAddedProductId(product.id);
                                 setTimeout(() => setAddedProductId(null), 1500);
                               }}
-                              className={`p-1.5 rounded-md border text-xs font-bold transition-all flex items-center justify-center shrink-0 ${addedProductId === product.id ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'}`}
+                              className={`p-1 sm:p-1.5 rounded-md border text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center shrink-0 ${addedProductId === product.id ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'}`}
                               title="إضافة إلى السلة"
                               aria-label={addedProductId === product.id ? "تمت الإضافة" : `إضافة ${product.name} إلى السلة`}
                             >
-                              {addedProductId === product.id ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingCart className="w-4 h-4" />}
+                              {addedProductId === product.id ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                             </button>
                           </>
                         )}
