@@ -10,8 +10,7 @@ import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 
 import { Suspense } from 'react';
-
-
+import { TopTicker } from './client-layout';
 import { Star as StarIcon, Quote } from 'lucide-react';
 
 function ReviewsCarousel() {
@@ -85,7 +84,7 @@ function BannersCarousel({ banners, children }: { banners: any[], children?: Rea
   if (!banners.length) return null;
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto mb-8 sm:mt-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl aspect-[16/9] sm:aspect-[24/9] md:aspect-[28/9] bg-black">
+    <div className="relative w-full max-w-7xl mx-auto mb-0 sm:mt-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl sm:aspect-[24/9] md:aspect-[28/9] bg-black">
       {banners.map((b, i) => (
         <div 
           key={b.id} 
@@ -110,9 +109,9 @@ function BannersCarousel({ banners, children }: { banners: any[], children?: Rea
       {/* Dark Overlay for Text Readability */}
       <div className="absolute inset-0 bg-black/60 z-20 pointer-events-none" />
 
-      {/* Children Content (Hero text) */}
+      {/* Children Content (Hero text) - Relative on mobile to expand parent dynamically! */}
       {children && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+        <div className="relative sm:absolute sm:inset-0 z-30 flex items-center justify-center p-4 py-6 sm:py-4 w-full">
           <div className="w-full text-center">
             {children}
           </div>
@@ -316,6 +315,7 @@ function HomePageContent() {
       
       {/* 1. Hero Section / Banners */}
       {banners.length > 0 ? (
+        <>
         <BannersCarousel banners={banners}>
           <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 pointer-events-none drop-shadow-lg scale-90 sm:scale-100">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/20 text-xs font-medium text-white/90 bg-black/40 backdrop-blur-md shadow-sm">
@@ -353,7 +353,14 @@ function HomePageContent() {
             </div>
           </div>
         </BannersCarousel>
+        <div className="max-w-7xl mx-auto mb-8 sm:mt-2">
+          <div className="sm:rounded-xl overflow-hidden border-y sm:border-[var(--store-border)]">
+            <TopTicker />
+          </div>
+        </div>
+        </>
       ) : (
+        <>
         <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
           <div className="max-w-4xl mx-auto text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--store-border)] text-xs font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-sm">
@@ -391,6 +398,10 @@ function HomePageContent() {
             </div>
           </div>
         </section>
+        <div className="border-b border-[var(--store-border)]">
+          <TopTicker />
+        </div>
+        </>
       )}
 
       {/* 2. Products Section */}

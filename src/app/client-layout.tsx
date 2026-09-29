@@ -21,41 +21,51 @@ const GoogleIcon = () => (
   </svg>
 );
 
-function TopTicker() {
+export function TopTicker() {
+  const s = useStoreSettings();
+  
+  const tickerItems = [
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🎧</span>, text: "دعم متوفر 24/7", colorClass: "text-amber-600 dark:text-gray-200" },
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">⭐</span>, text: "أسعار تنافسية", colorClass: "text-emerald-600 dark:text-gray-200" },
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🚀</span>, text: "تسليم فوري وآمن", colorClass: "text-purple-600 dark:text-gray-200" },
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">✨</span>, text: `مرحباً بك في ${s.storeName || 'متجرنا'}`, colorClass: "text-rose-600 dark:text-gray-200" }
+  ];
+
   return (
-    <div className="bg-[#0f0f11] text-gray-200 text-[11px] sm:text-xs py-2 overflow-hidden flex items-center relative z-50 border-b border-white/5">
+    <div className="bg-slate-100 dark:bg-[#0f0f11] text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 border-b border-black/5 dark:border-white/5 transition-colors" dir="ltr">
       <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(100vw); }
-          100% { transform: translateX(-100%); }
+        @keyframes marquee-left {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
         }
-        .marquee-content {
+        .marquee-wrapper {
           display: flex;
-          white-space: nowrap;
-          animation: marquee 30s linear infinite;
+          width: max-content;
+          animation: marquee-left 25s linear infinite;
+        }
+        .marquee-wrapper:hover {
+          animation-play-state: paused;
         }
       `}</style>
-      <div className="marquee-content gap-8 sm:gap-16 items-center min-w-max" dir="ltr">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-8 sm:gap-16" dir="rtl">
-            <div className="flex items-center gap-1.5 font-bold">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-              <span>حسابات واشتراكات رسمية</span>
+      <div className="marquee-wrapper">
+        {/* First block */}
+        <div className="flex flex-nowrap items-center gap-8 sm:gap-16 pr-8 sm:pr-16" dir="rtl">
+          {tickerItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
+              {item.icon}
+              <span className={`tracking-wide whitespace-nowrap ${item.colorClass}`}>{item.text}</span>
             </div>
-            <div className="flex items-center gap-1.5 font-bold">
-              <span className="text-amber-500 text-sm leading-none">🎧</span>
-              <span>دعم متوفر 24/7</span>
+          ))}
+        </div>
+        {/* Second block (duplicate for seamless loop) */}
+        <div className="flex flex-nowrap items-center gap-8 sm:gap-16 pr-8 sm:pr-16" dir="rtl" aria-hidden="true">
+          {tickerItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
+              {item.icon}
+              <span className={`tracking-wide whitespace-nowrap ${item.colorClass}`}>{item.text}</span>
             </div>
-            <div className="flex items-center gap-1.5 font-bold">
-              <span className="text-amber-500 text-sm leading-none">⭐</span>
-              <span>أسعار تنافسية</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-bold">
-              <span className="text-amber-500 text-sm leading-none">🚀</span>
-              <span>تسليم فوري وآمن</span>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -275,7 +285,6 @@ function NavBar() {
 
   return (
     <>
-    <TopTicker />
     <header className="sticky top-0 z-50 border-b border-[var(--store-border)] text-[var(--store-text)] store-header bg-[var(--store-bg)]">
       <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1 sm:gap-4">
         
