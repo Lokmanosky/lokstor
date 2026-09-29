@@ -278,7 +278,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         <span>›</span>
         {product.category && (
           <>
-            <span className="hover:text-[var(--store-text)] transition-colors">{getCategoryName(product.category)}</span>
+            <Link href={`/?tab=${product.category}`} className="hover:text-[var(--store-text)] transition-colors">{getCategoryName(product.category)}</Link>
             <span>›</span>
           </>
         )}
