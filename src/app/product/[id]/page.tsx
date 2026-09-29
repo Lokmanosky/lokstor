@@ -400,6 +400,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <Heart className={`w-4 h-4 ${liked ? 'fill-rose-500 text-rose-500' : ''}`} />
               </button>
             </div>
+
+            {/* Telegram Contact Button */}
+            <a 
+              href="https://t.me/lokmanosky" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full mt-3 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-md hover:shadow-lg"
+              style={{ backgroundColor: '#24A1DE' }}
+            >
+              <Send className="w-5 h-5 -rotate-45" />
+              <span>تواصل معنا للتفعيل عبر تيليجرام</span>
+            </a>
+
           </div>
 
           {/* Out of stock or low stock alert banner */}
