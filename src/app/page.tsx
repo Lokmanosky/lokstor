@@ -282,13 +282,13 @@ function HomePageContent() {
     const cat = (p.category || '').toLowerCase();
     const name = (p.name || '').toLowerCase();
     if (activeTab === 'games') {
-      return p.type === 'games' || cat.includes('لعب') || cat.includes('شحن') || cat.includes('cod') || name.includes('cod') || name.includes('نقاط');
+      return p.type === 'games' || cat.includes('لعب') || cat.includes('شحن');
     }
     if (activeTab === 'digital') {
       return p.type === 'digital' || cat.includes('رقمي') || cat.includes('كتب') || cat.includes('قوالب') || cat.includes('دورات');
     }
     if (activeTab === 'subscription') {
-      return p.type === 'subscription' || cat.includes('اشتراك') || name.includes('اشتراك') || name.includes('عرض لفترة');
+      return p.type === 'subscription' || cat.includes('اشتراك');
     }
     // Also match against dynamic storeCategories slugs
     const matchingCat = storeCategories.find(c => c.slug === activeTab);
@@ -333,17 +333,17 @@ function HomePageContent() {
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/90 font-medium drop-shadow-md">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[var(--store-primary)]" />
+            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
+              <div className="flex items-center gap-2 text-[#fbbf24]">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>تسليم تلقائي وفوري</span>
               </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[var(--store-primary)]" />
+              <div className="flex items-center gap-2 text-[#00e676]">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>دفع عبر بوابة Chargily</span>
               </div>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-300" />
+              <div className="flex items-center gap-2 text-[#818cf8]">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>ملفات أصلية عالية الجودة</span>
               </div>
             </div>
@@ -371,17 +371,17 @@ function HomePageContent() {
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-[var(--store-text-muted)] font-medium">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[var(--store-primary)]" />
+            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
+              <div className="flex items-center gap-2 text-[#f59e0b]">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>تسليم تلقائي وفوري</span>
               </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[var(--store-primary)]" />
+              <div className="flex items-center gap-2 text-[#00c853]">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>دفع عبر بوابة Chargily</span>
               </div>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-500" />
+              <div className="flex items-center gap-2 text-[#6366f1]">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>ملفات أصلية عالية الجودة</span>
               </div>
             </div>
