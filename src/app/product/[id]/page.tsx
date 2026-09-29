@@ -28,7 +28,8 @@ import { Star,
   ZoomOut, 
   LogIn, 
   Gamepad2, 
-  Layers 
+  Layers,
+  Send
 } from 'lucide-react';
 
 const DEFAULT_COD_VARIANTS: ProductVariant[] = [
