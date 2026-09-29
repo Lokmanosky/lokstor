@@ -318,7 +318,7 @@ function HomePageContent() {
             </h1>
             
             <p className="text-sm sm:text-lg text-[var(--store-text-muted)] max-w-2xl mx-auto font-medium leading-relaxed">
-              {t('hero.subtitle')}
+              {t('hero.desc')}
             </p>
           </div>
         </section>

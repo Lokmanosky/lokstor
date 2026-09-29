@@ -178,7 +178,10 @@ function StoreBannersManager() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    if (!newUrl) return;
+    if (!newUrl.trim()) {
+      alert('يرجى وضع رابط الصورة أولاً!');
+      return;
+    }
     try {
       await addDoc(collection(db, 'storeBanners'), {
         imageUrl: newUrl,
