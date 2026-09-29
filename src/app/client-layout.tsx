@@ -25,14 +25,14 @@ export function TopTicker() {
   const s = useStoreSettings();
   
   const tickerItems = [
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🎧</span>, text: "دعم متوفر 24/7", colorClass: "text-amber-600 dark:text-gray-200" },
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">⭐</span>, text: "أسعار تنافسية", colorClass: "text-emerald-600 dark:text-gray-200" },
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🚀</span>, text: "تسليم فوري وآمن", colorClass: "text-purple-600 dark:text-gray-200" },
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">✨</span>, text: `مرحباً بك في ${s.storeName || 'متجرنا'}`, colorClass: "text-rose-600 dark:text-gray-200" }
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🎧</span>, text: "دعم متوفر 24/7", colorClass: "text-amber-600 dark:text-amber-400" },
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">⭐</span>, text: "أسعار تنافسية", colorClass: "text-emerald-600 dark:text-emerald-400" },
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🚀</span>, text: "تسليم فوري وآمن", colorClass: "text-purple-600 dark:text-purple-400" },
+    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">✨</span>, text: `مرحباً بك في ${s.storeName || 'متجرنا'}`, colorClass: "text-rose-600 dark:text-rose-400" }
   ];
 
   return (
-    <div className="bg-slate-100 dark:bg-[#0f0f11] text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 border-b border-black/5 dark:border-white/5 transition-colors" dir="ltr">
+    <div className="bg-slate-100 dark:bg-black text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 transition-colors" dir="ltr">
       <style>{`
         @keyframes marquee-left {
           0% { transform: translateX(0); }

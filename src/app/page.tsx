@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X } from 'lucide-react';
+import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
@@ -337,7 +337,7 @@ function HomePageContent() {
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
+            <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
               <div className="flex items-center gap-2 text-[#fbbf24]">
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>تسليم تلقائي وفوري</span>
@@ -347,14 +347,14 @@ function HomePageContent() {
                 <span>دفع عبر بوابة Chargily</span>
               </div>
               <div className="flex items-center gap-2 text-[#818cf8]">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>ملفات أصلية عالية الجودة</span>
+                <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>دعم فني متواصل</span>
               </div>
             </div>
           </div>
         </BannersCarousel>
         <div className="max-w-7xl mx-auto mb-8 sm:mt-2">
-          <div className="sm:rounded-xl overflow-hidden border-y sm:border-[var(--store-border)]">
+          <div className="border-y sm:border sm:rounded-xl overflow-hidden border-black/5 dark:border-white/5 shadow-sm">
             <TopTicker />
           </div>
         </div>
@@ -382,7 +382,7 @@ function HomePageContent() {
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
+            <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
               <div className="flex items-center gap-2 text-[#f59e0b]">
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>تسليم تلقائي وفوري</span>
@@ -392,14 +392,16 @@ function HomePageContent() {
                 <span>دفع عبر بوابة Chargily</span>
               </div>
               <div className="flex items-center gap-2 text-[#6366f1]">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>ملفات أصلية عالية الجودة</span>
+                <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>دعم فني متواصل</span>
               </div>
             </div>
           </div>
         </section>
-        <div className="border-b border-[var(--store-border)]">
-          <TopTicker />
+        <div className="max-w-7xl mx-auto mb-8 mt-3">
+          <div className="border-y sm:border sm:rounded-xl overflow-hidden border-black/5 dark:border-white/5 shadow-sm">
+            <TopTicker />
+          </div>
         </div>
         </>
       )}
