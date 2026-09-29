@@ -21,6 +21,46 @@ const GoogleIcon = () => (
   </svg>
 );
 
+function TopTicker() {
+  return (
+    <div className="bg-[#0f0f11] text-gray-200 text-[11px] sm:text-xs py-2 overflow-hidden flex items-center relative z-50 border-b border-white/5">
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(100vw); }
+          100% { transform: translateX(-100%); }
+        }
+        .marquee-content {
+          display: flex;
+          white-space: nowrap;
+          animation: marquee 30s linear infinite;
+        }
+      `}</style>
+      <div className="marquee-content gap-8 sm:gap-16 items-center min-w-max" dir="ltr">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-8 sm:gap-16" dir="rtl">
+            <div className="flex items-center gap-1.5 font-bold">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+              <span>حسابات واشتراكات رسمية</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-bold">
+              <span className="text-amber-500 text-sm leading-none">🎧</span>
+              <span>دعم متوفر 24/7</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-bold">
+              <span className="text-amber-500 text-sm leading-none">⭐</span>
+              <span>أسعار تنافسية</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-bold">
+              <span className="text-amber-500 text-sm leading-none">🚀</span>
+              <span>تسليم فوري وآمن</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function NavBar() {
   const s = useStoreSettings();
   const { user, signOut, isAdmin } = useAuth();
@@ -235,6 +275,7 @@ function NavBar() {
 
   return (
     <>
+    <TopTicker />
     <header className="sticky top-0 z-50 border-b border-[var(--store-border)] text-[var(--store-text)] store-header bg-[var(--store-bg)]">
       <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1 sm:gap-4">
         

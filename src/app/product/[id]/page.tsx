@@ -337,38 +337,38 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col">
               <div className="flex flex-col gap-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-emerald-500 tracking-tight">
+                <div className="flex items-baseline gap-1.5 sm:gap-2">
+                  <span className="text-2xl sm:text-4xl font-black text-emerald-500 tracking-tight">
                     {displayPrice.toLocaleString('en-US')}
                   </span>
-                  <span className="text-xl font-black text-emerald-500">
+                  <span className="text-base sm:text-xl font-black text-emerald-500">
                     {t('common.currency')}
                   </span>
                 </div>
                 {/* Discount Badge */}
                 {(!selectedVariant || !selectedVariant.originalPrice) && product.originalPrice && product.originalPrice > product.price && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="text-sm sm:text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
                       {product.originalPrice} د.ج
                     </span>
-                    <span className="bg-red-500/10 text-red-500 text-xs font-bold px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1">
+                    <span className="bg-red-500/10 text-red-500 text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1 whitespace-nowrap">
                       وفر {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% 🔥
                     </span>
                   </div>
                 )}
                 {selectedVariant && selectedVariant.originalPrice && selectedVariant.originalPrice > selectedVariant.price && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="text-sm sm:text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
                       {selectedVariant.originalPrice} د.ج
                     </span>
-                    <span className="bg-red-500/10 text-red-500 text-xs font-bold px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1">
+                    <span className="bg-red-500/10 text-red-500 text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1 whitespace-nowrap">
                       وفر {Math.round(((selectedVariant.originalPrice - selectedVariant.price) / selectedVariant.originalPrice) * 100)}% 🔥
                     </span>
                   </div>
                 )}
               </div>
               {selectedVariant && (
-                <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 mt-0.5">
+                <span className="text-[11px] sm:text-xs font-bold text-indigo-500 dark:text-indigo-400 mt-0.5">
                   {t('product.selectedPackage')} {selectedVariant.name}
                 </span>
               )}
@@ -575,14 +575,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     sessionStorage.setItem('lokstor_game_info', JSON.stringify(customFieldsData));
                   }
                 }}
-                className={`flex-1 py-4 px-6 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
+                className={`flex-1 py-3 px-3 sm:py-4 sm:px-6 rounded-2xl font-black text-xs sm:text-base text-white flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg transition-all text-center leading-tight ${
                   isOutOfStock
                     ? 'bg-red-600 hover:bg-red-700 cursor-not-allowed opacity-95 shadow-red-500/20 pointer-events-none'
                     : 'chargily-btn hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
                 }`}
                 aria-disabled={isOutOfStock}
               >
-                {isOutOfStock ? <Ban className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
+                {isOutOfStock ? <Ban className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" /> : <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />}
                 <span>
                   {isOutOfStock
                     ? t('product.outOfStock')
@@ -595,7 +595,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className={`w-14 h-14 flex items-center justify-center rounded-2xl border-2 transition-all shrink-0 shadow-sm ${
+                className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl border-2 transition-all shrink-0 shadow-sm ${
                   isOutOfStock
                     ? 'border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 text-red-400 cursor-not-allowed opacity-60'
                     : 'border-[var(--store-border)] hover:border-emerald-500 bg-[var(--store-bg)] text-[var(--store-text)] hover:text-emerald-500 cursor-pointer'
@@ -603,23 +603,23 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 title={isOutOfStock ? t('product.outOfStockTooltip') : t('product.addToCart')}
               >
                 {addedToCart ? (
-                  <Check className="w-6 h-6 text-emerald-500" />
+                  <Check className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
                 ) : (
-                  <ShoppingCart className="w-6 h-6" />
+                  <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
                 )}
               </button>
             </div>
 
-{/* Telegram Contact Button */}
+            {/* Telegram Contact Button */}
             {Boolean(isGameProduct || (product?.name && (product.name.toLowerCase().includes('telegram') || product.name.includes('تلغرام') || product.name.includes('تيليجرام')))) && (
               <a 
                 href="https://t.me/Loktech" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-full mt-3 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-md hover:shadow-lg"
+                className="w-full mt-2 sm:mt-3 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg text-center"
                 style={{ backgroundColor: '#24A1DE' }}
               >
-                <Send className="w-5 h-5 -rotate-45" />
+                <Send className="w-4 h-4 sm:w-5 sm:h-5 -rotate-45 shrink-0" />
                 <span>لمعلومات اكثر تواصل معنا عبر تيليجرام</span>
               </a>
             )}
