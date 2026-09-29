@@ -36,6 +36,7 @@ export interface Product {
   priceUnspecified?: boolean;
   hasVariants?: boolean;
   variants?: ProductVariant[];
+  requiresCustomerInfo?: boolean;
   requiredFields?: GameFieldRequirement[];
   features?: string[];
   fileType?: string; // PDF, ZIP, Template, etc.

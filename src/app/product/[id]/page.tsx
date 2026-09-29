@@ -146,10 +146,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }, [product, isGameProduct]);
 
   const activeRequiredFields: GameFieldRequirement[] = useMemo(() => {
+    if (product?.requiresCustomerInfo === false) {
+      return [];
+    }
     if (product?.requiredFields && product.requiredFields.length > 0) {
       return product.requiredFields;
     }
-    if (isGameProduct) {
+    if (product?.requiresCustomerInfo === true && isGameProduct) {
       return DEFAULT_COD_FIELDS;
     }
     return [];

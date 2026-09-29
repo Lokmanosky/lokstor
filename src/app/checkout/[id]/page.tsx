@@ -151,10 +151,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   );
 
   const activeRequiredFields = useMemo(() => {
+    if (product?.requiresCustomerInfo === false) {
+      return [];
+    }
     if (product?.requiredFields && product.requiredFields.length > 0) {
       return product.requiredFields;
     }
-    if (isGameProduct) {
+    if (product?.requiresCustomerInfo === true && isGameProduct) {
       return [
         { id: 'game_email', label: 'البريد الإلكتروني للعبة (Call Of Duty / Activision)', placeholder: 'Call Of Duty / Activision Email', required: true, type: 'text' },
         { id: 'game_password', label: 'كلمة المرور (Password)', placeholder: 'أدخل كلمة مرور الحساب', required: true, type: 'password' },

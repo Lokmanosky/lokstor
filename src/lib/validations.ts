@@ -26,6 +26,7 @@ export const productSchema = z.object({
     badge: z.string().optional(),
     inStock: z.boolean().optional(),
   })).optional(),
+  requiresCustomerInfo: z.boolean().optional(),
   requiredFields: z.array(z.object({
     id: z.string(),
     label: z.string(),

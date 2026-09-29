@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { Product, ProductVariant, GameFieldRequirement } from '@/types';
-import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers, ImageIcon } from 'lucide-react';
+import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers, ImageIcon, KeyRound } from 'lucide-react';
 
 interface ProductFormProps {
   productId?: string;
@@ -48,6 +48,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
   // ── Product Variants / Bundles (باقات الشحن والأنواع) ───────────────────
   const [hasVariants, setHasVariants] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [requiresCustomerInfo, setRequiresCustomerInfo] = useState<boolean>(false);
   const [requiredFields, setRequiredFields] = useState<GameFieldRequirement[]>([]);
 
   useEffect(() => {
@@ -69,8 +70,18 @@ export default function ProductForm({ productId }: ProductFormProps) {
           setHasVariants(true);
           setVariants(data.variants || []);
         }
+        if (data.requiresCustomerInfo !== undefined) {
+          setRequiresCustomerInfo(Boolean(data.requiresCustomerInfo));
+        } else if (data.requiredFields && data.requiredFields.length > 0) {
+          setRequiresCustomerInfo(true);
+        } else {
+          setRequiresCustomerInfo(false);
+        }
+
         if (data.requiredFields && data.requiredFields.length > 0) {
           setRequiredFields(data.requiredFields || []);
+        } else {
+          setRequiredFields([]);
         }
 
         // Initialize stock mode & unlimitedStock correctly
@@ -247,6 +258,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
   // Quick Preset Templates
   const applyPresetTemplate = (type: 'cod' | 'pubg' | 'freefire' | 'chatgpt') => {
     if (type === 'chatgpt') {
+      setRequiresCustomerInfo(true);
       setHasVariants(true);
       set('name', form.name || 'تفعيل اشتراك رسمي على حسابك (Email & Password)');
       set('category', 'اشتراكات وخدمات رقمية');
@@ -265,6 +277,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     }
     setHasVariants(true);
     if (type === 'cod') {
+      setRequiresCustomerInfo(true);
       set('name', form.name || 'شحن نقاط Call of Duty عبر الحساب - COD Mobile CP');
       set('category', 'شحن ألعاب');
       setVariants([
@@ -282,6 +295,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         { id: 'game_password', label: 'كلمة المرور (Password)', placeholder: 'أدخل كلمة مرور الحساب', required: true, type: 'password' },
       ]);
     } else if (type === 'pubg') {
+      setRequiresCustomerInfo(true);
       set('name', form.name || 'شحن شدات ببجي موبايل - PUBG Mobile UC');
       set('category', 'شحن ألعاب');
       setVariants([
@@ -296,6 +310,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         { id: 'player_id', label: 'معرف اللاعب (Player ID)', placeholder: 'مثال: 5123456789', required: true, type: 'text' },
       ]);
     } else if (type === 'freefire') {
+      setRequiresCustomerInfo(true);
       set('name', form.name || 'شحن جواهر فري فاير - Free Fire Diamonds');
       set('category', 'شحن ألعاب');
       setVariants([
@@ -320,6 +335,26 @@ export default function ProductForm({ productId }: ProductFormProps) {
         return [...prev, { id: fieldId, label, placeholder, required: true, type }];
       }
     });
+  };
+
+  const updateReqField = (index: number, updates: Partial<GameFieldRequirement>) => {
+    setRequiredFields(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...updates };
+      return next;
+    });
+  };
+
+  const removeReqField = (index: number) => {
+    setRequiredFields(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addCustomReqField = () => {
+    const newId = 'custom_' + Date.now();
+    setRequiredFields(prev => [
+      ...prev,
+      { id: newId, label: 'بيانات إضافية مطلوبة', placeholder: 'أدخل القيمة المطلوبة...', required: true, type: 'text' }
+    ]);
   };
 
   // ── Save directly to Cloud Firestore Database ───────────────────────────────
@@ -349,7 +384,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       priceUnspecified: Boolean(form.priceUnspecified),
       hasVariants: Boolean(hasVariants && variants.length > 0),
       variants: hasVariants ? variants.filter(v => v.name.trim()) : [],
-      requiredFields: requiredFields.filter(f => f.label.trim()),
+      requiresCustomerInfo: Boolean(requiresCustomerInfo),
+      requiredFields: requiresCustomerInfo ? requiredFields.filter(f => f.label.trim()) : [],
       currency: 'dzd',
       imageUrl: cleanImg,
       image: cleanImg,
@@ -676,59 +712,255 @@ export default function ProductForm({ productId }: ProductFormProps) {
                   </button>
                 </div>
 
-                {/* Required Customer Game Fields */}
-                <div className="pt-3 border-t border-[var(--admin-border)] space-y-2">
-                  <div className="text-xs font-bold text-[var(--admin-text)] flex items-center gap-1.5">
-                    <Gamepad2 className="w-4 h-4 text-emerald-500" />
-                    <span>بيانات الحساب المطلوبة من المشتري عند الشراء:</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <label className="flex items-center gap-2 p-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={requiredFields.some(f => f.id === 'player_id')}
-                        onChange={() => toggleReqField('player_id', 'معرف اللاعب (Player ID)', 'مثال: 6894028475')}
-                        className="rounded text-indigo-600"
-                      />
-                      <span>معرف اللاعب (Player ID)</span>
-                    </label>
 
-                    <label className="flex items-center gap-2 p-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={requiredFields.some(f => f.id === 'game_email')}
-                        onChange={() => toggleReqField('game_email', 'البريد الإلكتروني للعبة (Call Of Duty / Activision)', 'أدخل بريد الحساب')}
-                        className="rounded text-indigo-600"
-                      />
-                      <span>البريد الإلكتروني للعبة (Email)</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 p-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={requiredFields.some(f => f.id === 'game_password')}
-                        onChange={() => toggleReqField('game_password', 'كلمة مرور الحساب (Password)', 'أدخل كلمة مرور الحساب', 'password')}
-                        className="rounded text-indigo-600"
-                      />
-                      <span>كلمة مرور الحساب (للشحن الداخلي)</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 p-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-bg)] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={requiredFields.some(f => f.id === 'game_server')}
-                        onChange={() => toggleReqField('game_server', 'السيرفر / المنطقة (Server / Region)', 'مثال: الشرق الأوسط / Europe')}
-                        className="rounded text-indigo-600"
-                      />
-                      <span>السيرفر أو المنطقة (Server)</span>
-                    </label>
-                  </div>
-                </div>
               </div>
             ) : (
               <p className="text-xs text-[var(--admin-text-muted)]">
                 خيار الباقات غير مفعّل. قم بتفعيله لإضافة خيارات وباقات أسعار متعددة لنفس المنتج (مثل 80 CP، 420 CP، إلخ).
               </p>
+            )}
+          </div>
+
+          {/* ── طلب بيانات الحساب / التفعيل من المشتري (Customer Account Credentials Request) ── */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--admin-border)] pb-3 gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-indigo-500" />
+                  <h2 className="text-sm font-bold text-[var(--admin-text)]">
+                    طلب بيانات الحساب من المشتري (للتفعيل والشحن)
+                  </h2>
+                  {requiresCustomerInfo ? (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      مفعّل ✓
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                      مقفل / معطّل ✕
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--admin-text-muted)]">
+                  زر تفعيل أو قفل طلب بيانات العميل (مثل البريد وكلمة المرور لتفعيل الاشتراكات كـ ChatGPT/Claude أو Player ID لشحن الألعاب).
+                </p>
+              </div>
+
+              {/* Master Toggle Switch */}
+              <div className="flex items-center gap-3 self-start sm:self-center">
+                <span className="text-xs font-bold text-[var(--admin-text)]">
+                  {requiresCustomerInfo ? 'مفعّل' : 'معطّل'}
+                </span>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={requiresCustomerInfo}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setRequiresCustomerInfo(enabled);
+                      if (enabled && requiredFields.length === 0) {
+                        setRequiredFields([
+                          { id: 'game_email', label: 'البريد الإلكتروني للحساب (Email)', placeholder: 'أدخل بريد حسابك المراد تفعيله', required: true, type: 'text' },
+                          { id: 'game_password', label: 'كلمة مرور الحساب (Password)', placeholder: 'أدخل كلمة مرور الحساب للتفعيل', required: true, type: 'password' },
+                        ]);
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-12 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+            </div>
+
+            {requiresCustomerInfo ? (
+              <div className="space-y-4 pt-1">
+                {/* Quick Presets / Selection */}
+                <div className="p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-2">
+                  <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>اختيار سريع للحقول الشائعة:</span>
+                    </span>
+                    <span className="text-[11px] font-normal text-[var(--admin-text-muted)]">
+                      يمكنك تحديد الحقول أو تعديل نصوصها أدناه
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => toggleReqField('game_email', 'البريد الإلكتروني للحساب (Email)', 'أدخل بريد حسابك المراد تفعيله')}
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center gap-2 ${
+                        requiredFields.some(f => f.id === 'game_email')
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
+                          : 'border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] hover:border-indigo-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={requiredFields.some(f => f.id === 'game_email')}
+                        className="rounded text-indigo-600 pointer-events-none"
+                      />
+                      <span>البريد الإلكتروني (Email)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleReqField('game_password', 'كلمة مرور الحساب (Password)', 'أدخل كلمة مرور الحساب للتفعيل', 'password')}
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center gap-2 ${
+                        requiredFields.some(f => f.id === 'game_password')
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
+                          : 'border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] hover:border-indigo-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={requiredFields.some(f => f.id === 'game_password')}
+                        className="rounded text-indigo-600 pointer-events-none"
+                      />
+                      <span>كلمة مرور الحساب (Password)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleReqField('player_id', 'معرف اللاعب (Player ID)', 'مثال: 5123456789')}
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center gap-2 ${
+                        requiredFields.some(f => f.id === 'player_id')
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
+                          : 'border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] hover:border-indigo-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={requiredFields.some(f => f.id === 'player_id')}
+                        className="rounded text-indigo-600 pointer-events-none"
+                      />
+                      <span>معرف اللاعب (Player ID)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleReqField('game_server', 'السيرفر / المنطقة (Server / Region)', 'مثال: الشرق الأوسط / Europe')}
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center gap-2 ${
+                        requiredFields.some(f => f.id === 'game_server')
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
+                          : 'border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] hover:border-indigo-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={requiredFields.some(f => f.id === 'game_server')}
+                        className="rounded text-indigo-600 pointer-events-none"
+                      />
+                      <span>السيرفر أو المنطقة (Server)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Detailed Fields List & Customization */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-[var(--admin-text-muted)] font-medium px-1">
+                    <span>قائمة الحقول المطلوبة من العميل: ({requiredFields.length} حقل)</span>
+                    <button
+                      type="button"
+                      onClick={addCustomReqField}
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>إضافة حقل مخصص آخر</span>
+                    </button>
+                  </div>
+
+                  {requiredFields.length === 0 ? (
+                    <div className="p-4 rounded-xl border border-dashed border-[var(--admin-border)] text-center text-xs text-[var(--admin-text-muted)]">
+                      لم يتم تفعيل أي حقل بعد. انقر على أحد الخيارات السريعة أعلاه أو اضغط "إضافة حقل مخصص آخر".
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {requiredFields.map((field, idx) => (
+                        <div
+                          key={field.id || idx}
+                          className="p-3.5 rounded-xl border border-[var(--admin-border)] bg-[var(--admin-bg)] space-y-2.5 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-[var(--admin-text)] flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-md bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-[11px] font-mono">
+                                {idx + 1}
+                              </span>
+                              <span>الحقل المطلوب #{idx + 1}</span>
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--admin-text)] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={field.required !== false}
+                                  onChange={(e) => updateReqField(idx, { required: e.target.checked })}
+                                  className="rounded text-indigo-600"
+                                />
+                                <span>حقل إجباري</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => removeReqField(idx)}
+                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                title="حذف هذا الحقل"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[11px] font-bold text-[var(--admin-text-muted)] mb-1">اسم الحقل (Label المعروض للمشتري)</label>
+                              <input
+                                type="text"
+                                value={field.label}
+                                onChange={(e) => updateReqField(idx, { label: e.target.value })}
+                                placeholder="مثال: البريد الإلكتروني للحساب"
+                                className="w-full px-3 py-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-card)] text-xs text-[var(--admin-text)] focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-[var(--admin-text-muted)] mb-1">النص التوضيحي داخل الخانة (Placeholder)</label>
+                              <input
+                                type="text"
+                                value={field.placeholder || ''}
+                                onChange={(e) => updateReqField(idx, { placeholder: e.target.value })}
+                                placeholder="مثال: أدخل بريد حسابك المراد تفعيله..."
+                                className="w-full px-3 py-2 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-card)] text-xs text-[var(--admin-text)] focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-500/5 border border-[var(--admin-border)] text-xs text-[var(--admin-text-muted)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="leading-relaxed">
+                  🔒 <strong className="text-[var(--admin-text)]">طلب البيانات مقفل وموقوف لهذا المنتج.</strong> لن يظهر للمشتري أي خانات لطلب البريد أو كلمة المرور أو الآيدي في صفحة المنتج أو الدفع.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequiresCustomerInfo(true);
+                    if (requiredFields.length === 0) {
+                      setRequiredFields([
+                        { id: 'game_email', label: 'البريد الإلكتروني للحساب (Email)', placeholder: 'أدخل بريد حسابك المراد تفعيله', required: true, type: 'text' },
+                        { id: 'game_password', label: 'كلمة مرور الحساب (Password)', placeholder: 'أدخل كلمة مرور الحساب للتفعيل', required: true, type: 'password' },
+                      ]);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all shrink-0 self-start sm:self-center shadow-sm"
+                >
+                  ⚡ تفعيل طلب البيانات
+                </button>
+              </div>
             )}
           </div>
 
