@@ -809,7 +809,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       يمكنك تحديد الحقول أو تعديل نصوصها أدناه
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
                     <button
                       type="button"
                       onClick={() => toggleReqField('game_email', 'البريد الإلكتروني للحساب (Email)', 'أدخل بريد حسابك المراد تفعيله')}
@@ -881,6 +881,24 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       />
                       <span>السيرفر أو المنطقة (Server)</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleReqField('customer_phone', 'رقم الهاتف (للتواصل أو الشحن)', 'مثال: 0555123456')}
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center gap-2 ${
+                        requiredFields.some(f => f.id === 'customer_phone')
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
+                          : 'border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] hover:border-indigo-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={requiredFields.some(f => f.id === 'customer_phone')}
+                        className="rounded text-indigo-600 pointer-events-none"
+                      />
+                      <span>رقم الهاتف (Phone)</span>
+                    </button>
+
                   </div>
                 </div>
 

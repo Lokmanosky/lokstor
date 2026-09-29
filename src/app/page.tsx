@@ -144,7 +144,11 @@ function HomePageContent() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'storeBanners'), snap => {
       const list: any[] = [];
-      snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => {
+          const data = d.data();
+          if (data.status === 'draft' || data.status === 'archived') return;
+          list.push({ id: d.id, ...data });
+        });
       list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       setBanners(list);
     });
