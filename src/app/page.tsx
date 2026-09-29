@@ -71,7 +71,7 @@ function ReviewsCarousel() {
 }
 
 
-function BannersCarousel({ banners }: { banners: any[] }) {
+function BannersCarousel({ banners, children }: { banners: any[], children?: React.ReactNode }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ function BannersCarousel({ banners }: { banners: any[] }) {
   if (!banners.length) return null;
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto mb-8 mt-4 rounded-2xl overflow-hidden shadow-2xl aspect-[21/9] sm:aspect-[24/9] md:aspect-[28/9] bg-black">
+    <div className="relative w-full max-w-7xl mx-auto mb-8 sm:mt-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl aspect-[16/9] sm:aspect-[24/9] md:aspect-[28/9] bg-black">
       {banners.map((b, i) => (
         <div 
           key={b.id} 
@@ -93,7 +93,7 @@ function BannersCarousel({ banners }: { banners: any[] }) {
         >
           {/* Blurred Background */}
           <div 
-            className="absolute inset-0 bg-center bg-cover blur-xl scale-110 opacity-60" 
+            className="absolute inset-0 bg-center bg-cover blur-2xl scale-125 opacity-50" 
             style={{ backgroundImage: `url('${b.imageUrl}')` }}
           />
           {/* Main Image */}
@@ -107,9 +107,21 @@ function BannersCarousel({ banners }: { banners: any[] }) {
         </div>
       ))}
       
+      {/* Dark Overlay for Text Readability */}
+      <div className="absolute inset-0 bg-black/60 z-20 pointer-events-none" />
+
+      {/* Children Content (Hero text) */}
+      {children && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+          <div className="w-full text-center">
+            {children}
+          </div>
+        </div>
+      )}
+      
       {/* Navigation Dots */}
       {banners.length > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
           {banners.map((_, i) => (
             <button
               key={i}
@@ -300,7 +312,26 @@ function HomePageContent() {
       
       {/* 1. Hero Section / Banners */}
       {banners.length > 0 ? (
-        <BannersCarousel banners={banners} />
+        <BannersCarousel banners={banners}>
+          <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 pointer-events-none drop-shadow-lg scale-90 sm:scale-100">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/20 text-xs font-medium text-white/90 bg-black/40 backdrop-blur-md shadow-sm">
+              <span>{t('hero.badge')}</span>
+            </div>
+            
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-snug">
+              <span className="block">
+                {t('hero.title1')} <span className="text-[var(--store-primary)] drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">{t('hero.title2')}</span>
+              </span>
+              <span className="block mt-1 sm:mt-2">
+                {t('hero.title3')}
+              </span>
+            </h1>
+            
+            <p className="text-xs sm:text-base md:text-lg text-white/80 max-w-xl sm:max-w-2xl mx-auto font-medium leading-relaxed">
+              {t('hero.desc')}
+            </p>
+          </div>
+        </BannersCarousel>
       ) : (
         <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
           <div className="max-w-4xl mx-auto text-center space-y-4">
@@ -323,7 +354,6 @@ function HomePageContent() {
           </div>
         </section>
       )}
-  
 
       {/* 2. Products Section */}
       <section id="products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
