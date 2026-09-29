@@ -236,7 +236,7 @@ function HomePageContent() {
         const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         const list: any[] = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => { const data = d.data(); if (data.status === 'draft' || data.status === 'archived') return; list.push({ id: d.id, ...data }); });
         // Sort by admin-set sortOrder, fallback to createdAt desc
         list.sort((a, b) => {
           const aO = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;

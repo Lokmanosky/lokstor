@@ -402,18 +402,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               </button>
             </div>
 
-            {/* Telegram Contact Button */}
-            <a 
-              href="https://t.me/lokmanosky" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full mt-3 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-md hover:shadow-lg"
-              style={{ backgroundColor: '#24A1DE' }}
-            >
-              <Send className="w-5 h-5 -rotate-45" />
-              <span>تواصل معنا للتفعيل عبر تيليجرام</span>
-            </a>
-
           </div>
 
           {/* Out of stock or low stock alert banner */}
@@ -621,6 +609,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 )}
               </button>
             </div>
+
+{/* Telegram Contact Button */}
+            <a 
+              href="https://t.me/Loktech" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full mt-3 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-md hover:shadow-lg"
+              style={{ backgroundColor: '#24A1DE' }}
+            >
+              <Send className="w-5 h-5 -rotate-45" />
+              <span>تواصل معنا للتفعيل عبر تيليجرام</span>
+            </a>
+
 
             {/* Badges / Guarantees */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[var(--store-text-muted)] pt-1 px-1">
