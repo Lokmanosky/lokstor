@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  Plus, Trash2, GripVertical, Package, FolderOpen,
+  Plus, Trash2, GripVertical, Package, FolderOpen, Upload,
   Pencil, X, Check, Loader2, ImageOff, ChevronDown, ChevronUp, Zap
 } from 'lucide-react';
 
@@ -176,6 +176,8 @@ function StoreBannersManager() {
     return () => unsub();
   }, []);
 
+  const [uploading, setUploading] = useState(false);
+
   const handleAdd = async (e: any) => {
     e.preventDefault();
     if (!newUrl.trim()) {
@@ -196,6 +198,57 @@ function StoreBannersManager() {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          const maxDim = 1200;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const base64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            await addDoc(collection(db, 'storeBanners'), {
+              imageUrl: base64,
+              link: '/',
+              sortOrder: banners.length,
+              createdAt: Date.now()
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          alert('حدث خطأ أثناء رفع الصورة');
+        } finally {
+          setUploading(false);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleDelete = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الغلاف؟')) {
       await deleteDoc(doc(db, 'storeBanners', id));
@@ -206,19 +259,23 @@ function StoreBannersManager() {
     <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl p-6 space-y-4 mb-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-[var(--admin-text)]">صور غلاف المتجر المتحركة (Banners)</h2>
+        <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-[var(--admin-primary)] text-white font-semibold text-sm rounded-lg hover:opacity-90 transition">
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          <span>{uploading ? 'جاري الرفع...' : 'رفع صورة من الحاسوب'}</span>
+          <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+        </label>
       </div>
       <p className="text-xs text-[var(--admin-text-muted)] leading-relaxed">
-        أضف روابط صور الغلاف هنا. ستظهر في الصفحة الرئيسية بشكل متحرك (Carousel).
-        يمكنك رفع الصور على أي موقع ونسخ الرابط المباشر للصورة هنا.
+        ارفع الصورة من حاسوبك، أو ضع الرابط المباشر للصورة هنا (إذا كانت مرفوعة مسبقاً). ستظهر في الصفحة الرئيسية بشكل متحرك.
       </p>
       <form onSubmit={handleAdd} className="flex gap-2">
         <input 
           value={newUrl}
           onChange={e => setNewUrl(e.target.value)}
-          placeholder="رابط الصورة المباشر (مثل: https://example.com/image.png أو /images/banners/banner1.png)"
+          placeholder="رابط الصورة المباشر (اختياري)"
           className="flex-1 px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-lg text-sm focus:border-[var(--admin-primary)] focus:outline-none text-[var(--admin-text)]"
         />
-        <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-semibold text-sm rounded-lg hover:opacity-90 transition shrink-0 whitespace-nowrap">إضافة الغلاف</button>
+        <button type="submit" className="px-4 py-2 bg-[var(--admin-border)] text-[var(--admin-text)] font-semibold text-sm rounded-lg hover:bg-[var(--admin-hover)] transition shrink-0 whitespace-nowrap">إضافة من رابط</button>
       </form>
       {loading ? (
         <p className="text-sm text-[var(--admin-text-muted)]">جاري التحميل...</p>
