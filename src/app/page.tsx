@@ -465,25 +465,35 @@ function HomePageContent() {
                         <span>نفذ المخزون</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Link href={`/checkout/${product.id}`}
-                          className="flex items-center justify-center px-3 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
-                          title="الشراء المباشر">
-                          <span>{product.priceUnspecified ? 'طلب شحن' : 'الشراء'}</span>
-                        </Link>
-                        <button type="button"
-                          onClick={() => {
-                            if (!user) { setShowLoginToast(true); setTimeout(() => setShowLoginToast(false), 3500); return; }
-                            addToCart({ id: product.id, name: product.name, price: product.price, imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''), quantity: 1, type: product.type });
-                            setAddedProductId(product.id);
-                            setTimeout(() => setAddedProductId(null), 1500);
-                          }}
-                          className={`p-1.5 rounded-md border text-xs font-bold transition-all flex items-center justify-center ${addedProductId === product.id ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'}`}
-                          title="إضافة إلى السلة"
-                          aria-label={addedProductId === product.id ? "تمت الإضافة" : `إضافة ${product.name} إلى السلة`}
-                        >
-                          {addedProductId === product.id ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingCart className="w-4 h-4" />}
-                        </button>
+                      <div className="flex items-center gap-1">
+                        {product.hasVariants || product.priceUnspecified ? (
+                          <Link href={`/product/${product.id}`}
+                            className="flex-1 flex items-center justify-center px-2 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
+                            title="عرض المنتج">
+                            <span>{product.priceUnspecified ? 'شحن' : 'الخيارات'}</span>
+                          </Link>
+                        ) : (
+                          <>
+                            <Link href={`/checkout/${product.id}`}
+                              className="flex items-center justify-center px-2 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
+                              title="الشراء المباشر">
+                              <span>الشراء</span>
+                            </Link>
+                            <button type="button"
+                              onClick={() => {
+                                if (!user) { setShowLoginToast(true); setTimeout(() => setShowLoginToast(false), 3500); return; }
+                                addToCart({ id: product.id, name: product.name, price: product.price, imageUrl: (product.imageUrl || product.image || '').replace(/^"+|"+$/g, ''), quantity: 1, type: product.type });
+                                setAddedProductId(product.id);
+                                setTimeout(() => setAddedProductId(null), 1500);
+                              }}
+                              className={`p-1.5 rounded-md border text-xs font-bold transition-all flex items-center justify-center shrink-0 ${addedProductId === product.id ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'}`}
+                              title="إضافة إلى السلة"
+                              aria-label={addedProductId === product.id ? "تمت الإضافة" : `إضافة ${product.name} إلى السلة`}
+                            >
+                              {addedProductId === product.id ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingCart className="w-4 h-4" />}
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
