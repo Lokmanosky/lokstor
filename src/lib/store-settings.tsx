@@ -10,6 +10,7 @@ export interface StoreSettings {
   storeSubtitle: string;
   logoLetter: string;
   logoImageUrl?: string;
+  adminNotificationEmail?: string;
 }
 
 const defaultSettings: StoreSettings = {
@@ -18,6 +19,7 @@ const defaultSettings: StoreSettings = {
   storeSubtitle: 'متجر المنتجات الرقمية الجزائري',
   logoLetter: 'L',
   logoImageUrl: '',
+  adminNotificationEmail: 'admin@lokstor.dz',
 };
 
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);

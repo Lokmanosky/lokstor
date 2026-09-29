@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { Order } from '@/types';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
 import crypto from 'crypto';
+import { sendChargilyPaidEmails } from '@/lib/email';
 
 export async function GET(
   req: NextRequest,
@@ -107,11 +108,16 @@ export async function GET(
             downloadUrl = `${baseUrl}/api/download?order_id=${orderId}&token=${downloadToken}`;
           }
 
-          const updatedFields = {
+          const updatedFields: any = {
             status: 'paid' as const,
             downloadUrl,
             paidAt: Date.now(),
           };
+
+          const alreadySent = Boolean((order as any).chargilyEmailsSent);
+          if (!alreadySent) {
+            updatedFields.chargilyEmailsSent = true;
+          }
 
           if (adminDb) {
             await adminDb.collection('orders').doc(orderId).update(updatedFields);
@@ -119,7 +125,20 @@ export async function GET(
             await updateDoc(doc(db, 'orders', orderId), updatedFields);
           }
 
-          order = { ...order, ...updatedFields };
+          if (!alreadySent) {
+            try {
+              await sendChargilyPaidEmails({
+                order: { ...order, ...updatedFields },
+                paidAmount: Number(order.productPrice || (order as any).amount || 0),
+                paymentMethodDetail: 'chargily',
+                downloadUrl: updatedFields.downloadUrl,
+              });
+            } catch (mErr) {
+              console.warn('Failed to send auto-verify Chargily emails:', mErr);
+            }
+          }
+
+          order = { ...order, ...updatedFields } as Order;
         }
       } catch (chErr) {
         console.error('Chargily verify status check error:', chErr);
@@ -150,7 +169,7 @@ export async function GET(
         } catch (e) {}
       }
 
-      order = { ...order, ...updatedFields };
+      order = { ...order, ...updatedFields } as Order;
     }
 
     // Security check: Only return downloadUrl if status === 'paid'

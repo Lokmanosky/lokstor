@@ -7,6 +7,7 @@ import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { Product } from '@/types';
 import crypto from 'crypto';
 import { checkoutSchema } from '@/lib/validations';
+import { sendManualPaymentAdminEmail } from '@/lib/email';
 
 // Safe lightweight string sanitizer (No heavy/broken serverless libraries like JSDOM)
 function sanitizeText(str: string): string {
@@ -207,6 +208,16 @@ export async function POST(req: NextRequest) {
         await setDoc(doc(db, 'orders', orderId), orderData);
       }
 
+      // Send manual review notification email to Admin ONLY (No customer email)
+      try {
+        await sendManualPaymentAdminEmail({
+          order: orderData,
+          paymentMethod: 'binance',
+        });
+      } catch (mailErr) {
+        console.warn('Failed to send Binance manual review email:', mailErr);
+      }
+
       return NextResponse.json({
         success: true,
         orderId,
@@ -225,6 +236,16 @@ export async function POST(req: NextRequest) {
         await adminDb.collection('orders').doc(orderId).set(orderData);
       } else {
         await setDoc(doc(db, 'orders', orderId), orderData);
+      }
+
+      // Send manual review notification email to Admin ONLY (No customer email)
+      try {
+        await sendManualPaymentAdminEmail({
+          order: orderData,
+          paymentMethod: 'redotpay',
+        });
+      } catch (mailErr) {
+        console.warn('Failed to send RedotPay manual review email:', mailErr);
       }
 
       return NextResponse.json({

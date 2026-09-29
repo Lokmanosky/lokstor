@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound } from 'lucide-react';
@@ -15,6 +15,7 @@ export default function SettingsPage() {
   // Store settings
   const [storeName, setStoreName] = useState(currentSettings.storeName || 'Lokstor');
   const [logoUrl, setLogoUrl] = useState(currentSettings.logoImageUrl || '');
+  const [adminNotificationEmail, setAdminNotificationEmail] = useState(currentSettings.adminNotificationEmail || 'admin@lokstor.dz');
   const [file, setFile] = useState<File | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -34,6 +35,9 @@ export default function SettingsPage() {
   useEffect(() => {
     setStoreName(currentSettings.storeName || 'Lokstor');
     setLogoUrl(currentSettings.logoImageUrl || '');
+    if (currentSettings.adminNotificationEmail) {
+      setAdminNotificationEmail(currentSettings.adminNotificationEmail);
+    }
   }, [currentSettings]);
 
   useEffect(() => {
@@ -58,7 +62,11 @@ export default function SettingsPage() {
         finalLogoUrl = await fileToBase64(file);
         setLogoUrl(finalLogoUrl);
       }
-      await saveStoreSettings({ storeName, logoImageUrl: finalLogoUrl });
+      await saveStoreSettings({
+        storeName,
+        logoImageUrl: finalLogoUrl,
+        adminNotificationEmail: adminNotificationEmail.trim(),
+      });
       setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
     } catch (err: any) {
       setStoreMsg({ type: 'error', text: 'حدث خطأ أثناء الحفظ.' });
@@ -149,6 +157,24 @@ export default function SettingsPage() {
               <label className="text-sm font-medium text-[var(--admin-text)]">اسم المتجر</label>
               <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)}
                 className={inputCls} placeholder="مثال: Lokstor" required />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[var(--admin-text)] flex items-center justify-between">
+                <span>بريد إشعارات الطلبات (الأدمن)</span>
+                <span className="text-xs text-[var(--admin-primary)] font-normal">Resend Email</span>
+              </label>
+              <input 
+                type="email" 
+                value={adminNotificationEmail} 
+                onChange={(e) => setAdminNotificationEmail(e.target.value)}
+                className={inputCls} 
+                placeholder="admin@lokstor.dz" 
+                dir="ltr" 
+              />
+              <p className="text-xs text-[var(--admin-text-muted)]">
+                البريد الذي ستصلك عليه إشعارات الدفع الناجح (شارجيلي) وطلبات التحقق اليدوي (بايننس وريدوت باي).
+              </p>
             </div>
 
             <div className="space-y-4">

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { sendChargilyPaidEmails } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
   try {
@@ -189,6 +190,36 @@ export async function POST(req: NextRequest) {
       }
     } catch (nErr) {
       console.warn('Failed to create notification:', nErr);
+    }
+
+    // 6. Send Notification & Confirmation Emails via Resend (Admin + Customer)
+    try {
+      if (!orderData.chargilyEmailsSent) {
+        await sendChargilyPaidEmails({
+          order: {
+            id: orderId,
+            productName: orderData.productName || 'منتج رقمي',
+            customerName: orderData.customerName || 'عميل',
+            customerEmail: orderData.customerEmail || '',
+            customerPhone: orderData.customerPhone,
+            customFieldsData: orderData.customFieldsData,
+            ...orderData,
+            ...orderUpdate,
+          },
+          paidAmount,
+          paymentMethodDetail,
+          downloadUrl: downloadUrl || orderData.downloadUrl || undefined,
+        });
+
+        const emailMark = { chargilyEmailsSent: true };
+        if (adminDb) {
+          await adminDb.collection('orders').doc(orderId).update(emailMark);
+        } else {
+          await updateDoc(doc(db, 'orders', orderId), emailMark);
+        }
+      }
+    } catch (eErr) {
+      console.warn('Failed to dispatch Chargily paid emails:', eErr);
     }
 
     return NextResponse.json({ success: true, message: 'Order fulfilled successfully' });

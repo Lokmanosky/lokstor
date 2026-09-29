@@ -11,11 +11,10 @@ export const getChargilyClient = () => {
 
   // If environment provides a valid live key that is NOT the old revoked one, use it.
   // Otherwise use the active verified live key.
-  let apiKey = secretKey;
-  if (!apiKey || apiKey.includes('jqCVnFRzJLryItIkWLenZYvp7oKMzkzinQ5rXIT5') || !apiKey.startsWith('live_sk_')) {
-    apiKey = apiKeyCandidate;
-  }
-  if (!apiKey || apiKey.includes('jqCVnFRzJLryItIkWLenZYvp7oKMzkzinQ5rXIT5') || !apiKey.startsWith('live_sk_')) {
+  let apiKey = secretKey || apiKeyCandidate;
+  
+  // If no key is provided, or it's the known revoked key, use the fallback live key
+  if (!apiKey || apiKey.includes('jqCVnFRzJLryItIkWLenZYvp7oKMzkzinQ5rXIT5')) {
     apiKey = ACTIVE_LIVE_KEY;
   }
 
