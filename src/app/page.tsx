@@ -327,9 +327,26 @@ function HomePageContent() {
               </span>
             </h1>
             
+            
             <p className="text-xs sm:text-base md:text-lg text-white/80 max-w-xl sm:max-w-2xl mx-auto font-medium leading-relaxed">
               {t('hero.desc')}
             </p>
+            
+            {/* Feature Badges */}
+            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-white/90 font-medium drop-shadow-md">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[var(--store-primary)]" />
+                <span>تسليم تلقائي وفوري</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[var(--store-primary)]" />
+                <span>دفع عبر بوابة Chargily</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-300" />
+                <span>ملفات أصلية عالية الجودة</span>
+              </div>
+            </div>
           </div>
         </BannersCarousel>
       ) : (
@@ -348,9 +365,26 @@ function HomePageContent() {
               </span>
             </h1>
             
+            
             <p className="text-sm sm:text-lg text-[var(--store-text-muted)] max-w-2xl mx-auto font-medium leading-relaxed">
               {t('hero.desc')}
             </p>
+            
+            {/* Feature Badges */}
+            <div className="pt-4 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-[var(--store-text-muted)] font-medium">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[var(--store-primary)]" />
+                <span>تسليم تلقائي وفوري</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[var(--store-primary)]" />
+                <span>دفع عبر بوابة Chargily</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-500" />
+                <span>ملفات أصلية عالية الجودة</span>
+              </div>
+            </div>
           </div>
         </section>
       )}
