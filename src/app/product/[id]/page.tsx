@@ -611,16 +611,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
 {/* Telegram Contact Button */}
-            <a 
-              href="https://t.me/Loktech" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full mt-3 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-md hover:shadow-lg"
-              style={{ backgroundColor: '#24A1DE' }}
-            >
-              <Send className="w-5 h-5 -rotate-45" />
-              <span>تواصل معنا للتفعيل عبر تيليجرام</span>
-            </a>
+            {Boolean(isGameProduct || (product?.name && (product.name.toLowerCase().includes('telegram') || product.name.includes('تلغرام') || product.name.includes('تيليجرام')))) && (
+              <a 
+                href="https://t.me/Loktech" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full mt-3 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white font-bold transition-all shadow-md hover:shadow-lg"
+                style={{ backgroundColor: '#24A1DE' }}
+              >
+                <Send className="w-5 h-5 -rotate-45" />
+                <span>لمعلومات اكثر تواصل معنا عبر تيليجرام</span>
+              </a>
+            )}
 
 
             {/* Badges / Guarantees */}
