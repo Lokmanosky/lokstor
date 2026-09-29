@@ -18,6 +18,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   const pathname = usePathname();
   const { t, lang } = useTranslation();
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -32,8 +33,14 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'orders'), where('status', 'in', ['pending', 'paid']));
+    const q = query(collection(db, 'orders'), where('status', '==', 'pending'));
     const unsub = onSnapshot(q, (snap) => setPendingCount(snap.size));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'reviews'), where('status', '==', 'pending'));
+    const unsub = onSnapshot(q, (snap) => setPendingReviewsCount(snap.size));
     return () => unsub();
   }, []);
 
@@ -62,7 +69,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
     { href: '/admin/products', label: t('nav.adminProducts'), icon: Package },
     { href: '/admin/categories', label: 'أقسام المتجر', icon: FolderOpen },
     { href: '/admin/inventory', label: t('nav.adminInventory'), icon: Boxes },
-    { href: '/admin/reviews', label: 'التقييمات', icon: Star },
+    { href: '/admin/reviews', label: 'التقييمات', icon: Star, badge: pendingReviewsCount },
     { href: '/admin/settings', label: t('nav.adminSettings'), icon: Settings },
   ];
 
