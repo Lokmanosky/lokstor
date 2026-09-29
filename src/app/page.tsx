@@ -70,11 +70,75 @@ function ReviewsCarousel() {
   );
 }
 
+
+function BannersCarousel({ banners }: { banners: any[] }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrent(c => (c + 1) % banners.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [banners.length]);
+
+  if (!banners.length) return null;
+
+  return (
+    <div className="relative w-full max-w-7xl mx-auto mb-8 mt-4 rounded-2xl overflow-hidden shadow-2xl aspect-[21/9] sm:aspect-[24/9] md:aspect-[28/9] bg-black">
+      {banners.map((b, i) => (
+        <div 
+          key={b.id} 
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+        >
+          {/* Blurred Background */}
+          <div 
+            className="absolute inset-0 bg-center bg-cover blur-xl scale-110 opacity-60" 
+            style={{ backgroundImage: `url('${b.imageUrl}')` }}
+          />
+          {/* Main Image */}
+          <Link href={b.link || '#'}>
+            <img 
+              src={b.imageUrl} 
+              alt="Banner" 
+              className="absolute inset-0 w-full h-full object-contain drop-shadow-2xl" 
+            />
+          </Link>
+        </div>
+      ))}
+      
+      {/* Navigation Dots */}
+      {banners.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`w-2 h-2 rounded-full transition-all ${i === current ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/80'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HomePageContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'all';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [products, setProducts] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'storeBanners'), snap => {
+      const list: any[] = [];
+      snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      setBanners(list);
+    });
+    return () => unsub();
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [storeCategories, setStoreCategories] = useState<{id:string;name:string;slug:string;emoji?:string;sortOrder:number}[]>([]);
   const { t } = useTranslation();
@@ -233,42 +297,33 @@ function HomePageContent() {
         `
       }</style>
 
-      {/* 1. Hero Section */}
-      <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
-        <div className="max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--store-border)] text-xs font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-sm">
-            <span>{t('hero.badge')}</span>
+      
+      {/* 1. Hero Section / Banners */}
+      {banners.length > 0 ? (
+        <BannersCarousel banners={banners} />
+      ) : (
+        <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
+          <div className="max-w-4xl mx-auto text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--store-border)] text-xs font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-sm">
+              <span>{t('hero.badge')}</span>
+            </div>
+            
+            <h1 className="text-3xl sm:text-5xl font-black text-[var(--store-text)] tracking-tight leading-snug">
+              <span className="block">
+                {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span>
+              </span>
+              <span className="block mt-1 sm:mt-2">
+                {t('hero.title3')}
+              </span>
+            </h1>
+            
+            <p className="text-sm sm:text-lg text-[var(--store-text-muted)] max-w-2xl mx-auto font-medium leading-relaxed">
+              {t('hero.subtitle')}
+            </p>
           </div>
-          
-          <h1 className="text-3xl sm:text-5xl font-black text-[var(--store-text)] tracking-tight leading-snug">
-            <span className="block">
-              {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span>
-            </span>
-            <span className="block mt-1 sm:mt-2">
-              {t('hero.title3')}
-            </span>
-          </h1>
-          
-          <p className="text-[var(--store-text-muted)] text-lg max-w-2xl mx-auto leading-relaxed">
-            {t('hero.desc')}
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-6 pt-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-amber-600 dark:text-amber-400">
-              <Zap className="w-4 h-4" />
-              <span>{t('feat.instant')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-              <ShieldCheck className="w-4 h-4" />
-              <span>{t('feat.secure')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">
-              <FileText className="w-4 h-4" />
-              <span>{t('feat.hq')}</span>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
+  
 
       {/* 2. Products Section */}
       <section id="products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">

@@ -158,6 +158,91 @@ function CategorySection({
   );
 }
 
+
+// ── Store Banners Manager ──────────────────────────────────────────────────────
+function StoreBannersManager() {
+  const [banners, setBanners] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newUrl, setNewUrl] = useState('');
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'storeBanners'), snap => {
+      const list: any[] = [];
+      snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      setBanners(list);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleAdd = async (e: any) => {
+    e.preventDefault();
+    if (!newUrl) return;
+    try {
+      await addDoc(collection(db, 'storeBanners'), {
+        imageUrl: newUrl,
+        link: '/',
+        sortOrder: banners.length,
+        createdAt: Date.now()
+      });
+      setNewUrl('');
+    } catch (e) {
+      console.error(e);
+      alert('حدث خطأ أثناء الإضافة');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا الغلاف؟')) {
+      await deleteDoc(doc(db, 'storeBanners', id));
+    }
+  };
+
+  return (
+    <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl p-6 space-y-4 mb-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-[var(--admin-text)]">صور غلاف المتجر المتحركة (Banners)</h2>
+      </div>
+      <p className="text-xs text-[var(--admin-text-muted)] leading-relaxed">
+        أضف روابط صور الغلاف هنا. ستظهر في الصفحة الرئيسية بشكل متحرك (Carousel).
+        يمكنك رفع الصور على أي موقع ونسخ الرابط المباشر للصورة هنا.
+      </p>
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <input 
+          value={newUrl}
+          onChange={e => setNewUrl(e.target.value)}
+          placeholder="رابط الصورة المباشر (مثل: https://example.com/image.png أو /images/banners/banner1.png)"
+          className="flex-1 px-3 py-2 bg-[var(--admin-bg)] border border-[var(--admin-border)] rounded-lg text-sm focus:border-[var(--admin-primary)] focus:outline-none text-[var(--admin-text)]"
+        />
+        <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-semibold text-sm rounded-lg hover:opacity-90 transition shrink-0 whitespace-nowrap">إضافة الغلاف</button>
+      </form>
+      {loading ? (
+        <p className="text-sm text-[var(--admin-text-muted)]">جاري التحميل...</p>
+      ) : banners.length === 0 ? (
+        <div className="p-4 border-2 border-dashed border-[var(--admin-border)] rounded-xl text-center">
+          <p className="text-sm text-[var(--admin-text-muted)]">لا يوجد صور غلاف، المتجر سيعرض التصميم الافتراضي (بدون سلايدر).</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {banners.map(b => (
+            <div key={b.id} className="relative group border border-[var(--admin-border)] rounded-xl overflow-hidden bg-[var(--admin-bg)] aspect-[21/9]">
+              <img src={b.imageUrl} alt="Banner" className="w-full h-full object-cover" />
+              <button 
+                onClick={() => handleDelete(b.id)}
+                className="absolute top-2 left-2 p-1.5 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                title="حذف"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function CategoriesPage() {
   const [cats, setCats] = useState<StoreCategory[]>([]);
@@ -382,6 +467,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-5" dir="rtl">
+      <StoreBannersManager />
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
