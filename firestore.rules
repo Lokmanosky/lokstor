@@ -4,17 +4,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ========== Helper: isAdmin ==========
+    // Simple email check — matches how auth-context.tsx determines admin
     function isAdmin() {
-      return request.auth != null &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null && 
+        request.auth.token.email == 'loktech.dz@gmail.com';
+    }
+
+    function isOwnerOrAdmin(uid) {
+      return request.auth != null && (request.auth.uid == uid || isAdmin());
     }
 
     // ========== 1. Users ==========
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if isOwnerOrAdmin(userId);
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      allow update: if isOwnerOrAdmin(userId);
       allow delete: if isAdmin();
     }
 
@@ -25,18 +29,16 @@ service cloud.firestore {
     }
 
     // ========== 3. Orders ==========
-    // Admins can read/write all.
-    // Authenticated users can read their OWN orders (by email OR userId).
-    // Writes from clients are allowed only to create (checkout flow creates order then redirects to payment).
     match /orders/{orderId} {
+      // Admin sees all. Customer sees their own orders by email or userId.
       allow read: if isAdmin() ||
         (request.auth != null && (
           resource.data.userId == request.auth.uid ||
           resource.data.customerEmail == request.auth.token.email
         ));
-      // Allow clients to create orders (the checkout page creates order before redirecting to payment gateway)
+      // Any logged-in user can create an order (checkout flow)
       allow create: if request.auth != null;
-      // Only server (admin SDK) can update/delete orders
+      // Only server (Firebase Admin SDK via API routes) can update/delete
       allow update, delete: if false;
     }
 
