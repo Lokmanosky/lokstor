@@ -1,49 +1,90 @@
-rules_version = \'2\';
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper Functions
+
+    // ========== Helper Functions ==========
     function isAdmin() {
       return request.auth != null && request.auth.token.admin == true;
     }
 
-    function isProductValid() {
-      let data = request.resource.data;
-      let hasValidKeys = data.keys().hasOnly(['name', 'description', 'price', 'currency', 'imageUrl', 'image', 'fileUrl', 'stock', 'stockLinks', 'type', 'category', 'features', 'status', 'createdAt', 'updatedAt', 'fileType']);
-      let hasValidPrice = data.price is number && data.price >= 0; // >= 0 in case of free products
-      let hasValidName = data.name is string && data.name.size() > 0 && data.name.size() <= 200;
-      
-      return hasValidKeys && hasValidPrice && hasValidName;
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
     }
 
-    // 1. Products Collection
+    // ========== 1. Products ==========
+    // Anyone can read. Only admins can write.
     match /products/{productId} {
       allow read: if true;
-      allow create, update: if isAdmin() && isProductValid();
+      allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // 2. Orders Collection
+    // ========== 2. Orders ==========
+    // Clients can only read their own orders. No direct client writes - server-side only.
     match /orders/{orderId} {
-      allow read, write: if false; // Strict Server-side only
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false; // All writes go through API routes (Firebase Admin SDK)
     }
 
-    // 3. Settings Collection
+    // ========== 3. Store Settings ==========
+    // Anyone can read store settings. Only admins can write.
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isAdmin() && request.resource.data.keys().hasOnly([
-        'storeName', 'storeSlug', 'logoImageUrl', 'logoLetter', 'heroTitle', 'heroSubtitle', 
-        'theme', 'storeCurrency', 'adminEmail', 'updatedAt', 'createdAt'
-      ]);
+      allow write: if isAdmin();
     }
 
-    // 4. Analytics and Presence
-    match /analytics/{document=**} {
-      allow read, write: if true;
+    // ========== 4. Banners & Categories ==========
+    // Anyone can read. Only admins can write.
+    match /storeBanners/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
-    match /active_users/{document=**} {
-      allow read, write: if true;
+    match /storeCategories/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ========== 5. Reviews ==========
+    // Anyone can read approved reviews. Authenticated users can create. Admins can update/delete.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['productId', 'userId', 'userEmail', 'userName', 'rating', 'comment', 'status', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 1000;
+      allow update, delete: if isAdmin();
+    }
+
+    // ========== 6. Notifications (Admin panel) ==========
+    // Only admins can read/write.
+    match /notifications/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ========== 7. Analytics & Presence (Visitor Tracking) ==========
+    // Write only. Anyone can write their presence. Only admins can read.
+    match /analytics/{document=**} {
+      allow read: if isAdmin();
+      allow write: if true;
+    }
+    match /active_users/{userId} {
+      allow read: if isAdmin();
+      allow write: if true;
+    }
+
+    // ========== 8. Rate Limits (server-side only) ==========
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+
+    // ========== Fallback: Deny everything else ==========
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
