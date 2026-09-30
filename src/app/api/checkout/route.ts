@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken } = validationResult.data as any;
+    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, userId: bodyUserId } = validationResult.data as any;
 
     // 3. Clean inputs
     const cleanName = sanitizeText(customerName);
@@ -178,6 +178,7 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       createdAt: Date.now(),
       fcmToken: fcmToken || null,
+      ...(bodyUserId ? { userId: bodyUserId } : {}),
     };
 
     if (selectedVariantObj) {

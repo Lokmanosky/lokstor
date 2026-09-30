@@ -71,31 +71,33 @@ export default function CustomerAccountPage() {
       return;
     }
 
-    // Use exact email from Firebase Auth token (matches Firestore security rules)
-    const userEmail = user.email.trim().toLowerCase();
+    // Use userId (Firebase Auth UID) — consistent and matches Firestore security rules
+    const userEmail = user.email?.trim().toLowerCase() || '';
     const ordersRef = collection(db, 'orders');
-    const q = query(ordersRef, where('customerEmail', '==', userEmail), orderBy('createdAt', 'desc'));
+    
+    // Query by userId first (for new orders), fall back shown via email for old orders
+    const qByUid = query(ordersRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const qByEmail = query(ordersRef, where('customerEmail', '==', userEmail), orderBy('createdAt', 'desc'));
 
-    const unsub = onSnapshot(q, (snap) => {
-      const list: Order[] = [];
-      snap.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as Order);
-      });
+    const mergeAndSet = (snap1: any, snap2: any) => {
+      const map = new Map<string, Order>();
+      [...snap1.docs, ...snap2.docs].forEach((d: any) => map.set(d.id, { id: d.id, ...d.data() } as Order));
+      const list = Array.from(map.values()).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
       setOrders(list);
       setOrdersLoading(false);
-
-      // Background auto-verify for pending Chargily orders
       list.forEach(o => {
         if (o.status === 'pending' && o.chargilyInvoiceId) {
           fetch(`/api/orders/${o.id}`).catch(() => {});
         }
       });
-    }, (err) => {
-      console.error('Customer orders onSnapshot error:', err);
-      setOrdersLoading(false);
-    });
+    };
 
-    return () => unsub();
+    let snap1: any = null, snap2: any = null;
+
+    const unsub1 = onSnapshot(qByUid, (s) => { snap1 = s; if (snap2 !== null) mergeAndSet(snap1, snap2); }, () => setOrdersLoading(false));
+    const unsub2 = onSnapshot(qByEmail, (s) => { snap2 = s; if (snap1 !== null) mergeAndSet(snap1, snap2); }, () => setOrdersLoading(false));
+
+    return () => { unsub1(); unsub2(); };
   }, [user]);
 
   const isWebUrl = (url?: string) => {
