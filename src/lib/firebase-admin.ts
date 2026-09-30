@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
-
+import { getMessaging, Messaging } from 'firebase-admin/messaging';
 export const isAdminConfigured = Boolean(
   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
   process.env.FIREBASE_CLIENT_EMAIL &&
@@ -31,3 +31,4 @@ if (getApps().length === 0) {
 
 export const adminDb: Firestore | null = (isAdminConfigured && adminApp) ? getFirestore(adminApp) : null;
 export const adminStorage: Storage | null = (isAdminConfigured && adminApp) ? getStorage(adminApp) : null;
+export const adminMessaging: Messaging | null = (isAdminConfigured && adminApp) ? getMessaging(adminApp) : null;

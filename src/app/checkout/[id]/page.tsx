@@ -236,6 +236,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           paymentMethod,
           variantId: selectedVariant?.id || undefined,
           customFieldsData: Object.keys(gameInfo).length > 0 ? gameInfo : undefined,
+          fcmToken: typeof window !== 'undefined' ? (localStorage.getItem('fcm_token') || undefined) : undefined,
         }),
       });
 

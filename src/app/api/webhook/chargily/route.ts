@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { sendChargilyPaidEmails } from '@/lib/email';
+import { adminMessaging } from '@/lib/firebase-admin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -220,6 +221,47 @@ export async function POST(req: NextRequest) {
       }
     } catch (eErr) {
       console.warn('Failed to dispatch Chargily paid emails:', eErr);
+    }
+
+    // 7. Send Push Notifications (FCM)
+    try {
+      if (adminMessaging) {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app';
+        
+        // Notify Customer
+        if (orderData.fcmToken) {
+          await adminMessaging.send({
+            token: orderData.fcmToken,
+            notification: {
+              title: 'تم تأكيد الدفع بنجاح ✅',
+              body: `تم الدفع بنجاح لطلبك #${orderId.replace('ord_', '').slice(0,8)}. اضغط هنا لعرض تفاصيل الطلب.`,
+            },
+            data: {
+              url: `${baseUrl}/account/orders`,
+            }
+          }).catch(e => console.warn('Customer push failed:', e));
+        }
+
+        // Notify Admins
+        if (adminDb) {
+          const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
+          const adminTokens = adminsSnap.docs.map(d => d.data().fcmToken).filter(Boolean);
+          if (adminTokens.length > 0) {
+            await adminMessaging.sendEachForMulticast({
+              tokens: adminTokens,
+              notification: {
+                title: 'دفع جديد ناجح 💰',
+                body: `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`,
+              },
+              data: {
+                url: `${baseUrl}/admin/orders?search=${orderId}`,
+              }
+            }).catch(e => console.warn('Admin push failed:', e));
+          }
+        }
+      }
+    } catch (pushErr) {
+      console.warn('Failed to dispatch push notifications:', pushErr);
     }
 
     return NextResponse.json({ success: true, message: 'Order fulfilled successfully' });

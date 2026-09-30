@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 
 import Link from 'next/link';
-import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu } from 'lucide-react';
+import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu, Bell } from 'lucide-react';
 import { useStoreSettings, StoreSettingsProvider } from '@/lib/store-settings';
 import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -11,6 +11,7 @@ import { useTranslation } from '@/lib/i18n-context';
 import { auth, db } from '@/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -77,6 +78,7 @@ function NavBar() {
   const { totalItems } = useCart();
   const { t, lang, setLang } = useTranslation();
   const router = useRouter();
+  const { requestPermission, permissionStatus } = usePushNotifications();
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -409,6 +411,17 @@ function NavBar() {
               {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />}
             </button>
             
+            {permissionStatus !== 'granted' && (
+              <button 
+                onClick={requestPermission}
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-rose-500 hover:border-rose-500/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95 relative"
+                title="تفعيل الإشعارات" aria-label="تفعيل الإشعارات"
+              >
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+              </button>
+            )}
+
             <div className="relative flex-shrink-0">
               <button 
                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}

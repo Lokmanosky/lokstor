@@ -49,7 +49,8 @@ export const checkoutSchema = z.object({
   paymentMethod: z.enum(['chargily', 'redotpay', 'binance']).optional().default('chargily'),
   customAmount: z.number().min(10).optional(),
   variantId: z.string().optional(),
-  customFieldsData: z.record(z.string(), z.string()).optional()
+  customFieldsData: z.record(z.string(), z.string()).optional(),
+  fcmToken: z.string().optional()
 });
 
 // Login Schema
