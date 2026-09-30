@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { Order } from '@/types';
 import Link from 'next/link';
-import { Wallet, ShoppingBag, TrendingUp, Clock, Eye, Users } from 'lucide-react';
+import { Wallet, ShoppingBag, TrendingUp, Clock, Eye, Users, Activity } from 'lucide-react';
 
 export default function AdminOverview() {
   const [stats, setStats] = useState({
@@ -17,6 +17,7 @@ export default function AdminOverview() {
     uniqueVisitors: 0,
   });
 
+  const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
   useEffect(() => {
@@ -72,9 +73,23 @@ export default function AdminOverview() {
       }
     });
 
+    // Listen to active users
+    const unsubPresence = onSnapshot(collection(db, 'active_users'), (snap) => {
+      const now = Date.now();
+      let count = 0;
+      snap.forEach(doc => {
+        const data = doc.data();
+        if (now - data.lastActive < 60000) { // active in last 60 seconds
+          count++;
+        }
+      });
+      setActiveUsersCount(count);
+    });
+
     return () => {
       unsubOrders();
       unsubAnalytics();
+      unsubPresence();
     };
   }, []);
 
@@ -83,8 +98,9 @@ export default function AdminOverview() {
     { title: 'مبيعات اليوم', value: `${stats.todaySales.toLocaleString()} د.ج`, icon: TrendingUp, borderColor: 'border-amber-500/40', textColor: 'text-amber-500', href: '/admin/orders' },
     { title: 'إجمالي الطلبات', value: stats.totalOrders.toString(), icon: ShoppingBag, borderColor: 'border-teal-500/40', textColor: 'text-teal-500', href: '/admin/orders' },
     { title: 'طلبات في الانتظار', value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0, borderColor: 'border-rose-500/40', textColor: 'text-rose-500', href: '/admin/abandoned' },
-    { title: 'إجمالي الزيارات (مرات الظهور)', value: stats.totalVisits.toString(), icon: Eye, borderColor: 'border-indigo-500/40', textColor: 'text-indigo-500', href: '/admin' },
-    { title: 'الزوار الفريدين (المستخدمين)', value: stats.uniqueVisitors.toString(), icon: Users, borderColor: 'border-purple-500/40', textColor: 'text-purple-500', href: '/admin' },
+    { title: 'متصل الآن', value: activeUsersCount.toString(), icon: Activity, alert: activeUsersCount > 0, borderColor: 'border-blue-500/40', textColor: 'text-blue-500', href: '/admin' },
+    { title: 'إجمالي الزيارات', value: stats.totalVisits.toString(), icon: Eye, borderColor: 'border-indigo-500/40', textColor: 'text-indigo-500', href: '/admin' },
+    { title: 'الزوار الفريدين', value: stats.uniqueVisitors.toString(), icon: Users, borderColor: 'border-purple-500/40', textColor: 'text-purple-500', href: '/admin' },
   ];
 
   return (

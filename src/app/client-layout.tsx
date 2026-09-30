@@ -949,13 +949,13 @@ export function ClientLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Generate or get unique visitor ID
-    const visitorId = localStorage.getItem('lokstor_visitor_id');
-    const isNewVisitor = !visitorId;
-    if (!visitorId) {
-      localStorage.setItem('lokstor_visitor_id', crypto.randomUUID ? crypto.randomUUID() : Math.random().toString());
+    const visitorId = localStorage.getItem('lokstor_visitor_id') || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString());
+    const isNewVisitor = !localStorage.getItem('lokstor_visitor_id');
+    if (isNewVisitor) {
+      localStorage.setItem('lokstor_visitor_id', visitorId);
     }
 
-    // Check session to avoid counting every reload in the same session as a new visit (optional, but good for "visits" vs "pageviews")
+    // Check session to avoid counting every reload in the same session as a new visit
     const sessionActive = sessionStorage.getItem('lokstor_session');
     if (!sessionActive) {
       sessionStorage.setItem('lokstor_session', 'true');
@@ -965,6 +965,30 @@ export function ClientLayout({ children }: { children: ReactNode }) {
         body: JSON.stringify({ isNewVisitor })
       }).catch(() => {});
     }
+
+    // Presence (Online Now) ping
+    const sendPresencePing = () => {
+      fetch('/api/analytics/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId }),
+        keepalive: true
+      }).catch(() => {});
+    };
+
+    sendPresencePing();
+    const presenceInterval = setInterval(sendPresencePing, 30000); // 30 seconds
+
+    return () => {
+      clearInterval(presenceInterval);
+      // Try to notify leaving when unmounting
+      fetch('/api/analytics/presence?action=leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId }),
+        keepalive: true
+      }).catch(() => {});
+    };
   }, []);
 
   const isAdmin = pathname?.startsWith('/admin');
