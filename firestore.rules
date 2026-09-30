@@ -6,9 +6,9 @@ service cloud.firestore {
     // ========== Helper: isAdmin ==========
     function isAdmin() {
       return request.auth != null && (
-        (request.auth.token.email != null && request.auth.token.email.matches('(?i)loktech\\.dz@gmail\\.com')) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        request.auth.token.email == 'loktech.dz@gmail.com' ||
+        request.auth.token.email == 'Loktech.dz@gmail.com' ||
+        request.auth.token.email == 'LokTech.dz@gmail.com'
       );
     }
 
