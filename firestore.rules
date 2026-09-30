@@ -30,9 +30,12 @@ service cloud.firestore {
 
     // ========== 3. Orders ==========
     match /orders/{orderId} {
-      // Admin sees all. Customer sees own orders by userId OR email.
-      allow read: if isAdmin() || request.auth != null;
-      // Allow create/update from any source
+      // Admin sees all. Customer sees ONLY their own orders (by userId or email from Auth token).
+      // Note: resource.data.X == request.auth.Y works for queries when the query filters on the same field.
+      allow read: if isAdmin() ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.customerEmail == request.auth.token.email;
+      // Allow create/update from any source (checkout API uses client SDK fallback)
       allow create, update: if true;
       allow delete: if isAdmin();
     }
