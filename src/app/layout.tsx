@@ -9,6 +9,12 @@ import DevToolsGuard from '@/components/DevToolsGuard';
 export const metadata: Metadata = {
   title: 'Lokstor - متجر المنتجات الرقمية في الجزائر',
   description: 'منصة بيع المنتجات الرقمية مع خدمة الدفع الإلكتروني Chargily.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Lokstor',
+  },
 };
 
 export default function RootLayout({
