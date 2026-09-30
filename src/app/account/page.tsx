@@ -499,10 +499,13 @@ ${deliverableDetails}
                         )}
                         {isPending && (
                           <>
-                            <a href={order.chargilyCheckoutUrl || `/checkout/${order.productId}`}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition-all">
-                              <CreditCard className="w-3.5 h-3.5" /><span>إتمام الدفع</span><ExternalLink className="w-3.5 h-3.5" />
-                            </a>
+                            <Link
+                              href={order.productId ? `/checkout/${order.productId}${order.selectedVariant?.id ? `?variant=${order.selectedVariant.id}` : ''}` : '/'}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-sm transition-all"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              <span>إتمام الدفع</span>
+                            </Link>
                             <button
                               type="button"
                               onClick={() => {
