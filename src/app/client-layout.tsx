@@ -956,15 +956,12 @@ export function ClientLayout({ children }: { children: ReactNode }) {
     }
 
     // Check session to avoid counting every reload in the same session as a new visit
-    const sessionActive = sessionStorage.getItem('lokstor_session');
-    if (!sessionActive) {
-      sessionStorage.setItem('lokstor_session', 'true');
-      fetch('/api/analytics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isNewVisitor })
-      }).catch(() => {});
-    }
+    // For now, let's count every page load as a page view so the stats are responsive
+    fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isNewVisitor })
+    }).catch(() => {});
 
     // Presence (Online Now) ping
     const sendPresencePing = () => {

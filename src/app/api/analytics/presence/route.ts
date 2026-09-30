@@ -3,6 +3,10 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
   try {
+    if (!adminDb) {
+      return NextResponse.json({ success: false, error: 'Firebase Admin not configured' }, { status: 500 });
+    }
+
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
     const { visitorId } = await req.json();
