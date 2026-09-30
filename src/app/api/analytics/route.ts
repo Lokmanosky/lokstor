@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
   try {
     const { uniqueId, isNewVisitor } = await req.json();
 
-    const statsRef = db.collection('analytics').doc('global');
+    const statsRef = adminDb.collection('analytics').doc('global');
     
     // Use a transaction to safely increment
-    await db.runTransaction(async (transaction) => {
+    await adminDb.runTransaction(async (transaction) => {
       const doc = await transaction.get(statsRef);
       
       if (!doc.exists) {
