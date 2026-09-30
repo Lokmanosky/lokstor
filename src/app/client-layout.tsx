@@ -948,40 +948,41 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
+    // --- FIX: Use sessionStorage to ensure we count ONCE per browser tab/session
+    // This also prevents React StrictMode double-invocation from counting twice
+    const SESSION_KEY = 'lokstor_analytics_done';
+    if (sessionStorage.getItem(SESSION_KEY)) {
+      // Already counted this session tab - just start the presence ping
+      const storedId = localStorage.getItem('lokstor_visitor_id') || 'unknown';
+      const ping = () => setDoc(doc(db, 'active_users', storedId), { lastActive: Date.now() }, { merge: true }).catch(() => {});
+      ping();
+      const interval = setInterval(ping, 30000);
+      return () => clearInterval(interval);
+    }
+    sessionStorage.setItem(SESSION_KEY, 'true');
+
     // Generate or get unique visitor ID
-    const visitorId = localStorage.getItem('lokstor_visitor_id') || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString());
-    const isNewVisitor = !localStorage.getItem('lokstor_visitor_id');
+    const storedId = localStorage.getItem('lokstor_visitor_id');
+    const isNewVisitor = !storedId;
+    const visitorId = storedId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
     if (isNewVisitor) {
       localStorage.setItem('lokstor_visitor_id', visitorId);
     }
 
-    // Direct Firestore update for analytics
-    const updateAnalytics = async () => {
-      try {
-        const statsRef = doc(db, 'analytics', 'global');
-        await setDoc(statsRef, {
-          totalVisits: increment(1),
-          uniqueVisitors: increment(isNewVisitor ? 1 : 0)
-        }, { merge: true });
-      } catch (e) {
-        console.warn('Analytics update failed', e);
-      }
-    };
-    updateAnalytics();
+    // --- FIX: Only increment uniqueVisitors when actually new (never use increment(0))
+    const statsRef = doc(db, 'analytics', 'global');
+    const updatePayload: Record<string, any> = { totalVisits: increment(1) };
+    if (isNewVisitor) {
+      updatePayload.uniqueVisitors = increment(1);
+    }
+    setDoc(statsRef, updatePayload, { merge: true }).catch(() => {});
 
-    // Direct Firestore update for presence
-    const sendPresencePing = async () => {
-      try {
-        await setDoc(doc(db, 'active_users', visitorId), {
-          lastActive: Date.now()
-        }, { merge: true });
-      } catch (e) {
-        console.warn('Presence ping failed', e);
-      }
-    };
+    // Presence ping
+    const sendPresencePing = () =>
+      setDoc(doc(db, 'active_users', visitorId), { lastActive: Date.now() }, { merge: true }).catch(() => {});
 
     sendPresencePing();
-    const presenceInterval = setInterval(sendPresencePing, 30000); // 30 seconds
+    const presenceInterval = setInterval(sendPresencePing, 30000);
 
     return () => {
       clearInterval(presenceInterval);
