@@ -4,10 +4,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ========== Helper: isAdmin ==========
-    // Simple email check — matches how auth-context.tsx determines admin
     function isAdmin() {
-      return request.auth != null && 
-        request.auth.token.email == 'loktech.dz@gmail.com';
+      return request.auth != null && (
+        (request.auth.token.email != null && request.auth.token.email.matches('(?i)loktech\\.dz@gmail\\.com')) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     function isOwnerOrAdmin(uid) {
@@ -31,10 +33,12 @@ service cloud.firestore {
     // ========== 3. Orders ==========
     match /orders/{orderId} {
       // Admin sees all. Customer sees ONLY their own orders (by userId or email from Auth token).
-      // Note: resource.data.X == request.auth.Y works for queries when the query filters on the same field.
-      allow read: if isAdmin() ||
-        resource.data.userId == request.auth.uid ||
-        resource.data.customerEmail == request.auth.token.email;
+      allow read: if isAdmin() || (
+        request.auth != null && (
+          resource.data.userId == request.auth.uid ||
+          (request.auth.token.email != null && resource.data.customerEmail == request.auth.token.email)
+        )
+      );
       // Allow create/update from any source (checkout API uses client SDK fallback)
       allow create, update: if true;
       allow delete: if isAdmin();

@@ -52,13 +52,32 @@ export default function OrdersPage() {
   const [isBulkPendingConfirmOpen, setIsBulkPendingConfirmOpen] = useState(false);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'orders'), (snap) => {
-      const list: Order[] = [];
-      snap.forEach(d => list.push({ id: d.id, ...d.data() } as Order));
-      list.sort((a,b) => Number(b.createdAt) - Number(a.createdAt));
-      setOrders(list);
-      setLoading(false);
-    });
+    // 1. Initial load via API route (reliable, Admin SDK backed)
+    fetch('/api/orders?all=true&adminEmail=loktech.dz@gmail.com')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success && Array.isArray(data.orders)) {
+          setOrders(data.orders);
+          setLoading(false);
+        }
+      })
+      .catch(e => console.warn('API fetch orders notice:', e));
+
+    // 2. Real-time listener
+    const unsub = onSnapshot(
+      collection(db, 'orders'),
+      (snap) => {
+        const list: Order[] = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() } as Order));
+        list.sort((a,b) => Number(b.createdAt) - Number(a.createdAt));
+        setOrders(list);
+        setLoading(false);
+      },
+      (err) => {
+        console.warn('Orders onSnapshot error:', err);
+        setLoading(false);
+      }
+    );
     return () => unsub();
   }, []);
 

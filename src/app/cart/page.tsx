@@ -21,21 +21,36 @@ export default function CartPage() {
         setLoadingOrders(false);
         return;
       }
+
+      const map = new Map<string, any>();
+
+      // 1. Fast API fetch
       try {
-        const q = query(
-          collection(db, 'orders'),
-          where('customerEmail', '==', user.email),
-          orderBy('createdAt', 'desc')
-        );
-        const snapshot = await getDocs(q);
-        const fetchedOrders = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setOrders(fetchedOrders);
+        const res = await fetch(`/api/orders?userId=${encodeURIComponent(user.uid)}&email=${encodeURIComponent(user.email || '')}`);
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.orders)) {
+          data.orders.forEach((o: any) => map.set(o.id, o));
+        }
+      } catch (e) {}
+
+      // 2. Client Firestore fallback
+      try {
+        const ordersRef = collection(db, 'orders');
+        if (user.uid) {
+          const snapUid = await getDocs(query(ordersRef, where('userId', '==', user.uid)));
+          snapUid.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+        }
+        if (user.email) {
+          const snapEmail = await getDocs(query(ordersRef, where('customerEmail', '==', user.email)));
+          snapEmail.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
+        }
       } catch (err) {
         console.error('Error fetching orders:', err);
       } finally {
+        const fetchedOrders = Array.from(map.values()).sort(
+          (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
+        );
+        setOrders(fetchedOrders);
         setLoadingOrders(false);
       }
     }

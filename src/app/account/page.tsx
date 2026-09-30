@@ -66,25 +66,20 @@ export default function CustomerAccountPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user?.email) {
+    if (!user) {
       setOrdersLoading(false);
       return;
     }
 
-    // Use userId (Firebase Auth UID) — consistent and matches Firestore security rules
-    const userEmail = user.email?.trim().toLowerCase() || '';
-    const ordersRef = collection(db, 'orders');
-    
-    // Query by userId first (for new orders), fall back shown via email for old orders
-    const qByUid = query(ordersRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-    const qByEmail = query(ordersRef, where('customerEmail', '==', userEmail), orderBy('createdAt', 'desc'));
+    const orderMap = new Map<string, Order>();
 
-    const mergeAndSet = (snap1: any, snap2: any) => {
-      const map = new Map<string, Order>();
-      [...snap1.docs, ...snap2.docs].forEach((d: any) => map.set(d.id, { id: d.id, ...d.data() } as Order));
-      const list = Array.from(map.values()).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+    const commitOrders = () => {
+      const list = Array.from(orderMap.values()).sort(
+        (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
+      );
       setOrders(list);
       setOrdersLoading(false);
+
       list.forEach(o => {
         if (o.status === 'pending' && o.chargilyInvoiceId) {
           fetch(`/api/orders/${o.id}`).catch(() => {});
@@ -92,12 +87,76 @@ export default function CustomerAccountPage() {
       });
     };
 
-    let snap1: any = null, snap2: any = null;
+    // 1. Initial fast load via API route (bypasses Firestore client rule/index quirks)
+    const rawEmail = user.email?.trim() || '';
+    const uid = user.uid;
+    fetch(`/api/orders?userId=${encodeURIComponent(uid)}&email=${encodeURIComponent(rawEmail)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success && Array.isArray(data.orders)) {
+          data.orders.forEach((o: Order) => orderMap.set(o.id, o));
+          commitOrders();
+        }
+      })
+      .catch(err => {
+        console.warn('API orders fetch notice:', err);
+      });
 
-    const unsub1 = onSnapshot(qByUid, (s) => { snap1 = s; if (snap2 !== null) mergeAndSet(snap1, snap2); }, () => setOrdersLoading(false));
-    const unsub2 = onSnapshot(qByEmail, (s) => { snap2 = s; if (snap1 !== null) mergeAndSet(snap1, snap2); }, () => setOrdersLoading(false));
+    // 2. Real-time Firestore listeners WITHOUT composite orderBy
+    // (Never use orderBy here to prevent Firestore index errors)
+    const ordersRef = collection(db, 'orders');
+    const unsubs: (() => void)[] = [];
 
-    return () => { unsub1(); unsub2(); };
+    try {
+      // By UID
+      const qByUid = query(ordersRef, where('userId', '==', uid));
+      const unsubUid = onSnapshot(
+        qByUid,
+        (snap) => {
+          snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
+          commitOrders();
+        },
+        (err) => console.warn('Orders by UID listener notice:', err)
+      );
+      unsubs.push(unsubUid);
+    } catch (e) {}
+
+    if (rawEmail) {
+      try {
+        // By Email (exact)
+        const qByEmail = query(ordersRef, where('customerEmail', '==', rawEmail));
+        const unsubEmail = onSnapshot(
+          qByEmail,
+          (snap) => {
+            snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
+            commitOrders();
+          },
+          (err) => console.warn('Orders by email listener notice:', err)
+        );
+        unsubs.push(unsubEmail);
+      } catch (e) {}
+
+      // If email has uppercase, also query lowercase version
+      const lowerEmail = rawEmail.toLowerCase();
+      if (lowerEmail !== rawEmail) {
+        try {
+          const qByLower = query(ordersRef, where('customerEmail', '==', lowerEmail));
+          const unsubLower = onSnapshot(
+            qByLower,
+            (snap) => {
+              snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
+              commitOrders();
+            },
+            (err) => console.warn('Orders by lowercase email listener notice:', err)
+          );
+          unsubs.push(unsubLower);
+        } catch (e) {}
+      }
+    }
+
+    return () => {
+      unsubs.forEach(unsub => unsub());
+    };
   }, [user]);
 
   const isWebUrl = (url?: string) => {
