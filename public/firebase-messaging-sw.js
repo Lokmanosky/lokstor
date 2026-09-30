@@ -40,3 +40,8 @@ self.addEventListener('notificationclick', function(event) {
     );
   }
 });
+
+// A dummy fetch event listener is required for some browsers to consider the PWA installable.
+self.addEventListener('fetch', function(event) {
+  // We just let the browser do its default thing.
+});
