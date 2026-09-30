@@ -40,6 +40,7 @@ export interface Product {
   requiredFields?: GameFieldRequirement[];
   features?: string[];
   fileType?: string; // PDF, ZIP, Template, etc.
+  telegramLink?: string;
   sortOrder?: number;
   createdAt: number | string;
   updatedAt?: number | string;

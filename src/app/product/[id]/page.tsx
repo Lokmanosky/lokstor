@@ -611,9 +611,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Telegram Contact Button */}
-            {Boolean(isGameProduct || (product?.name && (product.name.toLowerCase().includes('telegram') || product.name.includes('تلغرام') || product.name.includes('تيليجرام')))) && (
+            {Boolean(product.telegramLink || isGameProduct || (product?.name && (product.name.toLowerCase().includes('telegram') || product.name.includes('تلغرام') || product.name.includes('تيليجرام')))) && (
               <a 
-                href="https://t.me/Loktech" 
+                href={product.telegramLink ? (product.telegramLink.startsWith('http') ? product.telegramLink : `https://${product.telegramLink}`) : "https://t.me/Loktech"} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-full mt-2 sm:mt-3 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg text-center"

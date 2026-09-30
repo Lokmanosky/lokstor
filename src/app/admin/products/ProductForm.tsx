@@ -35,6 +35,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     stockLinks: [],
     fileUrl: '',
     fileType: '',
+    telegramLink: '',
     features: [],
   });
 
@@ -1307,6 +1308,18 @@ export default function ProductForm({ productId }: ProductFormProps) {
             <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">رابط الملف (fileUrl)</h2>
             <p className="text-xs text-[var(--admin-text-muted)]">رابط التحميل المباشر للمنتج الرقمي</p>
             <input className={inputCls} value={form.fileUrl || ''} onChange={e => set('fileUrl', e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2 flex items-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#0088cc]">
+                <path d="M22 2L11 13" />
+                <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+              </svg>
+              <span>زر التليجرام (Telegram Link)</span>
+            </h2>
+            <p className="text-xs text-[var(--admin-text-muted)]">أدخل رابط التليجرام أو المعرف (مثال: https://t.me/username) ليظهر كزر تواصل في هذا المنتج</p>
+            <input className={inputCls} value={form.telegramLink || ''} onChange={e => set('telegramLink', e.target.value)} placeholder="https://t.me/..." />
           </div>
 
           <button
