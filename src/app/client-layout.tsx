@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useTranslation } from '@/lib/i18n-context';
 import { auth, db } from '@/lib/firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, getDoc, increment } from 'firebase/firestore';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
@@ -955,22 +955,29 @@ export function ClientLayout({ children }: { children: ReactNode }) {
       localStorage.setItem('lokstor_visitor_id', visitorId);
     }
 
-    // Check session to avoid counting every reload in the same session as a new visit
-    // For now, let's count every page load as a page view so the stats are responsive
-    fetch('/api/analytics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isNewVisitor })
-    }).catch(() => {});
+    // Direct Firestore update for analytics
+    const updateAnalytics = async () => {
+      try {
+        const statsRef = doc(db, 'analytics', 'global');
+        await setDoc(statsRef, {
+          totalVisits: increment(1),
+          uniqueVisitors: increment(isNewVisitor ? 1 : 0)
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Analytics update failed', e);
+      }
+    };
+    updateAnalytics();
 
-    // Presence (Online Now) ping
-    const sendPresencePing = () => {
-      fetch('/api/analytics/presence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visitorId }),
-        keepalive: true
-      }).catch(() => {});
+    // Direct Firestore update for presence
+    const sendPresencePing = async () => {
+      try {
+        await setDoc(doc(db, 'active_users', visitorId), {
+          lastActive: Date.now()
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Presence ping failed', e);
+      }
     };
 
     sendPresencePing();
@@ -978,13 +985,6 @@ export function ClientLayout({ children }: { children: ReactNode }) {
 
     return () => {
       clearInterval(presenceInterval);
-      // Try to notify leaving when unmounting
-      fetch('/api/analytics/presence?action=leave', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visitorId }),
-        keepalive: true
-      }).catch(() => {});
     };
   }, []);
 

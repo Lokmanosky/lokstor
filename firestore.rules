@@ -37,5 +37,13 @@ service cloud.firestore {
         'theme', 'storeCurrency', 'adminEmail', 'updatedAt', 'createdAt'
       ]);
     }
+
+    // 4. Analytics and Presence
+    match /analytics/{document=**} {
+      allow read, write: if true;
+    }
+    match /active_users/{document=**} {
+      allow read, write: if true;
+    }
   }
 }
