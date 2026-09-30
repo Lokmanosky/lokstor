@@ -4,7 +4,6 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ========== Helper: isAdmin ==========
-    // Checks the users collection directly (matches how the app code works)
     function isAdmin() {
       return request.auth != null &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -12,7 +11,6 @@ service cloud.firestore {
     }
 
     // ========== 1. Users ==========
-    // Users can read/update their own profile. Admins can read/write all.
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -21,18 +19,25 @@ service cloud.firestore {
     }
 
     // ========== 2. Products ==========
-    // Anyone can read. Only admins can write.
     match /products/{productId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
     // ========== 3. Orders ==========
-    // Admins can read all. Customers can only read their own.
-    // No direct client writes (go through server API routes).
+    // Admins can read/write all.
+    // Authenticated users can read their OWN orders (by email OR userId).
+    // Writes from clients are allowed only to create (checkout flow creates order then redirects to payment).
     match /orders/{orderId} {
-      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow write: if false;
+      allow read: if isAdmin() ||
+        (request.auth != null && (
+          resource.data.userId == request.auth.uid ||
+          resource.data.customerEmail == request.auth.token.email
+        ));
+      // Allow clients to create orders (the checkout page creates order before redirecting to payment gateway)
+      allow create: if request.auth != null;
+      // Only server (admin SDK) can update/delete orders
+      allow update, delete: if false;
     }
 
     // ========== 4. Store Settings ==========
