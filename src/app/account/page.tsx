@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, orderBy } from 'firebase/firestore';
 import { Order } from '@/types';
 import Link from 'next/link';
 import { 
@@ -71,29 +71,20 @@ export default function CustomerAccountPage() {
       return;
     }
 
-    const baseEmail = user.email.trim();
-    const emailVariants = Array.from(new Set([
-      baseEmail,
-      baseEmail.toLowerCase(),
-      baseEmail.toUpperCase(),
-      baseEmail.charAt(0).toUpperCase() + baseEmail.slice(1),
-      baseEmail.charAt(0).toUpperCase() + baseEmail.slice(1).toLowerCase(),
-    ])).slice(0, 10);
-
+    // Use exact email from Firebase Auth token (matches Firestore security rules)
+    const userEmail = user.email.trim().toLowerCase();
     const ordersRef = collection(db, 'orders');
-    const q = query(ordersRef, where('customerEmail', 'in', emailVariants));
+    const q = query(ordersRef, where('customerEmail', '==', userEmail), orderBy('createdAt', 'desc'));
 
     const unsub = onSnapshot(q, (snap) => {
       const list: Order[] = [];
       snap.forEach(docSnap => {
         list.push({ id: docSnap.id, ...docSnap.data() } as Order);
       });
-
-      list.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
       setOrders(list);
       setOrdersLoading(false);
 
-      // Background auto-verify for pending Chargily orders (both CIB and Edahabia)
+      // Background auto-verify for pending Chargily orders
       list.forEach(o => {
         if (o.status === 'pending' && o.chargilyInvoiceId) {
           fetch(`/api/orders/${o.id}`).catch(() => {});
