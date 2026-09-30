@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { Order } from '@/types';
 import Link from 'next/link';
-import { Wallet, ShoppingBag, TrendingUp, Clock } from 'lucide-react';
+import { Wallet, ShoppingBag, TrendingUp, Clock, Eye, Users } from 'lucide-react';
 
 export default function AdminOverview() {
   const [stats, setStats] = useState({
@@ -13,12 +13,15 @@ export default function AdminOverview() {
     todaySales: 0,
     totalOrders: 0,
     pendingOrders: 0,
+    totalVisits: 0,
+    uniqueVisitors: 0,
   });
 
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'orders'), (snap) => {
+    // Listen to orders
+    const unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
       let totSales = 0;
       let todSales = 0;
       let totOrders = 0;
@@ -44,26 +47,44 @@ export default function AdminOverview() {
         if (o.status === 'pending') pendOrders++;
       });
 
-      setStats({
+      setStats(prev => ({
+        ...prev,
         totalSales: totSales,
         todaySales: todSales,
         totalOrders: totOrders,
         pendingOrders: pendOrders,
-      });
+      }));
 
       // Sort and get 5 recent
       ordersList.sort((a,b) => Number(b.createdAt) - Number(a.createdAt));
       setRecentOrders(ordersList.slice(0, 5));
     });
 
-    return () => unsub();
+    // Listen to analytics
+    const unsubAnalytics = onSnapshot(doc(db, 'analytics', 'global'), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setStats(prev => ({
+          ...prev,
+          totalVisits: data?.totalVisits || 0,
+          uniqueVisitors: data?.uniqueVisitors || 0,
+        }));
+      }
+    });
+
+    return () => {
+      unsubOrders();
+      unsubAnalytics();
+    };
   }, []);
 
   const cards = [
     { title: 'إجمالي المبيعات', value: `${stats.totalSales.toLocaleString()} د.ج`, icon: Wallet, borderColor: 'border-emerald-500/40', textColor: 'text-emerald-500', href: '/admin/orders' },
     { title: 'مبيعات اليوم', value: `${stats.todaySales.toLocaleString()} د.ج`, icon: TrendingUp, borderColor: 'border-amber-500/40', textColor: 'text-amber-500', href: '/admin/orders' },
-    { title: 'إجمالي الطلبات (مدفوعة)', value: stats.totalOrders.toString(), icon: ShoppingBag, borderColor: 'border-teal-500/40', textColor: 'text-teal-500', href: '/admin/orders' },
-    { title: 'طلبات قيد الانتظار', value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0, borderColor: 'border-rose-500/40', textColor: 'text-rose-500', href: '/admin/abandoned' },
+    { title: 'إجمالي الطلبات', value: stats.totalOrders.toString(), icon: ShoppingBag, borderColor: 'border-teal-500/40', textColor: 'text-teal-500', href: '/admin/orders' },
+    { title: 'طلبات في الانتظار', value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0, borderColor: 'border-rose-500/40', textColor: 'text-rose-500', href: '/admin/abandoned' },
+    { title: 'إجمالي الزيارات (مرات الظهور)', value: stats.totalVisits.toString(), icon: Eye, borderColor: 'border-indigo-500/40', textColor: 'text-indigo-500', href: '/admin' },
+    { title: 'الزوار الفريدين (المستخدمين)', value: stats.uniqueVisitors.toString(), icon: Users, borderColor: 'border-purple-500/40', textColor: 'text-purple-500', href: '/admin' },
   ];
 
   return (

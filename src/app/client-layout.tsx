@@ -947,6 +947,25 @@ function TelegramFloat() {
 export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
+  useEffect(() => {
+    // Generate or get unique visitor ID
+    const visitorId = localStorage.getItem('lokstor_visitor_id');
+    const isNewVisitor = !visitorId;
+    if (!visitorId) {
+      localStorage.setItem('lokstor_visitor_id', crypto.randomUUID ? crypto.randomUUID() : Math.random().toString());
+    }
+
+    // Check session to avoid counting every reload in the same session as a new visit (optional, but good for "visits" vs "pageviews")
+    const sessionActive = sessionStorage.getItem('lokstor_session');
+    if (!sessionActive) {
+      sessionStorage.setItem('lokstor_session', 'true');
+      fetch('/api/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isNewVisitor })
+      }).catch(() => {});
+    }
+  }, []);
 
   const isAdmin = pathname?.startsWith('/admin');
 
