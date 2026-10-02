@@ -279,6 +279,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
       // Chargily redirect
       if (data.checkoutUrl) {
+        setIsSubmitting(false); // Reset before redirect so BFCache doesn't get stuck
         window.location.href = data.checkoutUrl;
       } else {
         throw new Error('رابط الدفع غير متوفر');
