@@ -54,17 +54,30 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
   useEffect(() => {
     if (!isEdit || !productId) { setLoading(false); return; }
-    getDoc(doc(db, 'products', productId)).then(snap => {
+    getDoc(doc(db, 'products', productId)).then(async snap => {
       if (snap.exists()) {
         const data = snap.data() as Product;
         const cleanImage = ((data.imageUrl || data.image || '') as string).replace(/^"+|"+$/g, '').trim();
+        
+        let links: string[] = [];
+        try {
+          const unitsSnap = await getDoc(doc(db, 'productUnits', productId));
+          if (unitsSnap.exists()) {
+            const uData = unitsSnap.data();
+            links = uData.stockLinks || [];
+            data.fileUrl = uData.fileUrl || data.fileUrl; // Fallback to data.fileUrl just in case
+          }
+        } catch (e) {
+          console.error("Failed to fetch productUnits", e);
+        }
+
         setForm({
           ...data,
           id: snap.id,
           imageUrl: cleanImage,
           image: cleanImage,
         });
-        const links = data.stockLinks || [];
+        
         setStockItems(links.length > 0 ? links : ['']);
         setFeaturesText((data.features || []).join('\n'));
         if (data.hasVariants || (data.variants && data.variants.length > 0)) {
@@ -393,7 +406,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
       stockType: stockMode,
       unlimitedStock: isNum ? Boolean(isUnlimitedStock) : false,
       stock: computedStock,
-      stockLinks: finalStockLinks,
       features,
       updatedAt: Date.now(),
     };
@@ -423,11 +435,22 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
     const cleanPayload = sanitizeForFirestore(payload);
 
+    const unitsPayload = {
+      stockLinks: finalStockLinks,
+      fileUrl: cleanPayload.fileUrl || null,
+      updatedAt: Date.now(),
+    };
+    
+    delete cleanPayload.fileUrl;
+    delete cleanPayload.stockLinks;
+
     try {
       if (isEdit && productId) {
         await setDoc(doc(db, 'products', productId), { ...cleanPayload, createdAt: form.createdAt || Date.now() });
+        await setDoc(doc(db, 'productUnits', productId), unitsPayload, { merge: true });
       } else {
-        await addDoc(collection(db, 'products'), { ...cleanPayload, createdAt: Date.now() });
+        const newDocRef = await addDoc(collection(db, 'products'), { ...cleanPayload, createdAt: Date.now() });
+        await setDoc(doc(db, 'productUnits', newDocRef.id), unitsPayload);
       }
       router.push('/admin/products');
     } catch (err: any) {

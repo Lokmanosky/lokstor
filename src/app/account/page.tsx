@@ -88,9 +88,13 @@ export default function CustomerAccountPage() {
     };
 
     // 1. Initial fast load via API route (bypasses Firestore client rule/index quirks)
-    const rawEmail = user.email?.trim() || '';
     const uid = user.uid;
-    fetch(`/api/orders?userId=${encodeURIComponent(uid)}&email=${encodeURIComponent(rawEmail)}`)
+    user.getIdToken().then(token => {
+      fetch(`/api/orders?userId=${encodeURIComponent(uid)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       .then(res => res.json())
       .then(data => {
         if (data?.success && Array.isArray(data.orders)) {
@@ -101,6 +105,7 @@ export default function CustomerAccountPage() {
       .catch(err => {
         console.warn('API orders fetch notice:', err);
       });
+    });
 
     // 2. Real-time Firestore listeners WITHOUT composite orderBy
     // (Never use orderBy here to prevent Firestore index errors)
@@ -116,42 +121,14 @@ export default function CustomerAccountPage() {
           snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
           commitOrders();
         },
-        (err) => console.warn('Orders by UID listener notice:', err)
+        (err) => {
+           console.warn('Orders by UID listener notice:', err);
+           setOrdersLoading(false);
+        }
       );
       unsubs.push(unsubUid);
-    } catch (e) {}
-
-    if (rawEmail) {
-      try {
-        // By Email (exact)
-        const qByEmail = query(ordersRef, where('customerEmail', '==', rawEmail));
-        const unsubEmail = onSnapshot(
-          qByEmail,
-          (snap) => {
-            snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
-            commitOrders();
-          },
-          (err) => console.warn('Orders by email listener notice:', err)
-        );
-        unsubs.push(unsubEmail);
-      } catch (e) {}
-
-      // If email has uppercase, also query lowercase version
-      const lowerEmail = rawEmail.toLowerCase();
-      if (lowerEmail !== rawEmail) {
-        try {
-          const qByLower = query(ordersRef, where('customerEmail', '==', lowerEmail));
-          const unsubLower = onSnapshot(
-            qByLower,
-            (snap) => {
-              snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
-              commitOrders();
-            },
-            (err) => console.warn('Orders by lowercase email listener notice:', err)
-          );
-          unsubs.push(unsubLower);
-        } catch (e) {}
-      }
+    } catch (e) {
+      setOrdersLoading(false);
     }
 
     return () => {
@@ -510,7 +487,13 @@ ${deliverableDetails}
                               type="button"
                               onClick={() => {
                                 setOrdersLoading(true);
-                                fetch(`/api/orders/${order.id}`).finally(() => setTimeout(() => setOrdersLoading(false), 800));
+                                user?.getIdToken().then(token => {
+                                  fetch(`/api/orders/${order.id}`, {
+                                    headers: {
+                                      'Authorization': `Bearer ${token}`
+                                    }
+                                  }).finally(() => setTimeout(() => setOrdersLoading(false), 800));
+                                }).catch(() => setOrdersLoading(false));
                               }}
                               className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border border-[var(--store-border)] hover:bg-[var(--store-hover)] text-[11px] text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors cursor-pointer"
                               title="التحقق من حالة الدفع في البنك"

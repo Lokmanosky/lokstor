@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminStorage } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebaseAdmin';
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
-  if (!adminStorage) {
-    return NextResponse.json({ error: 'Firebase Storage is not initialized. Check server credentials.' }, { status: 500 });
+  if (!adminStorage || !adminAuth) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
 
   try {
+    // 1. Verify Admin Token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decoded = await adminAuth.verifyIdToken(token);
+    
+    if (!decoded.email_verified || decoded.email?.toLowerCase() !== 'loktech.dz@gmail.com') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // 2. Process Form Data
     const formData = await req.formData();
     const file = formData.get('file') as File;
     
@@ -14,8 +29,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `product_${Date.now()}.${ext}`;
+    // 3. Strict Size & Type Checks
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File exceeds 5MB limit' }, { status: 413 });
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed' }, { status: 415 });
+    }
+
+    // 4. Secure Filename Generation
+    const ext = file.type.split('/')[1] || 'jpg';
+    const randomHex = crypto.randomBytes(8).toString('hex');
+    const fileName = `prod_${Date.now()}_${randomHex}.${ext}`;
     const filePath = `images/products/${fileName}`;
 
     const arrayBuffer = await file.arrayBuffer();
@@ -26,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     await fileRef.save(buffer, {
       metadata: {
-        contentType: file.type || 'image/jpeg',
+        contentType: file.type,
       },
     });
 
@@ -36,6 +63,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: publicUrl });
   } catch (error: any) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }

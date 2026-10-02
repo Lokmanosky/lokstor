@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { Product } from '@/types';
 import { 
   Boxes, 
@@ -51,9 +51,8 @@ export default function InventoryPage() {
 
   // Helper to determine exact stock info across ALL categories
   const getProductStockInfo = (p: Product) => {
-    const hasStockArray = Array.isArray(p.stockLinks);
-    const stockCount = hasStockArray ? p.stockLinks!.length : (typeof p.stock === 'number' ? p.stock : 0);
-    const isPermanentLink = !hasStockArray && (p.stock === undefined || p.stock === null) && Boolean(p.fileUrl);
+    const stockCount = typeof p.stock === 'number' ? p.stock : 0;
+    const isPermanentLink = (p.stockType === 'numeric' || (!p.stockType && stockCount === 0 && Boolean(p.fileUrl))) && Boolean(p.unlimitedStock);
 
     if (isPermanentLink) {
       return {
@@ -167,13 +166,17 @@ export default function InventoryPage() {
     setSavingStock(true);
     try {
       const prodRef = doc(db, 'products', selectedProduct.id);
-      const existing = selectedProduct.stockLinks && Array.isArray(selectedProduct.stockLinks) 
-        ? selectedProduct.stockLinks 
+      const unitsRef = doc(db, 'productUnits', selectedProduct.id);
+      
+      const unitsSnap = await getDoc(unitsRef);
+      const existing = unitsSnap.exists() && Array.isArray(unitsSnap.data().stockLinks)
+        ? unitsSnap.data().stockLinks
         : [];
+      
       const updated = [...existing, ...lines];
 
+      await setDoc(unitsRef, { stockLinks: updated, updatedAt: Date.now() }, { merge: true });
       await updateDoc(prodRef, {
-        stockLinks: updated,
         stock: updated.length,
         updatedAt: Date.now()
       });
@@ -499,7 +502,7 @@ export default function InventoryPage() {
                   تعبئة مخزون: {selectedProduct.name}
                 </h3>
                 <p className="text-[11px] text-[var(--admin-text-muted)] mt-0.5">
-                  الرصيد الحالي: {selectedProduct.stockLinks?.length || 0} وحدة
+                  الرصيد الحالي: {selectedProduct.stock || 0} وحدة
                 </p>
               </div>
               <button

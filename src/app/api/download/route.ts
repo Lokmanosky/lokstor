@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { adminAuth } from '@/lib/firebaseAdmin';
 import { Order } from '@/types';
-import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 
 export async function GET(req: NextRequest) {
   try {
+    // 1. Require valid ID token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    let callerUid: string;
+    let callerIsAdmin = false;
+    try {
+      const decoded = await adminAuth.verifyIdToken(authHeader.split('Bearer ')[1]);
+      callerUid = decoded.uid;
+      callerIsAdmin = decoded.email_verified === true && decoded.email?.toLowerCase() === 'loktech.dz@gmail.com';
+    } catch {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const orderId = searchParams.get('order_id');
     const token = searchParams.get('token');
@@ -16,34 +29,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'مُعرّف الطلب غير محدد' }, { status: 400 });
     }
 
-    // 1. Fetch Order from Firestore
+    // 2. Fetch Order — Admin SDK only (no client SDK fallback here)
     let order: Order | null = null;
-    if (adminDb && !orderId && token) {
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+    if (!orderId && token) {
       const snapToken = await adminDb.collection('orders').where('downloadToken', '==', token).limit(1).get();
       if (!snapToken.empty) {
         order = { id: snapToken.docs[0].id, ...snapToken.docs[0].data() } as Order;
       }
     }
-    if (adminDb && orderId && !order) {
+    if (orderId && !order) {
       const snap = await adminDb.collection('orders').doc(orderId).get();
       if (snap.exists) {
         order = { id: snap.id, ...snap.data() } as Order;
       }
     }
 
-    if (!order && orderId) {
-      try {
-        const snap = await getDoc(doc(db, 'orders', orderId));
-        if (snap.exists()) {
-          order = { id: snap.id, ...snap.data() } as Order;
-        }
-      } catch (err) {
-        // ignore
-      }
+    if (!order) {
+      return NextResponse.json({ error: 'عذراً، الطلب غير موجود' }, { status: 404 });
     }
 
-    if (!order) {
-      return NextResponse.json({ error: 'عذراً، الطلب غير موجود' }, { status: 444 });
+    // 3. Ownership check: caller must own the order or be admin
+    if (!callerIsAdmin && (order as any).userId !== callerUid) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // 2. CRITICAL SECURITY RULE: Verify status is "paid"

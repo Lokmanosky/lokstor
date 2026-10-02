@@ -26,7 +26,10 @@ export default function CartPage() {
 
       // 1. Fast API fetch
       try {
-        const res = await fetch(`/api/orders?userId=${encodeURIComponent(user.uid)}&email=${encodeURIComponent(user.email || '')}`);
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/orders?userId=${encodeURIComponent(user.uid)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         const data = await res.json();
         if (data?.success && Array.isArray(data.orders)) {
           data.orders.forEach((o: any) => map.set(o.id, o));
@@ -39,10 +42,6 @@ export default function CartPage() {
         if (user.uid) {
           const snapUid = await getDocs(query(ordersRef, where('userId', '==', user.uid)));
           snapUid.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
-        }
-        if (user.email) {
-          const snapEmail = await getDocs(query(ordersRef, where('customerEmail', '==', user.email)));
-          snapEmail.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }));
         }
       } catch (err) {
         console.error('Error fetching orders:', err);

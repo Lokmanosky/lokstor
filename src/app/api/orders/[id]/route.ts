@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { Order } from '@/types';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
-import crypto from 'crypto';
-import { sendChargilyPaidEmails } from '@/lib/email';
+import { processOrderDelivery } from '@/lib/delivery';
 
 export async function GET(
   req: NextRequest,
@@ -19,6 +18,20 @@ export async function GET(
     if (!orderId) {
       return NextResponse.json({ error: 'مُعرّف الطلب مطلوب' }, { status: 400 });
     }
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(idToken);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+    const isOwner = decodedToken.email?.toLowerCase() === 'loktech.dz@gmail.com' && decodedToken.email_verified;
 
     let order: Order | null = null;
 
@@ -45,6 +58,10 @@ export async function GET(
       return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
     }
 
+    if (!isOwner && (order as any).userId !== decodedToken.uid) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Auto-verify with Chargily API if pending and chargilyInvoiceId exists
     if (order.status !== 'paid' && order.chargilyInvoiceId && isChargilyConfigured) {
       try {
@@ -52,93 +69,11 @@ export async function GET(
         const chargilyCheckout = await chargily.getCheckout(order.chargilyInvoiceId);
 
         if (chargilyCheckout && (chargilyCheckout.status === 'paid')) {
-          let downloadUrl = '';
-
-          // Fetch product digital deliverable
-          let prodData: any = null;
-          if (adminDb) {
-            try {
-              const pDoc = await adminDb.collection('products').doc(order.productId).get();
-              if (pDoc.exists) prodData = pDoc.data();
-            } catch (e) {}
+          const paidAmount = Number(order.productPrice || (order as any).amount || 0);
+          const deliveryResult = await processOrderDelivery(orderId, paidAmount, 'chargily');
+          if (deliveryResult.success && deliveryResult.orderData) {
+            order = { ...order, ...deliveryResult.orderData } as Order;
           }
-          if (!prodData) {
-            try {
-              const pDoc = await getDoc(doc(db, 'products', order.productId));
-              if (pDoc.exists()) prodData = pDoc.data();
-            } catch (e) {}
-          }
-
-          if (prodData) {
-            if (prodData.stockLinks && prodData.stockLinks.length > 0) {
-              downloadUrl = prodData.stockLinks[0];
-              const newStock = prodData.stockLinks.slice(1);
-              if (adminDb) {
-                try {
-                  await adminDb.collection('products').doc(order.productId).update({ stockLinks: newStock, stock: newStock.length });
-                } catch (e) {}
-              } else {
-                try {
-                  await updateDoc(doc(db, 'products', order.productId), { stockLinks: newStock, stock: newStock.length });
-                } catch (e) {}
-              }
-            } else {
-              if (prodData.fileUrl) {
-                downloadUrl = prodData.fileUrl;
-              }
-              // Decrement numeric stock if limited
-              if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
-                const newStock = Math.max(0, Number(prodData.stock || 1) - 1);
-                if (adminDb) {
-                  try {
-                    await adminDb.collection('products').doc(order.productId).update({ stock: newStock, updatedAt: Date.now() });
-                  } catch (e) {}
-                } else {
-                  try {
-                    await updateDoc(doc(db, 'products', order.productId), { stock: newStock, updatedAt: Date.now() });
-                  } catch (e) {}
-                }
-              }
-            }
-          }
-
-          if (!downloadUrl) {
-            const downloadToken = crypto.randomBytes(24).toString('hex');
-            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-            downloadUrl = `${baseUrl}/api/download?order_id=${orderId}&token=${downloadToken}`;
-          }
-
-          const updatedFields: any = {
-            status: 'paid' as const,
-            downloadUrl,
-            paidAt: Date.now(),
-          };
-
-          const alreadySent = Boolean((order as any).chargilyEmailsSent);
-          if (!alreadySent) {
-            updatedFields.chargilyEmailsSent = true;
-          }
-
-          if (adminDb) {
-            await adminDb.collection('orders').doc(orderId).update(updatedFields);
-          } else {
-            await updateDoc(doc(db, 'orders', orderId), updatedFields);
-          }
-
-          if (!alreadySent) {
-            try {
-              await sendChargilyPaidEmails({
-                order: { ...order, ...updatedFields },
-                paidAmount: Number(order.productPrice || (order as any).amount || 0),
-                paymentMethodDetail: 'chargily',
-                downloadUrl: updatedFields.downloadUrl,
-              });
-            } catch (mErr) {
-              console.warn('Failed to send auto-verify Chargily emails:', mErr);
-            }
-          }
-
-          order = { ...order, ...updatedFields } as Order;
         }
       } catch (chErr) {
         console.error('Chargily verify status check error:', chErr);
@@ -146,30 +81,11 @@ export async function GET(
     }
 
     // Mock confirm simulation helper for dev testing when Chargily Webhooks are local
-    if (mockConfirm && order.status !== 'paid') {
-      const downloadToken = crypto.randomBytes(24).toString('hex');
-      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-      const downloadUrl = `${baseUrl}/api/download?order_id=${orderId}&token=${downloadToken}&demo=true`;
-
-      const updatedFields = {
-        status: 'paid' as const,
-        downloadToken,
-        downloadUrl,
-        downloadExpiresAt: expiresAt,
-        paidAt: Date.now(),
-      };
-
+    if (mockConfirm && order.status !== 'paid' && process.env.NODE_ENV !== 'production') {
       if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).update(updatedFields);
-      } else {
-        try {
-          const orderRef = doc(db, 'orders', orderId);
-          await updateDoc(orderRef, updatedFields);
-        } catch (e) {}
+        await adminDb.collection('orders').doc(orderId).update({ status: 'paid', paidAt: Date.now(), isMock: true });
+        order.status = 'paid';
       }
-
-      order = { ...order, ...updatedFields } as Order;
     }
 
     // Security check: Only return downloadUrl if status === 'paid'

@@ -954,7 +954,11 @@ export function ClientLayout({ children }: { children: ReactNode }) {
     if (sessionStorage.getItem(SESSION_KEY)) {
       // Already counted this session tab - just start the presence ping
       const storedId = localStorage.getItem('lokstor_visitor_id') || 'unknown';
-      const ping = () => setDoc(doc(db, 'active_users', storedId), { lastActive: Date.now() }, { merge: true }).catch(() => {});
+      const ping = () => fetch(`/api/analytics/presence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId: storedId })
+      }).catch(() => {});
       ping();
       const interval = setInterval(ping, 30000);
       return () => clearInterval(interval);
@@ -969,19 +973,23 @@ export function ClientLayout({ children }: { children: ReactNode }) {
       localStorage.setItem('lokstor_visitor_id', visitorId);
     }
 
-    // --- FIX: Only increment uniqueVisitors when actually new (never use increment(0))
-    const statsRef = doc(db, 'analytics', 'global');
-    const updatePayload: Record<string, any> = { totalVisits: increment(1) };
-    if (isNewVisitor) {
-      updatePayload.uniqueVisitors = increment(1);
-    }
-    setDoc(statsRef, updatePayload, { merge: true }).catch(() => {});
+    // Initial visit ping
+    const sendInitialPing = () =>
+      fetch(`/api/analytics/presence?action=visit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId, isNewVisitor })
+      }).catch(() => {});
 
-    // Presence ping
+    // Regular presence ping
     const sendPresencePing = () =>
-      setDoc(doc(db, 'active_users', visitorId), { lastActive: Date.now() }, { merge: true }).catch(() => {});
+      fetch(`/api/analytics/presence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId })
+      }).catch(() => {});
 
-    sendPresencePing();
+    sendInitialPing();
     const presenceInterval = setInterval(sendPresencePing, 30000);
 
     return () => {

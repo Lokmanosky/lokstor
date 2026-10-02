@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { sendChargilyPaidEmails } from '@/lib/email';
 import { adminMessaging } from '@/lib/firebase-admin';
+import { processOrderDelivery } from '@/lib/delivery';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,10 +17,10 @@ export async function POST(req: NextRequest) {
     }
 
     const rawBody = await req.text();
-    const FALLBACK_LIVE_KEY = Buffer.from('bGl2ZV9za19ORGVaRGU3VDY3Y2xkSmZIUkJqcG5RcEJlWUM0QTVKNDl4VzAyekdz', 'base64').toString('utf8');
-    let secret = (process.env.CHARGILY_API_SECRET || process.env.CHARGILY_API_KEY || '').trim();
-    if (!secret || secret.includes('jqCVnFRzJLryItIkWLenZYvp7oKMzkzinQ5rXIT5') || !secret.startsWith('live_sk_')) {
-      secret = FALLBACK_LIVE_KEY;
+    const secret = (process.env.CHARGILY_API_SECRET || '').trim();
+    if (!secret) {
+      console.error('CHARGILY_API_SECRET is not configured');
+      return NextResponse.json({ success: false, message: 'Webhook not configured' }, { status: 500 });
     }
 
     const hmac = crypto.createHmac('sha256', secret);
@@ -53,24 +54,18 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Fetch Order Data (Supporting both adminDb and client SDK fallback)
-    let orderData = null;
-
-    if (adminDb) {
-      try {
-        const orderSnap = await adminDb.collection('orders').doc(orderId).get();
-        if (orderSnap.exists) orderData = orderSnap.data();
-      } catch (e) {
-        console.warn('adminDb order fetch error:', e);
-      }
+    if (!adminDb) {
+      console.error('Firebase Admin not initialized in webhook');
+      return NextResponse.json({ success: false, message: 'Server configuration error' }, { status: 500 });
     }
 
-    if (!orderData) {
-      try {
-        const orderSnap = await getDoc(doc(db, 'orders', orderId));
-        if (orderSnap.exists()) orderData = orderSnap.data();
-      } catch (e) {
-        console.warn('client db order fetch error:', e);
-      }
+    let orderData = null;
+    try {
+      const orderSnap = await adminDb.collection('orders').doc(orderId).get();
+      if (orderSnap.exists) orderData = orderSnap.data();
+    } catch (e) {
+      console.error('adminDb order fetch error:', e);
+      return NextResponse.json({ success: false, message: 'Database error' }, { status: 500 });
     }
 
     if (!orderData) {
@@ -78,99 +73,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
     }
 
-    // Idempotency: If already paid, return early with 200 OK
-    if (orderData.status === 'paid') {
-      return NextResponse.json({ success: true, message: 'Already processed', status: 'paid' });
+    // Idempotency: If already paid or manual delivery, return early
+    if (orderData.status === 'paid' || orderData.status === 'needs_manual_delivery') {
+      return NextResponse.json({ success: true, message: 'Already processed', status: orderData.status });
     }
 
-    // Amount matching check
-    const expectedPrice = Number(orderData.productPrice || orderData.amount || 0);
-    if (expectedPrice > 0 && paidAmount > 0 && expectedPrice !== paidAmount) {
-      console.warn(`Amount mismatch for order ${orderId}: expected ${expectedPrice}, got ${paidAmount}`);
-      const flagUpdate = { status: 'flagged', amountPaid: paidAmount };
-      if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).update(flagUpdate);
-      } else {
-        await updateDoc(doc(db, 'orders', orderId), flagUpdate);
-      }
-      return NextResponse.json({ success: true, message: 'Order flagged due to amount mismatch' });
+    if (orderData.status !== 'pending') {
+       console.error(`Order ${orderId} has invalid status for payment: ${orderData.status}`);
+       return NextResponse.json({ success: false, message: 'Invalid order status' }, { status: 400 });
     }
 
-    // 3. Fulfill Order: Digital deliverable & Stock reduction
-    let downloadUrl = '';
-    const productId = orderData.productId;
-
-    let prodData = null;
-    if (productId) {
-      if (adminDb) {
-        try {
-          const prodSnap = await adminDb.collection('products').doc(productId).get();
-          if (prodSnap.exists) prodData = prodSnap.data();
-        } catch (e) {}
-      }
-      if (!prodData) {
-        try {
-          const prodSnap = await getDoc(doc(db, 'products', productId));
-          if (prodSnap.exists()) prodData = prodSnap.data();
-        } catch (e) {}
-      }
+    // Amount and Currency matching check
+    const unitPrice = Number(orderData.productPrice || orderData.amount || 0);
+    const quantity = Number(orderData.quantity || 1);
+    const expectedTotal = unitPrice * quantity;
+    const webhookCurrency = (body.data?.currency || '').toLowerCase();
+    
+    if (
+      expectedTotal <= 0 || 
+      typeof paidAmount !== 'number' || 
+      isNaN(paidAmount) || 
+      expectedTotal !== paidAmount ||
+      (webhookCurrency && webhookCurrency !== 'dzd')
+    ) {
+      console.error(`Mismatch for order ${orderId}: expected ${expectedTotal} dzd, got ${paidAmount} ${webhookCurrency}`);
+      const flagUpdate = { 
+        status: 'needs_manual_delivery', 
+        amountPaid: paidAmount || 0, 
+        error: `Verification mismatch. Expected ${expectedTotal} dzd, got ${paidAmount} ${webhookCurrency}` 
+      };
+      await adminDb.collection('orders').doc(orderId).update(flagUpdate);
+      return NextResponse.json({ success: true, message: 'Order marked for manual delivery due to mismatch' });
     }
 
-    if (prodData) {
-      // Units Mode (Isolated accounts / stock links)
-      if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
-        downloadUrl = prodData.stockLinks[0];
-        const newStockLinks = prodData.stockLinks.slice(1);
-        const productUpdate = {
-          stockLinks: newStockLinks,
-          stock: newStockLinks.length,
-          updatedAt: Date.now(),
-        };
-
-        if (adminDb) {
-          await adminDb.collection('products').doc(productId).update(productUpdate);
-        } else {
-          await updateDoc(doc(db, 'products', productId), productUpdate);
-        }
-      } 
-      // File or Numeric Mode
-      else {
-        if (prodData.fileUrl) {
-          downloadUrl = prodData.fileUrl;
-        }
-
-        // Decrement stock if numeric and limited
-        if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
-          const newStock = Math.max(0, Number(prodData.stock || 1) - 1);
-          const productUpdate = {
-            stock: newStock,
-            updatedAt: Date.now(),
-          };
-
-          if (adminDb) {
-            await adminDb.collection('products').doc(productId).update(productUpdate);
-          } else {
-            await updateDoc(doc(db, 'products', productId), productUpdate);
-          }
-        }
-      }
+    // 3. Fulfill Order via shared delivery function
+    const deliveryResult = await processOrderDelivery(orderId, paidAmount, paymentMethodDetail);
+    
+    if (!deliveryResult.success) {
+      return NextResponse.json({ success: false, message: deliveryResult.message }, { status: deliveryResult.status });
     }
 
-    // 4. Update Order to 'paid'
-    const orderUpdate = {
-      status: 'paid',
-      downloadUrl: downloadUrl || orderData.downloadUrl || null,
-      paidAt: Date.now(),
-      amountPaid: paidAmount,
-      paymentMethod: 'chargily',
-      paymentMethodDetails: paymentMethodDetail,
-    };
-
-    if (adminDb) {
-      await adminDb.collection('orders').doc(orderId).update(orderUpdate);
-    } else {
-      await updateDoc(doc(db, 'orders', orderId), orderUpdate);
+    if (deliveryResult.status === 200 && deliveryResult.message === 'Already processed') {
+      return NextResponse.json({ success: true, message: 'Already processed', status: deliveryResult.orderStatus });
     }
+
+    const orderUpdate = deliveryResult.orderData;
+    const downloadUrl = deliveryResult.deliveredLink || orderData.downloadUrl;
 
     // 5. Create in-app Notification for Admin
     try {
@@ -185,9 +133,6 @@ export async function POST(req: NextRequest) {
 
       if (adminDb) {
         await adminDb.collection('notifications').add(notifData);
-      } else {
-        const notifRef = doc(db, 'notifications', 'notif_' + crypto.randomBytes(6).toString('hex'));
-        await setDoc(notifRef, notifData);
       }
     } catch (nErr) {
       console.warn('Failed to create notification:', nErr);
@@ -209,14 +154,11 @@ export async function POST(req: NextRequest) {
           },
           paidAmount,
           paymentMethodDetail,
-          downloadUrl: downloadUrl || orderData.downloadUrl || undefined,
+          downloadUrl: downloadUrl || undefined,
         });
 
-        const emailMark = { chargilyEmailsSent: true };
         if (adminDb) {
-          await adminDb.collection('orders').doc(orderId).update(emailMark);
-        } else {
-          await updateDoc(doc(db, 'orders', orderId), emailMark);
+          await adminDb.collection('orders').doc(orderId).update({ chargilyEmailsSent: true });
         }
       }
     } catch (eErr) {
@@ -243,21 +185,22 @@ export async function POST(req: NextRequest) {
         }
 
         // Notify Admins
+        let adminTokens: string[] = [];
         if (adminDb) {
           const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
-          const adminTokens = adminsSnap.docs.map(d => d.data().fcmToken).filter(Boolean);
-          if (adminTokens.length > 0) {
-            await adminMessaging.sendEachForMulticast({
-              tokens: adminTokens,
-              notification: {
-                title: 'دفع جديد ناجح 💰',
-                body: `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`,
-              },
-              data: {
-                url: `${baseUrl}/admin/orders?search=${orderId}`,
-              }
-            }).catch(e => console.warn('Admin push failed:', e));
-          }
+          adminTokens = adminsSnap.docs.map(d => d.data().fcmToken).filter(Boolean);
+        }
+        if (adminTokens.length > 0) {
+          await adminMessaging.sendEachForMulticast({
+            tokens: adminTokens,
+            notification: {
+              title: 'دفع جديد ناجح 💰',
+              body: `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`,
+            },
+            data: {
+              url: `${baseUrl}/admin/orders?search=${orderId}`,
+            }
+          }).catch(e => console.warn('Admin push failed:', e));
         }
       }
     } catch (pushErr) {

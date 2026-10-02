@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, doc, getDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Order } from '@/types';
 import { 
@@ -72,75 +72,36 @@ export default function OrdersPage() {
 
 
   // ── Complete & Fulfill Order (Deduct stock & assign deliverable) ───────────
-  const fulfillOrderAndDeductStock = async (orderId: string) => {
+  const fulfillOrderAndDeductStock = async (orderId: string, amountPaid?: number, paymentMethodDetails?: string) => {
     try {
-      const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
-      if (!orderSnap.exists()) return { success: false, message: 'Order not found' };
-      const orderData = orderSnap.data();
-
-      let downloadUrl = '';
-      let pulledFromStock = false;
-      let stockRemaining = 0;
-
-      if (orderData.productId) {
-        const prodRef = doc(db, 'products', orderData.productId);
-        const prodSnap = await getDoc(prodRef);
-        if (prodSnap.exists()) {
-          const prodData = prodSnap.data();
-
-          // 1. Units Mode (take top link, slice array, decrement stock counter)
-          if (prodData.stockLinks && Array.isArray(prodData.stockLinks) && prodData.stockLinks.length > 0) {
-            downloadUrl = prodData.stockLinks[0];
-            const newStockLinks = prodData.stockLinks.slice(1);
-            stockRemaining = newStockLinks.length;
-            await updateDoc(prodRef, {
-              stockLinks: newStockLinks,
-              stock: newStockLinks.length,
-              updatedAt: Date.now(),
-            });
-            pulledFromStock = true;
-          }
-          // 2. Numeric / File Mode
-          else {
-            if (prodData.fileUrl) {
-              downloadUrl = prodData.fileUrl;
-            }
-            if (prodData.stockType === 'numeric' && !prodData.unlimitedStock) {
-              const currentStock = Number(prodData.stock || 1);
-              const newStock = Math.max(0, currentStock - 1);
-              stockRemaining = newStock;
-              await updateDoc(prodRef, {
-                stock: newStock,
-                updatedAt: Date.now(),
-              });
-              pulledFromStock = true;
-            }
-          }
-        }
-      }
-
-      // If no new stock unit was available, but order already had a downloadUrl, retain it
-      if (!downloadUrl && orderData.downloadUrl) {
-        downloadUrl = orderData.downloadUrl;
-      }
-
-      await updateDoc(orderRef, {
-        status: 'paid',
-        downloadUrl: downloadUrl || null,
-        paidAt: Date.now(),
+      if (!auth.currentUser) return { success: false, message: 'Not logged in' };
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch('/api/admin/approve-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orderId,
+          amountPaid: amountPaid || 0,
+          paymentMethodDetails: paymentMethodDetails || 'manual_approval'
+        })
       });
-
+      
+      const data = await res.json();
+      if (!data.success) {
+        return { success: false, message: data.error || 'API Error' };
+      }
+      
       return {
         success: true,
-        downloadUrl,
-        pulledFromStock,
-        stockRemaining,
+        downloadUrl: data.deliveredLink,
+        pulledFromStock: data.newStatus !== 'needs_manual_delivery',
       };
     } catch (err: any) {
-      console.error('Error fulfilling order and updating stock:', err);
-      await updateDoc(doc(db, 'orders', orderId), { status: 'paid', paidAt: Date.now() });
-      return { success: false, error: err };
+      console.error('Fulfillment error:', err);
+      return { success: false, message: err.message };
     }
   };
 
@@ -172,7 +133,7 @@ export default function OrdersPage() {
       if (newStatus === 'paid') {
         const res = await fulfillOrderAndDeductStock(id);
         if (res && res.pulledFromStock) {
-          setBulkFeedback(`تم تفعيل الطلب بنجاح وسحب رابط/حساب من المخزون فوراً وتوصيله للعميل (المتبقي في المخزون: ${res.stockRemaining})`);
+          setBulkFeedback(`تم تفعيل الطلب بنجاح وسحب رابط/حساب من المخزون فوراً وتوصيله للعميل`);
         } else if (res && res.downloadUrl) {
           setBulkFeedback('تم تفعيل الطلب بنجاح كمدفوع مع الاحتفاظ برابط التسليم.');
         } else {

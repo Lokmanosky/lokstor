@@ -8,6 +8,7 @@ import { Product } from '@/types';
 import crypto from 'crypto';
 import { checkoutSchema } from '@/lib/validations';
 import { sendManualPaymentAdminEmail } from '@/lib/email';
+import { adminAuth } from '@/lib/firebaseAdmin';
 
 // Safe lightweight string sanitizer (No heavy/broken serverless libraries like JSDOM)
 function sanitizeText(str: string): string {
@@ -17,7 +18,7 @@ function sanitizeText(str: string): string {
 
 // Firestore-based Rate Limiter helper
 async function checkRateLimit(ip: string): Promise<boolean> {
-  if (!adminDb) return true; // Fallback if adminDb is not initialized
+  if (!adminDb) return false; // fail closed — no DB, no orders
   try {
     const rlRef = adminDb.collection('rateLimits').doc(ip);
     const docSnap = await rlRef.get();
@@ -61,6 +62,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'تنسيق البيانات غير صحيح.' }, { status: 400 });
     }
 
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(idToken);
+    } catch (e) {
+      return NextResponse.json({ success: false, error: 'Invalid token.' }, { status: 401 });
+    }
+    const userId = decodedToken.uid;
+    const tokenEmail = decodedToken.email || '';
+
     // 2. Server-side Validation with Zod
     const validationResult = checkoutSchema.safeParse(body);
     if (!validationResult.success) {
@@ -71,11 +86,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerEmail, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, userId: bodyUserId } = validationResult.data as any;
+    const { productId, customerName, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, quantity = 1 } = validationResult.data as any;
 
     // 3. Clean inputs
     const cleanName = sanitizeText(customerName);
-    const cleanEmail = sanitizeText(customerEmail).toLowerCase().trim();
+    const cleanEmail = sanitizeText(tokenEmail).toLowerCase().trim();
     const cleanPhone = customerPhone ? sanitizeText(customerPhone) : undefined;
 
     // 4. Fetch Product from Firestore or local fallback
@@ -122,6 +137,19 @@ export async function POST(req: NextRequest) {
         { success: false, error: 'عذراً، لقد تم نفاذ كمية هذا المنتج من المخزون حالياً ولا يمكن إتمام عملية الشراء.' },
         { status: 400 }
       );
+    }
+
+    // Reject if requested quantity exceeds available finite stock
+    if (quantity > 1) {
+      const availableStock = product.stockType === 'units'
+        ? (product.stockLinks?.length ?? 0)
+        : (product.unlimitedStock ? Infinity : (product.stock ?? 0));
+      if (availableStock !== Infinity && quantity > availableStock) {
+        return NextResponse.json(
+          { success: false, error: `الكمية المطلوبة (${quantity}) تتجاوز المخزون المتوفر (${availableStock}).` },
+          { status: 400 }
+        );
+      }
     }
 
     // 5. Generate Order ID
@@ -178,7 +206,8 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       createdAt: Date.now(),
       fcmToken: fcmToken || null,
-      ...(bodyUserId ? { userId: bodyUserId } : {}),
+      userId,
+      quantity,
     };
 
     if (selectedVariantObj) {
@@ -204,11 +233,8 @@ export async function POST(req: NextRequest) {
       orderData.binanceUid = '427636242';
       orderData.status = 'pending';
 
-      if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).set(orderData);
-      } else {
-        await setDoc(doc(db, 'orders', orderId), orderData);
-      }
+      if (!adminDb) throw new Error('adminDb not initialized');
+      await adminDb.collection('orders').doc(orderId).set(orderData);
 
       // Send manual review notification email to Admin ONLY (No customer email)
       try {
@@ -234,11 +260,8 @@ export async function POST(req: NextRequest) {
       orderData.redotpayName = 'Lokmanosky';
       orderData.status = 'pending';
 
-      if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).set(orderData);
-      } else {
-        await setDoc(doc(db, 'orders', orderId), orderData);
-      }
+      if (!adminDb) throw new Error('adminDb not initialized');
+      await adminDb.collection('orders').doc(orderId).set(orderData);
 
       // Send manual review notification email to Admin ONLY (No customer email)
       try {
@@ -258,11 +281,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Save initial order for Chargily
-    if (adminDb) {
-      await adminDb.collection('orders').doc(orderId).set(orderData);
-    } else {
-      await setDoc(doc(db, 'orders', orderId), orderData);
-    }
+    if (!adminDb) throw new Error('adminDb not initialized');
+    await adminDb.collection('orders').doc(orderId).set(orderData);
 
     // 7. Create Chargily Checkout
     if (isChargilyConfigured) {
@@ -282,11 +302,11 @@ export async function POST(req: NextRequest) {
       }
 
       const checkoutPayload: any = {
-        amount: finalOrderPrice,
+        amount: finalOrderPrice * quantity,
         currency: 'dzd',
         success_url: `${baseUrl}/success?order_id=${orderId}`,
         failure_url: `${baseUrl}/failure?order_id=${orderId}`,
-        webhook_endpoint: `${baseUrl}/api/chargily-webhook`,
+        webhook_endpoint: `${baseUrl}/api/webhook/chargily`,
         description: `طلب شراء: ${product.name}`,
         metadata: {
           order_id: orderId,
@@ -305,11 +325,8 @@ export async function POST(req: NextRequest) {
         chargilyCheckoutUrl: checkout.checkout_url,
       };
 
-      if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).update(updatePayload);
-      } else {
-        await updateDoc(doc(db, 'orders', orderId), updatePayload);
-      }
+      if (!adminDb) throw new Error('adminDb not initialized');
+      await adminDb.collection('orders').doc(orderId).update(updatePayload);
 
       return NextResponse.json({
         success: true,
@@ -317,6 +334,14 @@ export async function POST(req: NextRequest) {
         orderId,
       });
     } else {
+      // Mock mode: blocked in production
+      if (process.env.NODE_ENV === 'production') {
+        console.error('Chargily is not configured. Cannot process payment in production.');
+        return NextResponse.json(
+          { success: false, error: 'Payment provider is not configured. Contact support.' },
+          { status: 500 }
+        );
+      }
       // Mock mode fallback if Chargily keys are not yet configured on environment
       const mockCheckoutUrl = `${baseUrl}/success?order_id=${orderId}&mock=true`;
       const updatePayload = {
@@ -324,11 +349,8 @@ export async function POST(req: NextRequest) {
         chargilyCheckoutUrl: mockCheckoutUrl,
       };
 
-      if (adminDb) {
-        await adminDb.collection('orders').doc(orderId).update(updatePayload);
-      } else {
-        await updateDoc(doc(db, 'orders', orderId), updatePayload);
-      }
+      if (!adminDb) throw new Error('adminDb not initialized');
+      await adminDb.collection('orders').doc(orderId).update(updatePayload);
 
       return NextResponse.json({
         success: true,

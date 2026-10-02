@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Order } from '@/types';
@@ -12,10 +12,26 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get('userId')?.trim();
     const email = searchParams.get('email')?.trim();
     const all = searchParams.get('all') === 'true';
-    const adminEmail = searchParams.get('adminEmail')?.trim().toLowerCase();
 
-    // Check if admin request
-    const isOwner = adminEmail === 'loktech.dz@gmail.com';
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(idToken);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const isOwner = decodedToken.email?.toLowerCase() === 'loktech.dz@gmail.com' && decodedToken.email_verified;
+    
+    // If not admin and trying to get someone else's orders, deny
+    if (!isOwner && userId && decodedToken.uid !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const orderMap = new Map<string, Order>();
 

@@ -3,54 +3,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ========== Helper: isAdmin ==========
     function isAdmin() {
-      return request.auth != null && (
-        request.auth.token.email == 'loktech.dz@gmail.com' ||
-        request.auth.token.email == 'Loktech.dz@gmail.com' ||
-        request.auth.token.email == 'LokTech.dz@gmail.com'
-      );
+      return request.auth != null && 
+             request.auth.token.email_verified == true && 
+             request.auth.token.email.lower() == 'loktech.dz@gmail.com';
     }
 
-    function isOwnerOrAdmin(uid) {
-      return request.auth != null && (request.auth.uid == uid || isAdmin());
-    }
-
-    // ========== 1. Users ==========
     match /users/{userId} {
-      allow read: if isOwnerOrAdmin(userId);
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if isOwnerOrAdmin(userId);
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId && !('role' in request.resource.data) && !('isAdmin' in request.resource.data) && !('balance' in request.resource.data);
+      allow update: if (request.auth != null && request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'name', 'phone', 'photoURL', 'updatedAt', 'fcmToken'])) || isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ========== 2. Products ==========
     match /products/{productId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
-    // ========== 3. Orders ==========
+    match /productUnits/{id} {
+      allow read, write: if isAdmin();
+    }
+
     match /orders/{orderId} {
-      // Admin sees all. Customer sees ONLY their own orders (by userId or email from Auth token).
-      allow read: if isAdmin() || (
-        request.auth != null && (
-          resource.data.userId == request.auth.uid ||
-          (request.auth.token.email != null && resource.data.customerEmail == request.auth.token.email)
-        )
-      );
-      // Allow create/update from any source (checkout API uses client SDK fallback)
-      allow create, update: if true;
+      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create, update: if false;
       allow delete: if isAdmin();
     }
 
-    // ========== 4. Store Settings ==========
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ========== 5. Banners & Categories ==========
     match /storeBanners/{id} {
       allow read: if true;
       allow write: if isAdmin();
@@ -60,37 +45,33 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ========== 6. Reviews ==========
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['userId', 'productId', 'rating', 'comment', 'createdAt', 'userName', 'status'])
         && request.resource.data.comment is string
         && request.resource.data.comment.size() <= 1000;
       allow update, delete: if isAdmin();
     }
 
-    // ========== 7. Notifications ==========
     match /notifications/{id} {
       allow read, write: if isAdmin();
     }
 
-    // ========== 8. Analytics & Presence ==========
     match /analytics/{document=**} {
       allow read: if isAdmin();
-      allow write: if true;
+      allow write: if false;
     }
     match /active_users/{userId} {
       allow read: if isAdmin();
-      allow write: if true;
+      allow write: if false;
     }
 
-    // ========== 9. Rate Limits (server-side only) ==========
     match /rateLimits/{id} {
       allow read, write: if false;
     }
 
-    // ========== Fallback: deny everything else ==========
     match /{document=**} {
       allow read, write: if false;
     }

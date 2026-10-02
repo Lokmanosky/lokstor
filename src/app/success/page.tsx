@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Order } from '@/types';
 import { Check, RefreshCw, Download, Copy, CheckCheck, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 function isUrl(str: string) {
   try {
@@ -81,15 +82,17 @@ function SuccessContent() {
   const [loading, setLoading] = useState<boolean>(true);
   const [confirmingMock, setConfirmingMock] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const { user } = useAuth();
 
   const fetchOrder = async (confirmDemo = false) => {
-    if (!orderId) return;
+    if (!orderId || !user) return;
     try {
       setLoading(true);
+      const token = await user.getIdToken();
       const url = confirmDemo
         ? `/api/orders/${orderId}?mock_confirm=true`
         : `/api/orders/${orderId}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
 
       if (res.ok && data.order) {
@@ -106,7 +109,7 @@ function SuccessContent() {
   };
 
   useEffect(() => {
-    if (!orderId) {
+    if (!orderId || !user) {
       setLoading(false);
       return;
     }

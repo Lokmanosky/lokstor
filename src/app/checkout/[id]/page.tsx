@@ -208,6 +208,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const handleSubmitCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (!user) {
+      sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
+      window.location.href = '/register';
+      return;
+    }
+
     if (isOutOfStock) {
       setErrorMessage('عذراً، تم نفاذ كمية هذا المنتج من المخزون حالياً ولا يمكن إتمام الطلب.');
       return;
@@ -218,26 +225,24 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
-    if (!customerEmail.includes('@')) {
-      setErrorMessage('يرجى إدخال بريد إلكتروني صحيح.');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
+      const token = await user.getIdToken();
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           productId,
           customerName,
-          customerEmail,
+          customerEmail: user.email,
           paymentMethod,
           variantId: selectedVariant?.id || undefined,
           customFieldsData: Object.keys(gameInfo).length > 0 ? gameInfo : undefined,
           fcmToken: typeof window !== 'undefined' ? (localStorage.getItem('fcm_token') || undefined) : undefined,
-          userId: user?.uid || undefined,
         }),
       });
 
