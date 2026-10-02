@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound } from 'lucide-react';
+import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell } from 'lucide-react';
 import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function SettingsPage() {
   const currentSettings = useStoreSettings();
   const { user } = useAuth();
+  const { requestPermission, permissionStatus } = usePushNotifications();
 
   // Store settings
   const [storeName, setStoreName] = useState(currentSettings.storeName || 'Lokstor');
@@ -271,6 +273,38 @@ export default function SettingsPage() {
                 <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••" className={inputCls} dir="ltr" />
               </div>
+            </div>
+          </div>
+
+          {/* Notifications Section */}
+          <div className="bg-[var(--admin-card)] rounded-xl border border-[var(--admin-border)] p-4 sm:p-6 space-y-4">
+            <h3 className="text-sm font-bold text-[var(--admin-text)] flex items-center gap-2 border-b border-[var(--admin-border)] pb-2">
+              <Bell className="w-4 h-4 text-emerald-500" />
+              إشعارات النظام (Push Notifications)
+            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="text-xs text-[var(--admin-text-muted)] space-y-1">
+                <p>تتيح لك هذه الميزة تلقي إشعارات بالطلبات الجديدة حتى لو كان المتصفح مغلقاً.</p>
+                <div className="flex items-center gap-1.5 mt-2 font-medium">
+                  حالة الإشعارات في هذا المتصفح: 
+                  {permissionStatus === 'granted' ? (
+                    <span className="text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> مفعلة</span>
+                  ) : permissionStatus === 'denied' ? (
+                    <span className="text-red-500 flex items-center gap-1"><XCircle className="w-3.5 h-3.5"/> محظورة (تتطلب تفعيل من المتصفح)</span>
+                  ) : (
+                    <span className="text-amber-500 flex items-center gap-1"><Bell className="w-3.5 h-3.5"/> غير مفعلة</span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={requestPermission}
+                disabled={permissionStatus === 'granted'}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                {permissionStatus === 'granted' ? 'الإشعارات مفعلة' : 'تفعيل الإشعارات الآن'}
+              </button>
             </div>
           </div>
 
