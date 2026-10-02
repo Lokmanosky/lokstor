@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
             data: {
               url: `${baseUrl}/account/orders`,
             }
-          }).catch(e => console.warn('Customer push failed:', e));
+          }).catch((e: any) => console.warn('Customer push failed:', e));
         }
 
         // Notify Admins
@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
             data: {
               url: `${baseUrl}/admin/orders?search=${orderId}`,
             }
-          }).catch(e => console.warn('Admin push failed:', e));
+          }).catch((e: any) => console.warn('Admin push failed:', e));
         }
       }
     } catch (pushErr) {
