@@ -33,7 +33,8 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
 
   useEffect(() => {
     if (isLoginPage) return;
-    const q = query(collection(db, 'notifications'), where('read', '==', false));
+    // Count pending orders for the notification badge
+    const q = query(collection(db, 'orders'), where('status', '==', 'pending'));
     const unsub = onSnapshot(q, (snap) => setUnreadCount(snap.size));
     return () => unsub();
   }, [isLoginPage]);
@@ -153,16 +154,18 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
         
         {/* Notifications */}
         {!isLoginPage && (
-          <button
-            type="button"
+          <Link
+            href="/admin/orders"
             className="relative p-1.5 text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] rounded-md transition-colors cursor-pointer flex-shrink-0"
-            title="الإشعارات"
+            title="الطلبات قيد الانتظار"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[var(--admin-danger)] rounded-full border border-[var(--admin-card)]" />
+              <span className="absolute top-0 right-0 w-4 h-4 text-[9px] font-bold flex items-center justify-center text-white bg-[var(--admin-danger)] rounded-full border border-[var(--admin-card)]">
+                {unreadCount}
+              </span>
             )}
-          </button>
+          </Link>
         )}
 
         {!isLoginPage && <div className="h-4 w-px bg-[var(--admin-border)] mx-0.5 flex-shrink-0" />}
