@@ -90,7 +90,7 @@ export default function CustomerAccountPage() {
     // 1. Initial fast load via API route (bypasses Firestore client rule/index quirks)
     const uid = user.uid;
     user.getIdToken().then(token => {
-      fetch(`/api/orders?userId=${encodeURIComponent(uid)}`, {
+      fetch(`/api/orders?userId=${encodeURIComponent(uid)}&email=${encodeURIComponent(user.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -127,6 +127,22 @@ export default function CustomerAccountPage() {
         }
       );
       unsubs.push(unsubUid);
+
+      // By Email (for old orders)
+      if (user.email) {
+        const qByEmail = query(ordersRef, where('customerEmail', '==', user.email));
+        const unsubEmail = onSnapshot(
+          qByEmail,
+          (snap) => {
+            snap.docs.forEach(d => orderMap.set(d.id, { id: d.id, ...d.data() } as Order));
+            commitOrders();
+          },
+          (err) => {
+             console.warn('Orders by Email listener notice:', err);
+          }
+        );
+        unsubs.push(unsubEmail);
+      }
     } catch (e) {
       setOrdersLoading(false);
     }
