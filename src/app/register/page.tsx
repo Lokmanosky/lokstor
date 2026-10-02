@@ -3,9 +3,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { UserPlus, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
+import { UserPlus, LogIn, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -18,6 +18,7 @@ const GoogleIcon = () => (
 
 export default function RegisterPage() {
   const { user } = useAuth();
+  const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -33,17 +34,27 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
-      setSuccess('تم إنشاء الحساب بنجاح! جاري التوجيه...');
-      setTimeout(() => router.push('/account'), 1000);
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+        setSuccess('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        setSuccess('تم إنشاء الحساب بنجاح! جاري التوجيه...');
+      }
+      
+      const redirectUrl = sessionStorage.getItem('post_login_redirect') || '/account';
+      sessionStorage.removeItem('post_login_redirect');
+      setTimeout(() => router.push(redirectUrl), 1000);
     } catch (err: any) {
       if (err.message.includes('auth/email-already-in-use')) {
         setError('هذا البريد مستخدم بالفعل');
       } else if (err.message.includes('auth/weak-password')) {
         setError('كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)');
+      } else if (err.message.includes('auth/invalid-credential') || err.message.includes('auth/user-not-found') || err.message.includes('auth/wrong-password')) {
+        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
       } else {
-        setError('حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة لاحقاً');
+        setError(isLogin ? 'حدث خطأ أثناء تسجيل الدخول، يرجى المحاولة لاحقاً' : 'حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة لاحقاً');
       }
     } finally {
       setLoading(false);
@@ -58,7 +69,9 @@ export default function RegisterPage() {
 
     try {
       await signInWithPopup(auth, provider);
-      router.push('/account');
+      const redirectUrl = sessionStorage.getItem('post_login_redirect') || '/account';
+      sessionStorage.removeItem('post_login_redirect');
+      router.push(redirectUrl);
     } catch (err: any) {
       console.error('Google register error:', err);
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
@@ -82,7 +95,9 @@ export default function RegisterPage() {
   // Redirect if already logged in
   if (user) {
     if (typeof window !== 'undefined') {
-      router.push('/account');
+      const redirectUrl = sessionStorage.getItem('post_login_redirect') || '/account';
+      sessionStorage.removeItem('post_login_redirect');
+      router.push(redirectUrl);
     }
     return null;
   }
@@ -94,31 +109,39 @@ export default function RegisterPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="w-14 h-14 rounded-2xl bg-[var(--store-hover)] border border-[var(--store-border)] flex items-center justify-center mx-auto mb-3 shadow-sm">
-            <UserPlus className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            {isLogin ? (
+              <LogIn className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <UserPlus className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            )}
           </div>
           <h1 className="text-2xl font-black text-[var(--store-text)] tracking-tight">
-            إنشاء حساب جديد
+            {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
           </h1>
           <p className="text-xs sm:text-sm text-[var(--store-text-muted)] font-medium">
-            انضم إلينا للاستفادة من العروض والوصول لطلباتك الرقمية فوراً
+            {isLogin 
+              ? 'مرحباً بعودتك! سجل الدخول للوصول لطلباتك' 
+              : 'انضم إلينا للاستفادة من العروض والوصول لطلباتك الرقمية فوراً'}
           </p>
         </div>
         
         {/* Form */}
         <form onSubmit={handleRegister} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-[var(--store-text)]">
-              الاسم الكامل <span className="text-red-500">*</span>
-            </label>
-            <input 
-              type="text" 
-              required
-              value={name} 
-              onChange={e => setName(e.target.value)}
-              className="w-full bg-[var(--store-bg)] border-2 border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-400 transition-colors placeholder:text-slate-400 font-medium"
-              placeholder="مثال: محمد الأمين"
-            />
-          </div>
+          {!isLogin && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-[var(--store-text)]">
+                الاسم الكامل <span className="text-red-500">*</span>
+              </label>
+              <input 
+                type="text" 
+                required={!isLogin}
+                value={name} 
+                onChange={e => setName(e.target.value)}
+                className="w-full bg-[var(--store-bg)] border-2 border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-400 transition-colors placeholder:text-slate-400 font-medium"
+                placeholder="مثال: محمد الأمين"
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-[var(--store-text)]">
@@ -180,7 +203,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="chargily-btn w-full py-3.5 text-white font-black text-sm rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all mt-2 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'جاري الإنشاء...' : 'إنشاء الحساب'}
+            {loading ? 'جاري المعالجة...' : (isLogin ? 'تسجيل الدخول' : 'إنشاء الحساب')}
           </button>
         </form>
 
@@ -203,16 +226,20 @@ export default function RegisterPage() {
           ) : (
             <GoogleIcon />
           )}
-          <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة والتسجيل باستخدام Google'}</span>
+          <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة باستخدام Google'}</span>
         </button>
         
         {/* Footer links */}
         <div className="text-center text-xs text-[var(--store-text-muted)] pt-4 border-t border-[var(--store-border)] space-y-2">
           <div>
-            لديك حساب بالفعل؟{' '}
-            <Link href="/" className="text-emerald-600 dark:text-emerald-400 font-black hover:underline">
-              تسجيل الدخول من المتجر
-            </Link>
+            {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
+            <button 
+              type="button"
+              onClick={() => setIsLogin(!isLogin)} 
+              className="text-emerald-600 dark:text-emerald-400 font-black hover:underline cursor-pointer"
+            >
+              {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+            </button>
           </div>
           <div>
             <Link href="/" className="inline-flex items-center gap-1 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors">
