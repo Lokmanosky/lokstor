@@ -64,7 +64,7 @@ export async function getAdminNotificationEmail(): Promise<string> {
   // Fallback to Firestore settings if configured in Admin Dashboard
   if (adminDb) {
     try {
-      const snap = await adminDb.collection('settings').doc('store').get();
+      const snap = await adminDb.collection('settings').doc('private').get();
       if (snap.exists) {
         const data = snap.data();
         if (data?.adminNotificationEmail && typeof data.adminNotificationEmail === 'string' && data.adminNotificationEmail.includes('@')) {

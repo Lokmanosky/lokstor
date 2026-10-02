@@ -31,8 +31,18 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
     async function load() {
       try {
         const snap = await getDoc(doc(db, 'settings', 'store'));
+        let privateSnap: any = null;
+        try {
+          // Attempt to load private settings if admin
+          privateSnap = await getDoc(doc(db, 'settings', 'private'));
+        } catch (err) {}
+        
         if (snap.exists()) {
-          setSettings({ ...defaultSettings, ...snap.data() } as StoreSettings);
+          const combined = { ...snap.data() };
+          if (privateSnap && privateSnap.exists()) {
+            Object.assign(combined, privateSnap.data());
+          }
+          setSettings({ ...defaultSettings, ...combined } as StoreSettings);
         }
       } catch (e) {
         // fallback to defaults
@@ -53,5 +63,16 @@ export function useStoreSettings() {
 }
 
 export async function saveStoreSettings(settings: Partial<StoreSettings>) {
-  await setDoc(doc(db, 'settings', 'store'), settings, { merge: true });
+  const publicSettings = { ...settings };
+  const privateSettings: any = {};
+  
+  if ('adminNotificationEmail' in publicSettings) {
+    privateSettings.adminNotificationEmail = publicSettings.adminNotificationEmail;
+    delete publicSettings.adminNotificationEmail;
+  }
+  
+  await setDoc(doc(db, 'settings', 'store'), publicSettings, { merge: true });
+  if (Object.keys(privateSettings).length > 0) {
+    await setDoc(doc(db, 'settings', 'private'), privateSettings, { merge: true });
+  }
 }

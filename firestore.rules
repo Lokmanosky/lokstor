@@ -31,9 +31,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /settings/{settingId} {
+    match /settings/store {
       allow read: if true;
       allow write: if isAdmin();
+    }
+    match /settings/private {
+      allow read, write: if isAdmin();
     }
 
     match /storeBanners/{id} {

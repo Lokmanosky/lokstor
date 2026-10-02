@@ -401,7 +401,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
       requiresCustomerInfo: Boolean(requiresCustomerInfo),
       requiredFields: requiresCustomerInfo ? requiredFields.filter(f => f.label.trim()) : [],
       currency: 'dzd',
-      imageUrl: cleanImg,
       image: cleanImg,
       stockType: stockMode,
       unlimitedStock: isNum ? Boolean(isUnlimitedStock) : false,
@@ -409,6 +408,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       features,
       updatedAt: Date.now(),
     };
+    
+    delete payload.imageUrl;
 
     if (form.originalPrice) {
       payload.originalPrice = Number(form.originalPrice);
