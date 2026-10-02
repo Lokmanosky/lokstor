@@ -564,3 +564,37 @@ export async function sendManualPaymentAdminEmail(params: {
     return { adminSent: false, error: errorMsg };
   }
 }
+
+export async function sendDeliveryEmail(params: { to: string; link: string; productName?: string; orderId?: string }) {
+  const transporter = getTransporter();
+  if (!transporter) return false;
+  const sender = getSenderEmail();
+  const shortId = params.orderId ? params.orderId.replace('ord_', '').slice(0, 8).toUpperCase() : '';
+  const subject = params.orderId ? `[Lokstor] تم تسليم طلبك رقم #${shortId}` : `[Lokstor] تسليم طلبك`;
+  
+  const html = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="utf-8"><title>تسليم الطلب</title></head>
+<body style="margin:0;padding:24px;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#1e293b;direction:rtl;text-align:right;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;padding:28px 24px;">
+    <h1 style="margin:0 0 16px;color:#0f172a;font-size:20px;">✅ تم تسليم طلبك بنجاح</h1>
+    ${params.productName ? `<p style="margin:0 0 16px;color:#475569;">المنتج: <strong>${params.productName}</strong></p>` : ''}
+    <p style="margin:0 0 24px;color:#475569;">فيما يلي بيانات التسليم الخاصة بك:</p>
+    <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:8px;padding:16px;text-align:center;word-break:break-all;margin-bottom:24px;">
+      <strong style="color:#0f172a;font-size:16px;">${params.link}</strong>
+    </div>
+    <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">متجر Lokstor للمنتجات الرقمية</p>
+  </div>
+</body>
+</html>
+  `;
+  
+  try {
+    await transporter.sendMail({ from: sender, to: params.to, subject, html });
+    return true;
+  } catch (err) {
+    console.error('[Nodemailer] Delivery email error:', err);
+    return false;
+  }
+}

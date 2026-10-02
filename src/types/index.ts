@@ -75,6 +75,8 @@ export interface Order {
   downloadToken?: string;
   downloadUrl?: string;
   downloadExpiresAt?: number;
+  deliveryLink?: string;
+  linkDeliveredAt?: string | number;
   createdAt: number | string;
   paidAt?: number | string;
 }

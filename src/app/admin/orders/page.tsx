@@ -35,6 +35,10 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  
+  // Manual Delivery States
+  const [deliveryLinkInput, setDeliveryLinkInput] = useState('');
+  const [isDelivering, setIsDelivering] = useState(false);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -901,7 +905,7 @@ export default function OrdersPage() {
                   {selectedOrder.status === 'paid' ? 'مدفوع' : 'معلق'}
                 </span>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer">
+              <button onClick={() => { setSelectedOrder(null); setDeliveryLinkInput(''); }} className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1044,15 +1048,106 @@ export default function OrdersPage() {
                     لا توجد بيانات حساب أو روابط إضافية مسلمة لهذا الطلب بعد.
                   </div>
                 )}
+                )}
               </div>
             )}
 
+            {/* Manual Delivery Section */}
+            {selectedOrder.status === 'paid' && !selectedOrder.downloadUrl && (
+              <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-3 mt-4">
+                <h4 className="text-xs font-bold text-indigo-700">التسليم اليدوي</h4>
+                <input
+                  type="text"
+                  placeholder="أدخل رابط أو كود التسليم هنا..."
+                  value={deliveryLinkInput}
+                  onChange={(e) => setDeliveryLinkInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-white"
+                  disabled={isDelivering}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={isDelivering || !deliveryLinkInput.trim()}
+                    onClick={async () => {
+                      setIsDelivering(true);
+                      try {
+                        const token = await auth.currentUser?.getIdToken();
+                        const res = await fetch('/api/admin/deliver', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                          body: JSON.stringify({
+                            orderId: selectedOrder.id,
+                            link: deliveryLinkInput,
+                            email: selectedOrder.customerEmail,
+                            productName: selectedOrder.productName,
+                            keepLink: true
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setBulkFeedback('تم تسليم الطلب وحفظ الرابط بنجاح');
+                          setSelectedOrder(null);
+                          setDeliveryLinkInput('');
+                        } else {
+                          alert(data.error || 'فشل التسليم');
+                        }
+                      } catch (e: any) {
+                        alert(e.message);
+                      } finally {
+                        setIsDelivering(false);
+                      }
+                    }}
+                    className="flex-1 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-indigo-700 transition"
+                  >
+                    {isDelivering ? 'جاري التسليم...' : 'إرسال إيميل + حفظ بالمخزن'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDelivering || !deliveryLinkInput.trim()}
+                    onClick={async () => {
+                      setIsDelivering(true);
+                      try {
+                        const token = await auth.currentUser?.getIdToken();
+                        const res = await fetch('/api/admin/deliver', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                          body: JSON.stringify({
+                            orderId: selectedOrder.id,
+                            link: deliveryLinkInput,
+                            email: selectedOrder.customerEmail,
+                            productName: selectedOrder.productName,
+                            keepLink: false
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setBulkFeedback('تم إرسال الرابط عبر الإيميل فقط بنجاح');
+                          setSelectedOrder(null);
+                          setDeliveryLinkInput('');
+                        } else {
+                          alert(data.error || 'فشل الإرسال');
+                        }
+                      } catch (e: any) {
+                        alert(e.message);
+                      } finally {
+                        setIsDelivering(false);
+                      }
+                    }}
+                    className="flex-1 py-1.5 bg-white border border-indigo-300 text-indigo-700 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-indigo-50 transition"
+                  >
+                    إرسال عبر الإيميل فقط
+                  </button>
+                </div>
+              </div>
+            )}
+
+
             {/* Actions Footer */}
-            <div className="flex items-center gap-2 pt-2 border-t border-[var(--admin-border)]">
+            <div className="flex items-center gap-2 pt-2 border-t border-[var(--admin-border)] mt-4">
               {selectedOrder.status !== 'paid' && (
                 <button
                   type="button"
-                  onClick={() => { handleUpdateStatus(selectedOrder.id!, 'paid'); setSelectedOrder(null); }}
+                  onClick={() => { handleUpdateStatus(selectedOrder.id!, 'paid'); setSelectedOrder(null); setDeliveryLinkInput(''); }}
                   className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -1061,7 +1156,7 @@ export default function OrdersPage() {
               )}
               <button
                 type="button"
-                onClick={() => setSelectedOrder(null)}
+                onClick={() => { setSelectedOrder(null); setDeliveryLinkInput(''); }}
                 className="px-4 py-2 rounded-lg border border-[var(--admin-border)] text-xs font-bold text-[var(--admin-text)] hover:bg-[var(--admin-hover)] cursor-pointer"
               >
                 إغلاق

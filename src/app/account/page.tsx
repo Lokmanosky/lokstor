@@ -153,7 +153,7 @@ export default function CustomerAccountPage() {
   };
 
   const handleDownloadDeliverable = (order: Order) => {
-    const content = (order.downloadUrl || '').trim();
+    const content = (order.downloadUrl || order.deliveryLink || '').trim();
     if (!content) {
       if (order.downloadToken) {
         // Must use fetch with Authorization header — window.open cannot send tokens
@@ -457,20 +457,20 @@ ${deliverableDetails}
                       <div className="flex items-center gap-2 flex-wrap">
                         {isPaid && (
                           <>
-                            {(order.downloadUrl || order.downloadToken) && (
+                            {(order.downloadUrl || order.downloadToken || order.deliveryLink) && (
                               <button
                                 onClick={() => handleDownloadDeliverable(order)}
                                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--store-primary)] text-[var(--store-bg)] text-xs font-bold hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                                <span>{order.downloadUrl && !isWebUrl(order.downloadUrl) ? 'تحميل الملف (.txt)' : 'تحميل الملف / الرابط'}</span>
+                                <span>{order.downloadUrl && !isWebUrl(order.downloadUrl) || order.deliveryLink && !isWebUrl(order.deliveryLink) ? 'تحميل الملف (.txt)' : 'تحميل الملف / الرابط'}</span>
                               </button>
                             )}
-                            {order.downloadUrl && (
+                            {(order.downloadUrl || order.deliveryLink) && (
                               <button
-                                onClick={() => copyToClipboard(order.downloadUrl!, `info_${order.id}`)}
+                                onClick={() => copyToClipboard((order.downloadUrl || order.deliveryLink)!, `info_${order.id}`)}
                                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-400 font-bold transition-all cursor-pointer"
-                                title={isLinkOrContainsLink(order.downloadUrl) ? 'نسخ رابط التفعيل' : 'نسخ معلومات الحساب أو التفعيل'}
+                                title={isLinkOrContainsLink(order.downloadUrl || order.deliveryLink) ? 'نسخ رابط التفعيل' : 'نسخ معلومات الحساب أو التفعيل'}
                               >
                                 {copiedId === `info_${order.id}` ? (
                                   <>
@@ -480,7 +480,7 @@ ${deliverableDetails}
                                 ) : (
                                   <>
                                     <Copy className="w-3.5 h-3.5" />
-                                    <span>{isLinkOrContainsLink(order.downloadUrl) ? 'نسخ رابط التفعيل' : 'نسخ بيانات التفعيل'}</span>
+                                    <span>{isLinkOrContainsLink(order.downloadUrl || order.deliveryLink) ? 'نسخ رابط التفعيل' : 'نسخ بيانات التفعيل'}</span>
                                   </>
                                 )}
                               </button>
@@ -526,7 +526,7 @@ ${deliverableDetails}
                     </div>
 
                     {/* Prominent Deliverable Card when Paid */}
-                    {isPaid && order.downloadUrl && (
+                    {isPaid && (order.downloadUrl || order.deliveryLink) && (
                       <div className="mt-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-1.5 text-right animate-in fade-in">
                         <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -534,11 +534,11 @@ ${deliverableDetails}
                         </p>
                         <div className="flex items-center gap-2 bg-[var(--store-bg)] border border-emerald-500/30 p-2 rounded-lg">
                           <span className="font-mono text-xs text-[var(--store-text)] break-all select-all flex-1">
-                            {order.downloadUrl}
+                            {order.downloadUrl || order.deliveryLink}
                           </span>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard(order.downloadUrl!, `info_${order.id}`)}
+                            onClick={() => copyToClipboard((order.downloadUrl || order.deliveryLink)!, `info_${order.id}`)}
                             className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0 transition-colors cursor-pointer"
                           >
                             {copiedId === `info_${order.id}` ? 'تم النسخ!' : 'نسخ'}
@@ -546,7 +546,7 @@ ${deliverableDetails}
                         </div>
                       </div>
                     )}
-                    {isPaid && !order.downloadUrl && (
+                    {isPaid && !order.downloadUrl && !order.deliveryLink && (
                       <div className="mt-2 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                         <span>🚀 تم استلام دفعتك بنجاح! جاري تنفيذ وتفعيل طلبك من طرف الإدارة فوراً.</span>
                       </div>
