@@ -1048,7 +1048,6 @@ export default function OrdersPage() {
                     لا توجد بيانات حساب أو روابط إضافية مسلمة لهذا الطلب بعد.
                   </div>
                 )}
-                )}
               </div>
             )}
 
