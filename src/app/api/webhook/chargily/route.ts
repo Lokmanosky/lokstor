@@ -188,7 +188,12 @@ export async function POST(req: NextRequest) {
         let adminTokens: string[] = [];
         if (adminDb) {
           const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
-          adminTokens = adminsSnap.docs.map((d: any) => d.data().fcmToken).filter(Boolean);
+          const ownerSnap = await adminDb.collection('users').where('email', 'in', ['loktech.dz@gmail.com', 'admin@lokstor.dz', 'admin@lokstor.com']).get();
+          
+          const tokenSet = new Set<string>();
+          adminsSnap.docs.forEach((d: any) => { if (d.data().fcmToken) tokenSet.add(d.data().fcmToken); });
+          ownerSnap.docs.forEach((d: any) => { if (d.data().fcmToken) tokenSet.add(d.data().fcmToken); });
+          adminTokens = Array.from(tokenSet);
         }
         if (adminTokens.length > 0) {
           await adminMessaging.sendEachForMulticast({

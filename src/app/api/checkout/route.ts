@@ -13,11 +13,25 @@ import { adminAuth } from '@/lib/firebaseAdmin';
 async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
   try {
     if (!adminMessaging || !adminDb) return;
+    
+    // Fetch users with admin role or the specific admin email
     const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
-    const adminTokens = adminsSnap.docs.map((d: any) => d.data().fcmToken).filter(Boolean);
-    if (adminTokens.length > 0) {
+    const ownerSnap = await adminDb.collection('users').where('email', 'in', ['loktech.dz@gmail.com', 'admin@lokstor.dz', 'admin@lokstor.com']).get();
+    
+    const adminTokens = new Set<string>();
+    
+    adminsSnap.docs.forEach((d: any) => {
+      if (d.data().fcmToken) adminTokens.add(d.data().fcmToken);
+    });
+    ownerSnap.docs.forEach((d: any) => {
+      if (d.data().fcmToken) adminTokens.add(d.data().fcmToken);
+    });
+    
+    const tokensArray = Array.from(adminTokens);
+
+    if (tokensArray.length > 0) {
       await adminMessaging.sendEachForMulticast({
-        tokens: adminTokens,
+        tokens: tokensArray,
         notification: {
           title: 'طلب جديد قيد الانتظار! 🛍️',
           body: `طلب جديد من ${orderData.customerName} بقيمة ${orderData.productPrice} د.ج`,
