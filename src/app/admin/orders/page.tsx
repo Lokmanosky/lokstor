@@ -117,6 +117,7 @@ export default function OrdersPage() {
       await updateDoc(doc(db, 'orders', orderId), { 
         status: 'pending',
         downloadUrl: null,
+        deliveryLink: null,
       });
       setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار وتفريغ الرابط بنجاح (سيتم سحب اشتراك جديد عند إكماله)');
       setTimeout(() => setBulkFeedback(null), 5000);
@@ -144,10 +145,11 @@ export default function OrdersPage() {
           setBulkFeedback('تم تفعيل الطلب كمدفوع (تنبيه: مخزون هذا المنتج فارغ حالياً، لم يتم سحب أي رابط).');
         }
       } else if (newStatus === 'pending') {
-        // Clear downloadUrl so it can be re-pulled from stock when marked as paid again
+        // Clear downloadUrl and deliveryLink so it can be re-pulled from stock when marked as paid again
         await updateDoc(doc(db, 'orders', id), { 
           status: 'pending',
           downloadUrl: null,
+          deliveryLink: null,
         });
         setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار بنجاح وتجهيزه لإعادة سحب رابط جديد من المخزون عند إكماله');
       } else {
@@ -205,6 +207,7 @@ export default function OrdersPage() {
             const updatePayload: any = { status: newStatus };
             if (newStatus === 'pending') {
               updatePayload.downloadUrl = null;
+              updatePayload.deliveryLink = null;
             }
             batch.update(doc(db, 'orders', id), updatePayload);
           });
