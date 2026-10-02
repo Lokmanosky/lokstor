@@ -3,7 +3,7 @@ import { ChargilyClient, verifySignature } from '@chargily/chargily-pay';
 export const isChargilyConfigured = Boolean((process.env.CHARGILY_API_SECRET || '').trim());
 
 export const getChargilyClient = () => {
-  const apiKey = (process.env.CHARGILY_API_SECRET || '').trim();
+  const apiKey = (process.env.CHARGILY_API_SECRET || '').replace(/^"|"$/g, '').trim();
 
   if (!apiKey) {
     throw new Error('CHARGILY_API_SECRET is not configured');
