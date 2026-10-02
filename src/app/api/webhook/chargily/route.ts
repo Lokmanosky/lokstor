@@ -198,21 +198,11 @@ export async function POST(req: NextRequest) {
         if (adminTokens.length > 0) {
           await adminMessaging.sendEachForMulticast({
             tokens: adminTokens,
-            notification: {
+            data: {
               title: 'دفع جديد ناجح 💰',
               body: `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`,
-            },
-            data: {
               url: `${baseUrl}/admin/orders?search=${orderId}`,
-            },
-            webpush: {
-              fcmOptions: {
-                link: `${baseUrl}/admin/orders?search=${orderId}`
-              },
-              notification: {
-                icon: `${baseUrl}/logo.png`,
-                click_action: `${baseUrl}/admin/orders?search=${orderId}`
-              }
+              sound: 'default'
             }
           }).catch((e: any) => console.warn('Admin push failed:', e));
         }

@@ -19,15 +19,18 @@ try {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage(function(payload) {
-    console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    const notificationTitle = payload.notification?.title || 'إشعار جديد';
-    const notificationOptions = {
-      body: payload.notification?.body || '',
-      icon: '/logo.png', // Fallback icon
-      data: payload.data
-    };
-
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    console.log('[firebase-messaging-sw.js] Received background data message ', payload);
+    const p = payload.data || {};
+    
+    self.registration.showNotification(p.title || 'إشعار من المتجر', {
+      body: p.body || '',
+      icon: '/logo.png',
+      data: { url: p.url || '/' },
+      requireInteraction: true,
+      tag: 'lokstor-order',
+      renotify: true,
+      vibrate: [200, 100, 200]
+    });
   });
 } catch (error) {
   console.error('[firebase-messaging-sw.js] Error initializing messaging', error);
@@ -37,15 +40,15 @@ self.addEventListener('notificationclick', function(event) {
   console.log('[firebase-messaging-sw.js] Notification click received.');
   event.notification.close();
   
-  if (event.notification.data && event.notification.data.url) {
-    event.waitUntil(
-      clients.openWindow(event.notification.data.url)
-    );
-  } else {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
+  const url = event.notification.data?.url || '/admin/orders';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+      for (const c of cs) {
+        if ('focus' in c) { c.navigate(url); return c.focus(); }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
 });
 
 // A dummy fetch event listener is required for some browsers to consider the PWA installable.
