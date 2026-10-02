@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
         let adminTokens: string[] = [];
         if (adminDb) {
           const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
-          adminTokens = adminsSnap.docs.map(d => d.data().fcmToken).filter(Boolean);
+          adminTokens = adminsSnap.docs.map((d: any) => d.data().fcmToken).filter(Boolean);
         }
         if (adminTokens.length > 0) {
           await adminMessaging.sendEachForMulticast({

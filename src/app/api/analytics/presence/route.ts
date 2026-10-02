@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       
       if (!oldUsers.empty) {
         const batch = adminDb.batch();
-        oldUsers.forEach(doc => batch.delete(doc.ref));
+        oldUsers.forEach((doc: any) => batch.delete(doc.ref));
         await batch.commit();
       }
     }

@@ -6,7 +6,7 @@ export async function processOrderDelivery(orderId: string, paidAmount: number, 
     throw new Error('Admin DB not configured');
   }
 
-  const result = await adminDb.runTransaction(async (transaction) => {
+  const result = await adminDb.runTransaction(async (transaction: any) => {
     const orderRef = adminDb.collection('orders').doc(orderId);
     const orderDoc = await transaction.get(orderRef);
 

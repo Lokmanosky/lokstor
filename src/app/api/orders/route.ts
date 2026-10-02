@@ -40,14 +40,14 @@ export async function GET(req: NextRequest) {
       try {
         if (all && isOwner) {
           const snap = await adminDb.collection('orders').get();
-          snap.forEach(doc => {
+          snap.forEach((doc: any) => {
             orderMap.set(doc.id, { id: doc.id, ...doc.data() } as Order);
           });
         } else {
           // Query by userId
           if (userId) {
             const snapUid = await adminDb.collection('orders').where('userId', '==', userId).get();
-            snapUid.forEach(doc => {
+            snapUid.forEach((doc: any) => {
               orderMap.set(doc.id, { id: doc.id, ...doc.data() } as Order);
             });
           }
@@ -55,14 +55,14 @@ export async function GET(req: NextRequest) {
           // Query by customerEmail (exact and lowercase)
           if (email) {
             const snapEmail1 = await adminDb.collection('orders').where('customerEmail', '==', email).get();
-            snapEmail1.forEach(doc => {
+            snapEmail1.forEach((doc: any) => {
               orderMap.set(doc.id, { id: doc.id, ...doc.data() } as Order);
             });
 
             const lower = email.toLowerCase();
             if (lower !== email) {
               const snapEmail2 = await adminDb.collection('orders').where('customerEmail', '==', lower).get();
-              snapEmail2.forEach(doc => {
+              snapEmail2.forEach((doc: any) => {
                 orderMap.set(doc.id, { id: doc.id, ...doc.data() } as Order);
               });
             }
