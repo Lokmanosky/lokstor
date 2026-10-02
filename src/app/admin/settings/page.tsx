@@ -288,7 +288,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-1.5 mt-2 font-medium">
                   حالة الإشعارات في هذا المتصفح: 
                   {permissionStatus === 'granted' ? (
-                    <span className="text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> مفعلة</span>
+                    <span className="text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5"/> مسموح بها</span>
                   ) : permissionStatus === 'denied' ? (
                     <span className="text-red-500 flex items-center gap-1"><XCircle className="w-3.5 h-3.5"/> محظورة (تتطلب تفعيل من المتصفح)</span>
                   ) : (
@@ -299,11 +299,11 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={requestPermission}
-                disabled={permissionStatus === 'granted'}
+                disabled={permissionStatus === 'denied'}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 <Bell className="w-3.5 h-3.5" />
-                {permissionStatus === 'granted' ? 'الإشعارات مفعلة' : 'تفعيل الإشعارات الآن'}
+                {permissionStatus === 'granted' ? 'تحديث وتأكيد الاتصال' : 'تفعيل الإشعارات الآن'}
               </button>
             </div>
           </div>
