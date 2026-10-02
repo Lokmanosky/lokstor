@@ -205,6 +205,17 @@ export default function RegisterPage() {
           >
             {loading ? 'جاري المعالجة...' : (isLogin ? 'تسجيل الدخول' : 'إنشاء الحساب')}
           </button>
+          
+          <div className="text-center text-xs text-[var(--store-text-muted)] mt-4">
+            {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
+            <button 
+              type="button"
+              onClick={() => setIsLogin(!isLogin)} 
+              className="text-emerald-600 dark:text-emerald-400 font-black hover:underline cursor-pointer"
+            >
+              {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+            </button>
+          </div>
         </form>
 
         {/* Divider */}
@@ -231,16 +242,6 @@ export default function RegisterPage() {
         
         {/* Footer links */}
         <div className="text-center text-xs text-[var(--store-text-muted)] pt-4 border-t border-[var(--store-border)] space-y-2">
-          <div>
-            {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
-            <button 
-              type="button"
-              onClick={() => setIsLogin(!isLogin)} 
-              className="text-emerald-600 dark:text-emerald-400 font-black hover:underline cursor-pointer"
-            >
-              {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
-            </button>
-          </div>
           <div>
             <Link href="/" className="inline-flex items-center gap-1 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors">
               <ArrowRight className="w-3.5 h-3.5" />
