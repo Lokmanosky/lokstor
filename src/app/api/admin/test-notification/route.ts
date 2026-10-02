@@ -60,40 +60,21 @@ export async function POST(req: NextRequest) {
       try {
         const res = await adminMessaging.send({
           token: fcmToken,
-          notification: {
-            title: testTitle,
-            body: testBody,
-          },
           data: {
             title: testTitle,
             body: testBody,
             url: targetUrl,
+            tag: 'lokstor-order',
             sound: 'default'
           },
           webpush: {
             headers: {
               Urgency: 'high',
               TTL: '86400'
-            },
-            notification: {
-              title: testTitle,
-              body: testBody,
-              icon: 'https://lokstor.vercel.app/logo.png',
-              badge: 'https://lokstor.vercel.app/logo.png',
-              requireInteraction: true,
-              vibrate: [200, 100, 200],
-              tag: `test-order-${Date.now()}`,
-              renotify: true
-            },
-            fcmOptions: {
-              link: targetUrl
             }
           },
           android: {
-            priority: 'high',
-            notification: {
-              sound: 'default'
-            }
+            priority: 'high'
           }
         });
         return { token: fcmToken.slice(0, 15) + '...', success: true, id: res };

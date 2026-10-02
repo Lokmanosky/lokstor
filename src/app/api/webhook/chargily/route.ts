@@ -202,14 +202,11 @@ export async function POST(req: NextRequest) {
 
           await adminMessaging.sendEachForMulticast({
             tokens: adminTokens,
-            notification: {
-              title: notifTitle,
-              body: notifBody,
-            },
             data: {
               title: notifTitle,
               body: notifBody,
               url: notifUrl,
+              tag: 'lokstor-order',
               orderId: String(orderId || ''),
               sound: 'default'
             },
@@ -217,26 +214,10 @@ export async function POST(req: NextRequest) {
               headers: {
                 Urgency: 'high',
                 TTL: '86400'
-              },
-              notification: {
-                title: notifTitle,
-                body: notifBody,
-                icon: `${baseUrl}/logo.png`,
-                badge: `${baseUrl}/logo.png`,
-                requireInteraction: true,
-                vibrate: [200, 100, 200, 100, 200],
-                tag: `chargily-${orderId}`,
-                renotify: true
-              },
-              fcmOptions: {
-                link: notifUrl
               }
             },
             android: {
-              priority: 'high',
-              notification: {
-                sound: 'default'
-              }
+              priority: 'high'
             }
           }).catch((e: any) => console.warn('Admin push failed:', e));
         }

@@ -36,14 +36,11 @@ async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
 
       await adminMessaging.sendEachForMulticast({
         tokens: tokensArray,
-        notification: {
-          title: notifTitle,
-          body: notifBody,
-        },
         data: {
           title: notifTitle,
           body: notifBody,
           url: notifUrl,
+          tag: 'lokstor-order',
           orderId: String(orderData.id || ''),
           sound: 'default'
         },
@@ -51,26 +48,10 @@ async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
           headers: {
             Urgency: 'high',
             TTL: '86400'
-          },
-          notification: {
-            title: notifTitle,
-            body: notifBody,
-            icon: `${baseUrl}/logo.png`,
-            badge: `${baseUrl}/logo.png`,
-            requireInteraction: true,
-            vibrate: [200, 100, 200, 100, 200],
-            tag: `order-${orderData.id}`,
-            renotify: true
-          },
-          fcmOptions: {
-            link: notifUrl
           }
         },
         android: {
-          priority: 'high',
-          notification: {
-            sound: 'default'
-          }
+          priority: 'high'
         }
       });
     }
