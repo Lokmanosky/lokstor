@@ -196,13 +196,47 @@ export async function POST(req: NextRequest) {
           adminTokens = Array.from(tokenSet);
         }
         if (adminTokens.length > 0) {
+          const notifTitle = 'دفع جديد ناجح 💰';
+          const notifBody = `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`;
+          const notifUrl = `${baseUrl}/admin/orders?search=${orderId}`;
+
           await adminMessaging.sendEachForMulticast({
             tokens: adminTokens,
+            notification: {
+              title: notifTitle,
+              body: notifBody,
+            },
             data: {
-              title: 'دفع جديد ناجح 💰',
-              body: `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`,
-              url: `${baseUrl}/admin/orders?search=${orderId}`,
+              title: notifTitle,
+              body: notifBody,
+              url: notifUrl,
+              orderId: String(orderId || ''),
               sound: 'default'
+            },
+            webpush: {
+              headers: {
+                Urgency: 'high',
+                TTL: '86400'
+              },
+              notification: {
+                title: notifTitle,
+                body: notifBody,
+                icon: `${baseUrl}/logo.png`,
+                badge: `${baseUrl}/logo.png`,
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200],
+                tag: `chargily-${orderId}`,
+                renotify: true
+              },
+              fcmOptions: {
+                link: notifUrl
+              }
+            },
+            android: {
+              priority: 'high',
+              notification: {
+                sound: 'default'
+              }
             }
           }).catch((e: any) => console.warn('Admin push failed:', e));
         }

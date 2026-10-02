@@ -41,7 +41,16 @@ export function usePushNotifications() {
             return null;
           }
 
-          const currentToken = await getToken(messaging, { vapidKey });
+          let swReg: ServiceWorkerRegistration | undefined;
+          if ('serviceWorker' in navigator) {
+            swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            await navigator.serviceWorker.ready;
+          }
+
+          const currentToken = await getToken(messaging, {
+            vapidKey,
+            serviceWorkerRegistration: swReg
+          });
 
           if (currentToken) {
             console.log('FCM Token received:', currentToken);

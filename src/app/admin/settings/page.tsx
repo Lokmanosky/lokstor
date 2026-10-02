@@ -33,6 +33,36 @@ export default function SettingsPage() {
   const [accountMsg, setAccountMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'store' | 'account'>('store');
+  const [testNotifLoading, setTestNotifLoading] = useState(false);
+  const [testNotifMsg, setTestNotifMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleSendTestNotification = async () => {
+    if (!user) return;
+    setTestNotifLoading(true);
+    setTestNotifMsg(null);
+    try {
+      const token = await user.getIdToken();
+      const localFcmToken = typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : null;
+      const res = await fetch('/api/admin/test-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ token: localFcmToken || undefined })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestNotifMsg({ type: 'success', text: 'تم إرسال الإشعار التجريبي! تفقد شريط إشعارات هاتفك الآن 🔔' });
+      } else {
+        setTestNotifMsg({ type: 'error', text: data.error || 'فشل إرسال الإشعار التجريبي' });
+      }
+    } catch (err: any) {
+      setTestNotifMsg({ type: 'error', text: err.message || 'حدث خطأ في الاتصال' });
+    } finally {
+      setTestNotifLoading(false);
+    }
+  };
 
   useEffect(() => {
     setStoreName(currentSettings.storeName || 'Lokstor');
@@ -296,16 +326,34 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={requestPermission}
-                disabled={permissionStatus === 'denied'}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <Bell className="w-3.5 h-3.5" />
-                {permissionStatus === 'granted' ? 'تحديث وتأكيد الاتصال' : 'تفعيل الإشعارات الآن'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={requestPermission}
+                  disabled={permissionStatus === 'denied'}
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  {permissionStatus === 'granted' ? 'تحديث وتأكيد الاتصال' : 'تفعيل الإشعارات الآن'}
+                </button>
+                {permissionStatus === 'granted' && (
+                  <button
+                    type="button"
+                    onClick={handleSendTestNotification}
+                    disabled={testNotifLoading}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    {testNotifLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
+                    {testNotifLoading ? 'جاري الإرسال...' : '🔔 إرسال إشعار تجريبي لهاتفي'}
+                  </button>
+                )}
+              </div>
             </div>
+            {testNotifMsg && (
+              <div className={`text-xs p-3 rounded-lg border ${testNotifMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'}`}>
+                {testNotifMsg.text}
+              </div>
+            )}
           </div>
 
           <MsgBox msg={accountMsg} />

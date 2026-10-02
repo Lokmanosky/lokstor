@@ -1,3 +1,12 @@
+// Service Worker v2.2 - Lokstor FCM Push Receiver
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 try {
   importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
   importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
@@ -19,17 +28,23 @@ try {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage(function(payload) {
-    console.log('[firebase-messaging-sw.js] Received background data message ', payload);
-    const p = payload.data || {};
+    console.log('[firebase-messaging-sw.js] Received background message:', payload);
+    const data = payload.data || {};
+    const notif = payload.notification || {};
     
-    return self.registration.showNotification(p.title || 'إشعار من المتجر', {
-      body: p.body || '',
+    const title = data.title || notif.title || 'إشعار جديد 🛍️ (Lokstor)';
+    const body = data.body || notif.body || 'لديك تحديث جديد في متجر Lokstor';
+    const url = data.url || (payload.fcmOptions && payload.fcmOptions.link) || '/admin/orders';
+    
+    return self.registration.showNotification(title, {
+      body: body,
       icon: '/logo.png',
-      data: { url: p.url || '/' },
+      badge: '/logo.png',
+      data: { url: url },
       requireInteraction: true,
-      tag: 'lokstor-order',
+      tag: 'lokstor-order-' + (data.orderId || Date.now()),
       renotify: true,
-      vibrate: [200, 100, 200]
+      vibrate: [200, 100, 200, 100, 200]
     });
   });
 } catch (error) {

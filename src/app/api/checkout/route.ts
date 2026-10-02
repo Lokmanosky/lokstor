@@ -30,13 +30,47 @@ async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
     const tokensArray = Array.from(adminTokens);
 
     if (tokensArray.length > 0) {
+      const notifTitle = 'طلب جديد قيد الانتظار! 🛍️';
+      const notifBody = `طلب جديد من ${orderData.customerName} بقيمة ${orderData.productPrice} د.ج`;
+      const notifUrl = `${baseUrl}/admin/orders?search=${orderData.id}`;
+
       await adminMessaging.sendEachForMulticast({
         tokens: tokensArray,
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+        },
         data: {
-          title: 'طلب جديد قيد الانتظار! 🛍️',
-          body: `طلب جديد من ${orderData.customerName} بقيمة ${orderData.productPrice} د.ج`,
-          url: `${baseUrl}/admin/orders?search=${orderData.id}`,
+          title: notifTitle,
+          body: notifBody,
+          url: notifUrl,
+          orderId: String(orderData.id || ''),
           sound: 'default'
+        },
+        webpush: {
+          headers: {
+            Urgency: 'high',
+            TTL: '86400'
+          },
+          notification: {
+            title: notifTitle,
+            body: notifBody,
+            icon: `${baseUrl}/logo.png`,
+            badge: `${baseUrl}/logo.png`,
+            requireInteraction: true,
+            vibrate: [200, 100, 200, 100, 200],
+            tag: `order-${orderData.id}`,
+            renotify: true
+          },
+          fcmOptions: {
+            link: notifUrl
+          }
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default'
+          }
         }
       });
     }
