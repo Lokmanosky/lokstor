@@ -18,7 +18,13 @@ export function usePushNotifications() {
   const requestPermission = async () => {
     try {
       if (typeof window === 'undefined' || !('Notification' in window)) {
-        console.warn('Notifications not supported.');
+        alert('متصفحك لا يدعم الإشعارات.');
+        return null;
+      }
+
+      if (Notification.permission === 'denied') {
+        alert('لقد قمت بحظر الإشعارات مسبقاً. يرجى تفعيلها من إعدادات المتصفح (علامة القفل بجانب الرابط).');
+        setPermissionStatus('denied');
         return null;
       }
 
@@ -28,35 +34,40 @@ export function usePushNotifications() {
       if (permission === 'granted') {
         const messaging = getFirebaseMessaging();
         if (messaging) {
-          const currentToken = await getToken(messaging, {
-            vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
-          });
+          const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+          if (!vapidKey) {
+            console.warn('VAPID key is missing in environment variables.');
+            alert('تم تفعيل الإشعارات في المتصفح، لكن ينقص مفتاح VAPID في إعدادات النظام لاستلامها.');
+            return null;
+          }
+
+          const currentToken = await getToken(messaging, { vapidKey });
 
           if (currentToken) {
             console.log('FCM Token received:', currentToken);
             setFcmToken(currentToken);
             localStorage.setItem('fcm_token', currentToken);
 
-            // If user is logged in, save it to their profile
             if (user) {
-              await updateDoc(doc(db, 'users', user.uid), {
-                fcmToken: currentToken
-              }).catch(async (e) => {
-                // if document doesn't exist, set it
+              await updateDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }).catch(async (e) => {
                 if (e.code === 'not-found') {
                     await setDoc(doc(db, 'users', user.uid), { fcmToken: currentToken }, { merge: true });
                 }
               });
             }
+            alert('تم تفعيل الإشعارات بنجاح!');
             return currentToken;
           } else {
-            console.warn('No registration token available. Request permission to generate one.');
+            alert('لم نتمكن من توليد رمز الإشعارات. حاول مرة أخرى.');
           }
         }
+      } else {
+        alert('تم رفض صلاحية الإشعارات.');
       }
       return null;
-    } catch (err) {
+    } catch (err: any) {
       console.error('An error occurred while retrieving token. ', err);
+      alert('حدث خطأ أثناء تفعيل الإشعارات: ' + err.message);
       return null;
     }
   };
