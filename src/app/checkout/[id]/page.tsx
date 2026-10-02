@@ -66,8 +66,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     }
   }, []);
 
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'chargily' | 'redotpay' | 'binance'>('chargily');
   const [customAmount, setCustomAmount] = useState<number>(1000);
   const searchParams = useSearchParams();
@@ -179,13 +177,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   };
 
 
-  // Pre-fill user data if authenticated
-  useEffect(() => {
-    if (user) {
-      if (user.displayName && !customerName) setCustomerName(user.displayName);
-      if (user.email && !customerEmail) setCustomerEmail(user.email);
-    }
-  }, [user]);
+  // Pre-fill logic removed because login is strictly enforced
 
   const handleCopyRedotId = () => {
     navigator.clipboard.writeText('1622725404');
@@ -220,11 +212,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
-    if (!customerName.trim()) {
-      setErrorMessage('يرجى إدخال الاسم بالكامل.');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -237,7 +224,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         },
         body: JSON.stringify({
           productId,
-          customerName,
+          customerName: user.displayName || user.email?.split('@')[0] || 'عميل',
           customerEmail: user.email,
           paymentMethod,
           variantId: selectedVariant?.id || undefined,
@@ -267,8 +254,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 `مرحباً، أرغب في تأكيد شراء منتج عبر ${methodTitle}\n\n` +
 `📦 المنتج: ${product?.name}\n` +
 `💰 المبلغ: ${effectivePrice.toLocaleString('en-US')} د.ج ({cryptoUsdtEquivalent})\n` +
-`👤 الاسم: ${customerName}\n` +
-`📧 البريد: ${customerEmail}\n` +
+`👤 الاسم: ${user.displayName || user.email?.split('@')[0] || 'عميل'}\n` +
+`📧 البريد: ${user.email}\n` +
 `🔖 رقم الطلب: #${orderRef}\n` +
 (Object.keys(gameInfo).length > 0
   ? `\n🎮 بيانات حساب اللعبة للشحن:\n` + Object.entries(gameInfo).map(([k, v]) => `• ${k}: ${v}`).join('\n') + '\n\n'
@@ -622,7 +609,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 </button>
               </div>
 
-              {/* Logged-in recognition */}
+              {/* Logged-in recognition or Login Prompt */}
               {user ? (
                 <div className="p-3.5 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-xs flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
@@ -631,58 +618,28 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     </div>
                     <div>
                       <span className="font-black text-black block text-sm">{t('checkout.accountRecognized')} ({user.email})</span>
-                      <span className="text-blue-950 font-bold block">{t('checkout.autoFilled')}</span>
+                      <span className="text-emerald-900 font-bold block">مرحباً {user.displayName} - سيتم ربط الطلب بحسابك</span>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 bg-emerald-200 text-emerald-950 font-black rounded-lg text-[11px] shrink-0">
-                    {t('checkout.autoBadge')}
-                  </span>
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950 font-bold">
-                  💡 إذا كان لديك حساب، سجل دخولك ليتم ملء بياناتك وإضافة طلبك لحسابك تلقائياً.
+                <div className="p-5 rounded-xl bg-blue-50/80 border-2 border-blue-200 text-center space-y-4 shadow-sm">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto text-blue-600">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-blue-950 font-black text-lg mb-1">تسجيل الدخول مطلوب</h3>
+                    <p className="text-sm font-bold text-blue-800/80">
+                      لحماية مشترياتك وضمان وصول التفعيل لبريدك الصحيح، يرجى تسجيل الدخول أولاً.
+                    </p>
+                  </div>
+                  <Link href="/register" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl transition-all shadow-sm w-full">
+                    <User className="w-4 h-4" />
+                    تسجيل الدخول أو إنشاء حساب
+                  </Link>
                 </div>
               )}
 
-              {/* Name input */}
-              <div className="space-y-2">
-                <label className="text-sm font-black text-black block">
-                  {t('checkout.fullName')} <span className="text-red-600">*</span>
-                </label>
-                <div className="relative">
-                  <User className="w-5 h-5 absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-950 pointer-events-none" />
-                  <input
-                    type="text"
-                    required
-                    placeholder={t('checkout.namePlaceholder')}
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full pl-4 pr-11 py-3.5 bg-white border-2 border-slate-400 rounded-xl text-sm font-bold text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all shadow-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Email input */}
-              <div className="space-y-2">
-                <label className="text-sm font-black text-black block">
-                  {t('checkout.email')} <span className="text-red-600">*</span>
-                </label>
-                <div className="relative">
-                  <Mail className="w-5 h-5 absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-950 pointer-events-none" />
-                  <input
-                    type="email"
-                    required
-                    placeholder={t('checkout.emailPlaceholder')}
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full pl-4 pr-11 py-3.5 bg-white border-2 border-slate-400 rounded-xl text-sm font-bold text-black placeholder:text-slate-400 focus:outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all shadow-sm"
-                    dir="ltr"
-                  />
-                </div>
-                <p className="text-xs text-blue-950 font-bold">
-                  {t('checkout.emailNotice')}
-                </p>
-              </div>
 
               {/* GAME ACCOUNT REQUIRED INPUTS */}
               {activeRequiredFields.length > 0 && (
