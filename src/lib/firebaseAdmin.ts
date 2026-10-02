@@ -44,6 +44,6 @@ try {
   console.error('Firebase Admin Initialization Error:', error);
 }
 
-export const adminDb = app ? getFirestore(app) : null;
-export const adminAuth = app ? getAuth(app) : null;
+export const adminDb = app ? getFirestore(app) : (null as any);
+export const adminAuth = app ? getAuth(app) : (null as any);
 
