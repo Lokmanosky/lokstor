@@ -38,6 +38,15 @@ async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
         },
         data: {
           url: `${baseUrl}/admin/orders?search=${orderData.id}`,
+        },
+        webpush: {
+          fcmOptions: {
+            link: `${baseUrl}/admin/orders?search=${orderData.id}`
+          },
+          notification: {
+            icon: `${baseUrl}/logo.png`,
+            click_action: `${baseUrl}/admin/orders?search=${orderData.id}`
+          }
         }
       });
     }
