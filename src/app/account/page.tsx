@@ -156,7 +156,27 @@ export default function CustomerAccountPage() {
     const content = (order.downloadUrl || '').trim();
     if (!content) {
       if (order.downloadToken) {
-        window.open(`/api/download?order_id=${order.id}&token=${order.downloadToken}`, '_blank');
+        // Must use fetch with Authorization header — window.open cannot send tokens
+        (async () => {
+          try {
+            const { getAuth } = await import('firebase/auth');
+            const token = await getAuth().currentUser?.getIdToken();
+            if (!token) return;
+            const res = await fetch(`/api/download?order_id=${order.id}&token=${order.downloadToken}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${order.productName || 'product'}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            console.error('Download failed', e);
+          }
+        })();
       }
       return;
     }
