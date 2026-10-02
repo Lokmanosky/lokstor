@@ -118,6 +118,7 @@ export default function OrdersPage() {
         status: 'pending',
         downloadUrl: null,
         deliveryLink: null,
+        linkDeliveredAt: null,
       });
       setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار وتفريغ الرابط بنجاح (سيتم سحب اشتراك جديد عند إكماله)');
       setTimeout(() => setBulkFeedback(null), 5000);
@@ -150,6 +151,7 @@ export default function OrdersPage() {
           status: 'pending',
           downloadUrl: null,
           deliveryLink: null,
+          linkDeliveredAt: null,
         });
         setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار بنجاح وتجهيزه لإعادة سحب رابط جديد من المخزون عند إكماله');
       } else {
@@ -208,6 +210,7 @@ export default function OrdersPage() {
             if (newStatus === 'pending') {
               updatePayload.downloadUrl = null;
               updatePayload.deliveryLink = null;
+              updatePayload.linkDeliveredAt = null;
             }
             batch.update(doc(db, 'orders', id), updatePayload);
           });
@@ -1058,6 +1061,11 @@ export default function OrdersPage() {
             {selectedOrder.status === 'paid' && !selectedOrder.downloadUrl && !selectedOrder.deliveryLink && (
               <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-3 mt-4">
                 <h4 className="text-xs font-bold text-indigo-700">التسليم اليدوي</h4>
+                {selectedOrder.linkDeliveredAt && (
+                  <div className="p-2 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg text-[11px] font-bold">
+                    ⚠️ تنبيه: لقد قمت بإرسال تسليم للعميل عبر الإيميل مسبقاً (ولم تحفظ الرابط). يظهر هذا المربع مرة أخرى ليتيح لك إعادة الإرسال إذا أردت ذلك.
+                  </div>
+                )}
                 <textarea
                   rows={3}
                   placeholder="أدخل رابط أو كود التسليم هنا (يمكنك استخدام عدة أسطر)..."
