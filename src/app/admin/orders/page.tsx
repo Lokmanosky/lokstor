@@ -1019,7 +1019,7 @@ export default function OrdersPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedOrder.downloadUrl ? (
+                {(selectedOrder.downloadUrl || selectedOrder.deliveryLink) ? (
                   <div className="p-3.5 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-2 text-xs text-right">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
@@ -1029,7 +1029,7 @@ export default function OrdersPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(selectedOrder.downloadUrl || '');
+                          navigator.clipboard.writeText(selectedOrder.downloadUrl || selectedOrder.deliveryLink || '');
                           setCopiedKey('downloadUrl');
                           setTimeout(() => setCopiedKey(null), 2000);
                         }}
@@ -1039,8 +1039,8 @@ export default function OrdersPage() {
                         <span>{copiedKey === 'downloadUrl' ? 'تم النسخ' : 'نسخ الرابط'}</span>
                       </button>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-[var(--admin-bg)] border border-emerald-500/20 font-mono text-[11px] text-[var(--admin-text)] break-all select-all max-h-24 overflow-y-auto">
-                      {selectedOrder.downloadUrl}
+                    <div className="p-2.5 rounded-lg bg-[var(--admin-bg)] border border-emerald-500/20 font-mono text-[11px] text-[var(--admin-text)] break-all select-all max-h-24 overflow-y-auto whitespace-pre-wrap">
+                      {selectedOrder.downloadUrl || selectedOrder.deliveryLink}
                     </div>
                   </div>
                 ) : (
@@ -1052,15 +1052,15 @@ export default function OrdersPage() {
             )}
 
             {/* Manual Delivery Section */}
-            {selectedOrder.status === 'paid' && !selectedOrder.downloadUrl && (
+            {selectedOrder.status === 'paid' && !selectedOrder.downloadUrl && !selectedOrder.deliveryLink && (
               <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-3 mt-4">
                 <h4 className="text-xs font-bold text-indigo-700">التسليم اليدوي</h4>
-                <input
-                  type="text"
-                  placeholder="أدخل رابط أو كود التسليم هنا..."
+                <textarea
+                  rows={3}
+                  placeholder="أدخل رابط أو كود التسليم هنا (يمكنك استخدام عدة أسطر)..."
                   value={deliveryLinkInput}
                   onChange={(e) => setDeliveryLinkInput(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-white"
+                  className="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-white resize-y min-h-[60px]"
                   disabled={isDelivering}
                 />
                 <div className="flex gap-2">
