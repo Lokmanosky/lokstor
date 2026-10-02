@@ -204,6 +204,15 @@ export async function POST(req: NextRequest) {
             },
             data: {
               url: `${baseUrl}/admin/orders?search=${orderId}`,
+            },
+            webpush: {
+              fcmOptions: {
+                link: `${baseUrl}/admin/orders?search=${orderId}`
+              },
+              notification: {
+                icon: `${baseUrl}/logo.png`,
+                click_action: `${baseUrl}/admin/orders?search=${orderId}`
+              }
             }
           }).catch((e: any) => console.warn('Admin push failed:', e));
         }
