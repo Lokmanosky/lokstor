@@ -1,5 +1,9 @@
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+} catch (e) {
+  console.error('[firebase-messaging-sw.js] Failed to load Firebase SDKs', e);
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyDeCWb_xVak0xFosm8AmFuHoUaY953q8FI",
@@ -10,21 +14,24 @@ const firebaseConfig = {
   appId: "1:326292650921:web:795611892af4580a5862b8"
 };
 
-firebase.initializeApp(firebaseConfig);
+try {
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
 
-const messaging = firebase.messaging();
+  messaging.onBackgroundMessage(function(payload) {
+    console.log('[firebase-messaging-sw.js] Received background message ', payload);
+    const notificationTitle = payload.notification?.title || 'إشعار جديد';
+    const notificationOptions = {
+      body: payload.notification?.body || '',
+      icon: '/logo.png', // Fallback icon
+      data: payload.data
+    };
 
-messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/logo.png', // Fallback icon
-    data: payload.data
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (error) {
+  console.error('[firebase-messaging-sw.js] Error initializing messaging', error);
+}
 
 self.addEventListener('notificationclick', function(event) {
   console.log('[firebase-messaging-sw.js] Notification click received.');
