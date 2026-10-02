@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminTopBar from '@/components/admin/AdminTopBar';
+import OrderNotification from '@/components/admin/OrderNotification';
 import { Loader2, ShieldAlert, ArrowRight, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
 
@@ -135,6 +136,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+      <OrderNotification />
     </div>
   );
 }
