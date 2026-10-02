@@ -22,7 +22,7 @@ try {
     console.log('[firebase-messaging-sw.js] Received background data message ', payload);
     const p = payload.data || {};
     
-    self.registration.showNotification(p.title || 'إشعار من المتجر', {
+    return self.registration.showNotification(p.title || 'إشعار من المتجر', {
       body: p.body || '',
       icon: '/logo.png',
       data: { url: p.url || '/' },
