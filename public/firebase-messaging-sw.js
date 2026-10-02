@@ -34,7 +34,7 @@ self.addEventListener('push', (event) => {
   const notificationOptions = {
     body: body,
     icon: '/logo.png',
-    badge: '/logo.png',
+    badge: '/badge.png',
     data: { url: url },
     requireInteraction: true,
     renotify: true,

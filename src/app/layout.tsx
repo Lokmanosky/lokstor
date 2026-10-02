@@ -7,9 +7,37 @@ import { ClientLayout } from './client-layout';
 import DevToolsGuard from '@/components/DevToolsGuard';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://lokstor.vercel.app'),
   title: 'Lokstor - متجر المنتجات الرقمية في الجزائر',
-  description: 'منصة بيع المنتجات الرقمية مع خدمة الدفع الإلكتروني Chargily.',
+  description: 'منصة بيع وشحن المنتجات الرقمية والاشتراكات في الجزائر بأفضل الأسعار والدفع بالبطاقة الذهبية و CIB.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/logo-round.png',
+    shortcut: '/logo-round.png',
+    apple: '/logo-round.png',
+  },
+  openGraph: {
+    title: 'Lokstor - متجر المنتجات الرقمية في الجزائر',
+    description: 'منصة بيع وشحن المنتجات الرقمية والاشتراكات في الجزائر بأفضل الأسعار والدفع بالبطاقة الذهبية و CIB.',
+    url: 'https://lokstor.vercel.app',
+    siteName: 'Lokstor',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Lokstor Store Preview',
+      },
+    ],
+    locale: 'ar_DZ',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Lokstor - متجر المنتجات الرقمية في الجزائر',
+    description: 'منصة بيع وشحن المنتجات الرقمية والاشتراكات في الجزائر بأفضل الأسعار والدفع بالبطاقة الذهبية و CIB.',
+    images: ['/og-image.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
