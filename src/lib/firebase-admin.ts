@@ -9,8 +9,15 @@ import { getMessaging } from 'firebase-admin/messaging';
 import { getApps } from 'firebase-admin/app';
 import '@/lib/firebaseAdmin'; // ensure app is initialized
 
-export const adminStorage = getApps().length > 0 ? getStorage() : null;
-export const adminMessaging = getApps().length > 0 ? getMessaging() : null;
+let adminStorage: any = null;
+let adminMessaging: any = null;
+try {
+  adminStorage = getApps().length > 0 ? getStorage() : null;
+  adminMessaging = getApps().length > 0 ? getMessaging() : null;
+} catch (e) {
+  console.warn("Failed to initialize adminStorage or adminMessaging:", e);
+}
+export { adminStorage, adminMessaging };
 
 export const isAdminConfigured = Boolean(
   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
