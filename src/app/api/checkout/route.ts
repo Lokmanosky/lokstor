@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminMessaging } from '@/lib/firebase-admin';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
@@ -9,6 +9,28 @@ import crypto from 'crypto';
 import { checkoutSchema } from '@/lib/validations';
 import { sendManualPaymentAdminEmail } from '@/lib/email';
 import { adminAuth } from '@/lib/firebaseAdmin';
+
+async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
+  try {
+    if (!adminMessaging || !adminDb) return;
+    const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
+    const adminTokens = adminsSnap.docs.map((d: any) => d.data().fcmToken).filter(Boolean);
+    if (adminTokens.length > 0) {
+      await adminMessaging.sendEachForMulticast({
+        tokens: adminTokens,
+        notification: {
+          title: 'طلب جديد قيد الانتظار! 🛍️',
+          body: `طلب جديد من ${orderData.customerName} بقيمة ${orderData.productPrice} د.ج`,
+        },
+        data: {
+          url: `${baseUrl}/admin/orders?search=${orderData.id}`,
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to dispatch new order push notification:', err);
+  }
+}
 
 // Safe lightweight string sanitizer (No heavy/broken serverless libraries like JSDOM)
 function sanitizeText(str: string): string {
@@ -235,6 +257,9 @@ export async function POST(req: NextRequest) {
 
       if (!adminDb) throw new Error('adminDb not initialized');
       await adminDb.collection('orders').doc(orderId).set(orderData);
+      
+      // Notify admins via push notification
+      await notifyAdminsOfNewOrder(orderData, baseUrl);
 
       // Send manual review notification email to Admin ONLY (No customer email)
       try {
@@ -263,6 +288,9 @@ export async function POST(req: NextRequest) {
       if (!adminDb) throw new Error('adminDb not initialized');
       await adminDb.collection('orders').doc(orderId).set(orderData);
 
+      // Notify admins via push notification
+      await notifyAdminsOfNewOrder(orderData, baseUrl);
+
       // Send manual review notification email to Admin ONLY (No customer email)
       try {
         await sendManualPaymentAdminEmail({
@@ -283,6 +311,9 @@ export async function POST(req: NextRequest) {
     // Save initial order for Chargily
     if (!adminDb) throw new Error('adminDb not initialized');
     await adminDb.collection('orders').doc(orderId).set(orderData);
+
+    // Notify admins via push notification
+    await notifyAdminsOfNewOrder(orderData, baseUrl);
 
     // 7. Create Chargily Checkout
     if (isChargilyConfigured) {
