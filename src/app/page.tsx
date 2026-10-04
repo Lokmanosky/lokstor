@@ -1,7 +1,7 @@
 import HomePageClient from './HomePageClient';
 import { adminDb } from '@/lib/firebaseAdmin';
 
-export const revalidate = 60; // ISG - Revalidate page every 60 seconds (gives instant loading)
+export const dynamic = 'force-static';
 
 export default async function Page() {
   let products: any[] = [];

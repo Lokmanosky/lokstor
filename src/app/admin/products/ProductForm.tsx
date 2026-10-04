@@ -201,8 +201,32 @@ export default function ProductForm({ productId }: ProductFormProps) {
     try {
       const processed: string[] = [];
       for (let i = 0; i < files.length; i++) {
-        const b64 = await compressImageFile(files[i]);
-        if (b64) processed.push(b64);
+        const file = files[i];
+        let uploadedUrl = '';
+
+        // 1. Try uploading to ImgBB via our server route
+        try {
+          const fd = new FormData();
+          fd.append('image', file);
+          const res = await fetch('/api/admin/upload-image', {
+            method: 'POST',
+            body: fd,
+          });
+          const data = await res.json();
+          if (data.success && data.url) {
+            uploadedUrl = data.url;
+          }
+        } catch (uploadErr) {
+          console.warn('Upload API failed, falling back:', uploadErr);
+        }
+
+        // 2. If upload succeeded, use the URL; otherwise fallback to local compressed base64
+        if (uploadedUrl) {
+          processed.push(uploadedUrl);
+        } else {
+          const b64 = await compressImageFile(file);
+          if (b64) processed.push(b64);
+        }
       }
       setImages(prev => {
         const next = [...prev, ...processed];
@@ -292,10 +316,29 @@ export default function ProductForm({ productId }: ProductFormProps) {
   };
 
   // Upload and compress variant icon from local PC
-  const handleVariantIconUpload = (index: number, e: ChangeEvent<HTMLInputElement>) => {
+  const handleVariantIconUpload = async (index: number, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Try uploading to ImgBB
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch('/api/admin/upload-image', {
+        method: 'POST',
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        updateVariant(index, 'image', data.url);
+        e.target.value = '';
+        return;
+      }
+    } catch (uploadErr) {
+      console.warn('Variant icon upload API failed, falling back:', uploadErr);
+    }
+
+    // 2. Fallback to local canvas compression
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
