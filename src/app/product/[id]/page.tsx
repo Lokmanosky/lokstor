@@ -22,7 +22,9 @@ import { Star,
   Share2, 
   Heart, 
   Sparkles, 
-  Maximize2, 
+  Maximize2,
+  ChevronLeft,
+  ChevronRight, 
   X, 
   ZoomIn, 
   ZoomOut, 
@@ -85,6 +87,37 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [liked, setLiked] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const productImages: string[] = useMemo(() => {
+    if (!product) return [];
+    const list: string[] = [];
+    if (product.images && Array.isArray(product.images)) {
+      product.images.forEach(img => {
+        const clean = (img || '').replace(/^"+|"+$/g, '').trim();
+        if (clean && !list.includes(clean)) list.push(clean);
+      });
+    }
+    const mainClean = (product.imageUrl || product.image || '').replace(/^"+|"+$/g, '').trim();
+    if (mainClean && !list.includes(mainClean)) {
+      list.unshift(mainClean);
+    }
+    return list;
+  }, [product]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [productId]);
+
+  const prevImage = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveImageIndex(prev => (prev > 0 ? prev - 1 : productImages.length - 1));
+  };
+
+  const nextImage = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveImageIndex(prev => (prev < productImages.length - 1 ? prev + 1 : 0));
+  };
 
   // Variants & Game recharge states
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -96,6 +129,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       if (e.key === 'Escape') {
         setIsImagePreviewOpen(false);
         setZoomLevel(1);
+      } else if (e.key === 'ArrowLeft') {
+        nextImage();
+      } else if (e.key === 'ArrowRight') {
+        prevImage();
       }
     };
     if (isImagePreviewOpen) {
@@ -294,27 +331,86 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       {/* Main 2-Column Section: Image on Right, Details on Left (in RTL) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* RIGHT COLUMN: Product Image */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* RIGHT COLUMN: Product Images Gallery */}
+        <div className="lg:col-span-5 space-y-3.5">
+          {/* Main Selected Image */}
           <div 
             onClick={() => {
               setIsImagePreviewOpen(true);
               setZoomLevel(1);
             }}
-            className="group relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm cursor-zoom-in transition-all hover:shadow-md bg-slate-50 dark:bg-[#1D1F24] flex items-center justify-center min-h-[300px]"
+            className="group relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm cursor-zoom-in transition-all hover:shadow-md bg-slate-50 dark:bg-[#1D1F24] flex items-center justify-center min-h-[300px] sm:min-h-[400px]"
             title={t('product.zoomHint')}
           >
             <img
-              src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
-              alt={product.name}
-              className="w-full h-auto max-h-[500px] object-contain object-center transition-transform duration-300 group-hover:scale-[1.01]"
+              src={productImages[activeImageIndex] || (product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
+              alt={`${product.name} - صورة ${activeImageIndex + 1}`}
+              className="w-full h-auto max-h-[460px] object-contain object-center transition-all duration-300 group-hover:scale-[1.01]"
             />
+
+            {/* Multiple images navigation arrows */}
+            {productImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={prevImage}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm opacity-80 hover:opacity-100 hover:scale-110 cursor-pointer shadow-lg z-10"
+                  title="الصورة السابقة"
+                  aria-label="الصورة السابقة"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={nextImage}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm opacity-80 hover:opacity-100 hover:scale-110 cursor-pointer shadow-lg z-10"
+                  title="الصورة التالية"
+                  aria-label="الصورة التالية"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                {/* Counter Badge */}
+                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-sm pointer-events-none">
+                  {activeImageIndex + 1} / {productImages.length}
+                </div>
+              </>
+            )}
+
             {/* Hover overlay hint badge */}
             <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-slate-900/85 hover:bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all opacity-90 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
               <Maximize2 className="w-4 h-4 text-emerald-400" />
               <span className="font-bold">{t('product.zoomHint')}</span>
             </div>
           </div>
+
+          {/* Thumbnails Row */}
+          {productImages.length > 1 && (
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
+              {productImages.map((imgUrl, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveImageIndex(idx)}
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 transition-all flex-shrink-0 bg-[var(--store-card)] cursor-pointer ${
+                    activeImageIndex === idx
+                      ? 'border-emerald-500 scale-105 ring-2 ring-emerald-500/30 shadow-md'
+                      : 'border-[var(--store-border)] hover:border-slate-400 opacity-70 hover:opacity-100'
+                  }`}
+                  title={`عرض صورة ${idx + 1}`}
+                >
+                  <img
+                    src={imgUrl}
+                    alt={`مصغرة ${idx + 1}`}
+                    className="w-full h-full object-contain p-1"
+                  />
+                  {activeImageIndex === idx && (
+                    <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* LEFT COLUMN: Details Card (Title, Price, Variants Grid, Game Fields, CTA) */}
@@ -693,11 +789,49 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
-              alt={product.name}
+              src={productImages[activeImageIndex] || (product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
+              alt={`${product.name} - ${activeImageIndex + 1}`}
               style={{ transform: `scale(${zoomLevel})` }}
-              className="max-w-full max-h-[85vh] object-contain transition-transform duration-200 shadow-2xl rounded-2xl"
+              className="max-w-full max-h-[80vh] object-contain transition-transform duration-200 shadow-2xl rounded-2xl"
             />
+            {productImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); prevImage(e); setZoomLevel(1); }}
+                  className="fixed right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all z-20 cursor-pointer shadow-2xl hover:scale-110"
+                  title="السابقة"
+                >
+                  <ChevronRight className="w-7 h-7" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); nextImage(e); setZoomLevel(1); }}
+                  className="fixed left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all z-20 cursor-pointer shadow-2xl hover:scale-110"
+                  title="التالية"
+                >
+                  <ChevronLeft className="w-7 h-7" />
+                </button>
+                {/* Bottom Thumbnails Strip in Zoom Modal */}
+                <div 
+                  className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md p-2 rounded-2xl border border-white/10 max-w-[90vw] overflow-x-auto no-scrollbar"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {productImages.map((imgUrl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => { setActiveImageIndex(idx); setZoomLevel(1); }}
+                      className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                        activeImageIndex === idx ? 'border-emerald-500 scale-105 ring-2 ring-emerald-500/50' : 'border-white/20 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={imgUrl} alt="" className="w-full h-full object-contain p-0.5" />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -18,6 +18,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [newImageUrl, setNewImageUrl] = useState('');
   const [error, setError] = useState('');
 
   const [form, setForm] = useState<Partial<Product>>({
@@ -77,6 +79,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
           imageUrl: cleanImage,
           image: cleanImage,
         });
+
+        const loadedImages: string[] = (data.images && Array.isArray(data.images) && data.images.length > 0)
+          ? data.images.map((img: string) => (img || '').replace(/^"+|"+$/g, '').trim()).filter(Boolean)
+          : (cleanImage ? [cleanImage] : []);
+        setImages(loadedImages);
         
         setStockItems(links.length > 0 ? links : ['']);
         setFeaturesText((data.features || []).join('\n'));
@@ -140,69 +147,126 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const updateStockItem = (idx: number, value: string) =>
     setStockItems(prev => prev.map((item, i) => i === idx ? value : item));
 
-  // ── Image upload: compress with canvas, store directly in Firestore ─────────
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // ── Image upload: compress with canvas, store multiple images in Firestore ──
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+            const maxDim = 1000;
+
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const base64 = canvas.toDataURL('image/jpeg', 0.82);
+              resolve(base64);
+            } else {
+              resolve(event.target?.result as string);
+            }
+          } catch {
+            resolve(event.target?.result as string);
+          }
+        };
+        img.onerror = () => reject(new Error('فشل معالجة ملف الصورة'));
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('فشل قراءة ملف الصورة'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setImageUploading(true);
     setError('');
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          let { width, height } = img;
-          const maxDim = 1000;
-
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const base64 = canvas.toDataURL('image/jpeg', 0.82);
-            set('imageUrl', base64);
-            set('image', base64);
-          } else {
-            const rawBase64 = event.target?.result as string;
-            set('imageUrl', rawBase64);
-            set('image', rawBase64);
-          }
-        } catch {
-          const rawBase64 = event.target?.result as string;
-          set('imageUrl', rawBase64);
-          set('image', rawBase64);
-        } finally {
-          setImageUploading(false);
+    try {
+      const processed: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const b64 = await compressImageFile(files[i]);
+        if (b64) processed.push(b64);
+      }
+      setImages(prev => {
+        const next = [...prev, ...processed];
+        if (next.length > 0) {
+          set('imageUrl', next[0]);
+          set('image', next[0]);
         }
-      };
-      img.onerror = () => {
-        setError('فشل معالجة ملف الصورة');
-        setImageUploading(false);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => {
-      setError('فشل قراءة ملف الصورة');
+        return next;
+      });
+    } catch (err: any) {
+      setError(err?.message || 'حدث خطأ أثناء رفع الصور');
+    } finally {
       setImageUploading(false);
-    };
-    reader.readAsDataURL(file);
+      e.target.value = '';
+    }
   };
 
+  const handleAddImageUrl = () => {
+    const trimmed = newImageUrl.trim().replace(/^"+|"+$/g, '');
+    if (!trimmed) return;
+    setImages(prev => {
+      const next = [...prev, trimmed];
+      if (next.length === 1) {
+        set('imageUrl', next[0]);
+        set('image', next[0]);
+      }
+      return next;
+    });
+    setNewImageUrl('');
+  };
 
-  // ── Variant & Game Requirement Helpers ─────────────────────────────────────
+  const handleRemoveImage = (index: number) => {
+    setImages(prev => {
+      const next = prev.filter((_, i) => i !== index);
+      set('imageUrl', next[0] || '');
+      set('image', next[0] || '');
+      return next;
+    });
+  };
+
+  const handleSetPrimaryImage = (index: number) => {
+    if (index === 0) return;
+    setImages(prev => {
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      next.unshift(item);
+      set('imageUrl', next[0]);
+      set('image', next[0]);
+      return next;
+    });
+  };
+
+  const handleMoveImage = (fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= images.length) return;
+    setImages(prev => {
+      const next = [...prev];
+      const [item] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, item);
+      set('imageUrl', next[0] || '');
+      set('image', next[0] || '');
+      return next;
+    });
+  };
+// ── Variant & Game Requirement Helpers ─────────────────────────────────────
   const addVariant = () => {
     setVariants(prev => [
       ...prev,
@@ -380,7 +444,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
     setError('');
 
     const features = featuresText.split('\n').map(s => s.trim()).filter(Boolean);
-    const cleanImg = ((form.imageUrl || form.image || '') as string).replace(/^"+|"+$/g, '').trim();
+    const cleanImages = images.map(img => (img || '').replace(/^"+|"+$/g, '').trim()).filter(Boolean);
+    const cleanImg = cleanImages[0] || ((form.imageUrl || form.image || '') as string).replace(/^"+|"+$/g, '').trim();
 
     const isNum = stockMode === 'numeric';
     const computedStock = isNum 
@@ -402,6 +467,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       requiredFields: requiresCustomerInfo ? requiredFields.filter(f => f.label.trim()) : [],
       currency: 'dzd',
       image: cleanImg,
+      imageUrl: cleanImg,
+      images: cleanImages.length > 0 ? cleanImages : (cleanImg ? [cleanImg] : []),
       stockType: stockMode,
       unlimitedStock: isNum ? Boolean(isUnlimitedStock) : false,
       stock: computedStock,
@@ -1282,49 +1349,174 @@ export default function ProductForm({ productId }: ProductFormProps) {
         {/* RIGHT — Image & File */}
         <div className="space-y-4">
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-[var(--admin-text)] border-b border-[var(--admin-border)] pb-2">صورة المنتج</h2>
-
-            <div className="aspect-square w-full rounded-lg border-2 border-dashed border-[var(--admin-border)] overflow-hidden flex items-center justify-center bg-[var(--admin-bg)] relative group">
-              {form.imageUrl ? (
-                <>
-                  <img src={form.imageUrl.replace(/^"+|"+$/g, '').trim()} alt="صورة المنتج" className="w-full h-full object-contain" />
-                  <button
-                    type="button"
-                    onClick={() => { set('imageUrl', ''); set('image', ''); }}
-                    className="absolute top-2 left-2 px-2 py-1 rounded bg-red-600/90 hover:bg-red-600 text-white text-xs flex items-center gap-1 shadow transition"
-                    title="حذف الصورة"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>إزالة</span>
-                  </button>
-                </>
-              ) : (
-                <div className="text-center text-[var(--admin-text-muted)] text-xs p-4">
-                  <Upload className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p>لا توجد صورة</p>
-                </div>
+            <div className="border-b border-[var(--admin-border)] pb-2 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-[var(--admin-text)] flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-emerald-500" />
+                  <span>صور المنتج ({images.length})</span>
+                </h2>
+                <p className="text-[11px] text-[var(--admin-text-muted)] mt-0.5">
+                  يمكنك إضافة أكثر من صورة، الصورة الأولى هي الغلاف الرئيسي للمنتج
+                </p>
+              </div>
+              {images.length > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {images.length} {images.length === 1 ? 'صورة' : 'صور'}
+                </span>
               )}
             </div>
 
-            <label className="block w-full cursor-pointer">
-              <span className="flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-[var(--admin-border)] text-sm text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors">
-                {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                <span>{imageUploading ? 'جاري المعالجة...' : 'رفع صورة من الحاسوب'}</span>
+            {/* Primary Cover Image Preview */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-[var(--admin-text-muted)] block">
+                الصورة الرئيسية (الغلاف المعروض في المتجر):
               </span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageUploading} />
-            </label>
+              <div className="aspect-square w-full rounded-xl border-2 border-[var(--admin-border)] overflow-hidden flex items-center justify-center bg-[var(--admin-bg)] relative group shadow-sm">
+                {images.length > 0 && images[0] ? (
+                  <>
+                    <img src={images[0]} alt="صورة المنتج الرئيسية" className="w-full h-full object-contain p-2" />
+                    <span className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold shadow-md flex items-center gap-1">
+                      <span>🌟</span>
+                      <span>الصورة الرئيسية</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(0)}
+                      className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-600 text-white text-xs flex items-center gap-1 shadow transition cursor-pointer"
+                      title="حذف هذه الصورة"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>إزالة</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center text-[var(--admin-text-muted)] text-xs p-4">
+                    <Upload className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p>لا توجد صور مضافة بعد</p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-            <div>
-              <label className={labelCls}>أو رابط الصورة (URL)</label>
-              <input
-                className={inputCls}
-                value={form.imageUrl || ''}
-                onChange={e => {
-                  set('imageUrl', e.target.value);
-                  set('image', e.target.value);
-                }}
-                placeholder="https://..."
-              />
+            {/* Thumbnails Gallery Grid */}
+            {images.length > 1 && (
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-[var(--admin-text-muted)] block">
+                  جميع صور المعرض ({images.length}):
+                </span>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className={`relative aspect-square rounded-lg border-2 overflow-hidden bg-[var(--admin-bg)] group transition-all ${
+                        idx === 0
+                          ? 'border-emerald-500 shadow-xs ring-1 ring-emerald-500'
+                          : 'border-[var(--admin-border)] hover:border-slate-400'
+                      }`}
+                    >
+                      <img src={img} alt={`صورة ${idx + 1}`} className="w-full h-full object-cover" />
+                      
+                      {/* Index badge */}
+                      <span className={`absolute top-1 right-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        idx === 0 ? 'bg-emerald-600 text-white' : 'bg-black/60 text-white'
+                      }`}>
+                        {idx === 0 ? 'رئيسية' : `#${idx + 1}`}
+                      </span>
+
+                      {/* Hover action overlay */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                        {idx !== 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrimaryImage(idx)}
+                            className="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold rounded shadow transition cursor-pointer"
+                            title="تعيين كغلاف رئيسي"
+                          >
+                            اجعلها الغلاف
+                          </button>
+                        )}
+                        <div className="flex items-center gap-1">
+                          {idx > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMoveImage(idx, idx - 1)}
+                              className="p-1 bg-white/20 hover:bg-white/40 text-white rounded text-[10px] cursor-pointer"
+                              title="تحريك للأمام"
+                            >
+                              ▶
+                            </button>
+                          )}
+                          {idx < images.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMoveImage(idx, idx + 1)}
+                              className="p-1 bg-white/20 hover:bg-white/40 text-white rounded text-[10px] cursor-pointer"
+                              title="تحريك للخلف"
+                            >
+                              ◀
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx)}
+                            className="p-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] cursor-pointer"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Buttons */}
+            <div className="space-y-2 pt-1">
+              <label className="block w-full cursor-pointer">
+                <span className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-dashed border-[var(--admin-border)] hover:border-emerald-500 bg-[var(--admin-bg)] hover:bg-[var(--admin-hover)] text-xs font-bold text-[var(--admin-text)] transition-all shadow-xs">
+                  {imageUploading ? <Loader2 className="w-4 h-4 animate-spin text-emerald-500" /> : <Upload className="w-4 h-4 text-emerald-500" />}
+                  <span>{imageUploading ? 'جاري ضغط ومعالجة الصور...' : '+ رفع صور من الحاسوب (اختيار متعدد)'}</span>
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  disabled={imageUploading}
+                />
+              </label>
+
+              {/* Add by URL */}
+              <div className="pt-2 border-t border-[var(--admin-border)]">
+                <label className="block text-[11px] font-bold text-[var(--admin-text-muted)] mb-1">
+                  أو إضافة صورة عبر رابط مباشر (URL):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    className={inputCls + ' text-xs flex-1'}
+                    value={newImageUrl}
+                    onChange={e => setNewImageUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddImageUrl();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    className="px-3 py-1.5 rounded-md bg-[var(--admin-hover)] border border-[var(--admin-border)] text-xs font-bold text-[var(--admin-text)] hover:border-emerald-500 transition-colors cursor-pointer"
+                  >
+                    إضافة
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

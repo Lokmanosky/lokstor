@@ -132,6 +132,7 @@ export default function ProductsPage() {
         currency: p.currency || 'dzd',
         imageUrl: cleanImg,
         image: cleanImg,
+        images: p.images && Array.isArray(p.images) ? [...p.images] : (cleanImg ? [cleanImg] : []),
         category: p.category || '',
         status: 'draft', // Save as draft so admin can tweak before publishing
         stock: stockLinksCopy.length,
