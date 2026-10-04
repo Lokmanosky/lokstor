@@ -36,7 +36,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Product Details
     'product.selectedPackage': 'الباقة المحددة:',
     'product.choosePackage': 'اختر ما يناسبك:',
-    'product.requiredGameInfo': 'بيانات حساب اللعبة المطلوبة للشحن:',
+    'product.requiredGameInfo': 'البيانات المطلوبة لتنفيذ الطلب:',
     'product.confidential': 'معلومات سرية ومحمية 🔒',
     'product.fieldRequired': 'هذا الحقل مطلوب للشحن',
     'product.features': 'المميزات المشمولة:',
@@ -155,7 +155,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Product Details
     'product.selectedPackage': 'Selected Package:',
     'product.choosePackage': 'Choose your package:',
-    'product.requiredGameInfo': 'Required game account details for recharge:',
+    'product.requiredGameInfo': 'Required details for processing:',
     'product.confidential': 'Confidential & Secure 🔒',
     'product.fieldRequired': 'This field is required for recharge',
     'product.features': 'Included Features:',
@@ -274,7 +274,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Product Details
     'product.selectedPackage': 'Pack sélectionné :',
     'product.choosePackage': 'Choisissez votre offre :',
-    'product.requiredGameInfo': 'Informations du compte de jeu requises pour la recharge :',
+    'product.requiredGameInfo': 'Informations requises pour le traitement :',
     'product.confidential': 'Confidentiel et sécurisé 🔒',
     'product.fieldRequired': 'Ce champ est requis pour la recharge',
     'product.features': 'Fonctionnalités incluses :',

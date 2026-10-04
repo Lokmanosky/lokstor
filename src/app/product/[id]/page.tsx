@@ -29,7 +29,7 @@ import { Star,
   ZoomIn, 
   ZoomOut, 
   LogIn, 
-  Gamepad2, 
+  ClipboardList, 
   Layers,
   Send
 } from 'lucide-react';
@@ -587,7 +587,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-[var(--store-text)] flex items-center gap-2">
-                  <Gamepad2 className="w-4 h-4 text-indigo-500" />
+                  <ClipboardList className="w-4 h-4 text-indigo-500" />
                   <span>{t('product.requiredGameInfo')}</span>
                 </h3>
                 <span className="text-[10px] text-[var(--store-text-muted)]">{t('product.confidential')}</span>
