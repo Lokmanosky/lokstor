@@ -254,12 +254,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const submitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      alert('يجب تسجيل الدخول لإضافة تقييم');
+      return;
+    }
     if (!newReview.name.trim() || !newReview.comment.trim()) return alert('يرجى كتابة الاسم والتعليق');
     setIsSubmittingReview(true);
     try {
       await addDoc(collection(db, 'reviews'), {
+        userId: user.uid,
         productId: product?.id,
-        customerName: newReview.name,
+        userName: newReview.name,
         rating: newReview.rating,
         comment: newReview.comment,
         status: 'pending',
@@ -916,10 +921,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-emerald-500 overflow-hidden">
-                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(r.customerName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
+                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(r.userName || r.customerName || 'مستخدم')}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm text-[var(--store-text)]">{r.customerName}</h4>
+                      <h4 className="font-bold text-sm text-[var(--store-text)]">{r.userName || r.customerName || 'مستخدم'}</h4>
                       <span className="text-[10px] text-[var(--store-text-muted)]">تم التحقق من الشراء ✓</span>
                     </div>
                   </div>

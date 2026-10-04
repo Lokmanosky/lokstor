@@ -44,20 +44,33 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-black text-[var(--store-text)]">إدارة التقييمات</h1>
-        <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-[var(--store-text-muted)]" />
-          <select 
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] px-3 py-1.5 rounded-lg text-sm font-bold focus:outline-none"
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+          <button 
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${filter === 'all' ? 'bg-emerald-500 text-white shadow-md' : 'bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
           >
-            <option value="all">الكل</option>
-            <option value="pending">قيد المراجعة</option>
-            <option value="approved">مقبول</option>
-            <option value="rejected">مرفوض</option>
-          </select>
+            الكل
+          </button>
+          <button 
+            onClick={() => setFilter('pending')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${filter === 'pending' ? 'bg-amber-500 text-white shadow-md' : 'bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+          >
+            قيد المراجعة
+          </button>
+          <button 
+            onClick={() => setFilter('approved')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${filter === 'approved' ? 'bg-emerald-500 text-white shadow-md' : 'bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+          >
+            التقييمات السابقة (المقبولة)
+          </button>
+          <button 
+            onClick={() => setFilter('rejected')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors ${filter === 'rejected' ? 'bg-red-500 text-white shadow-md' : 'bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
+          >
+            مرفوض
+          </button>
         </div>
       </div>
 
@@ -73,7 +86,7 @@ export default function AdminReviewsPage() {
             <div key={review.id} className="bg-[var(--store-card)] border border-[var(--store-border)] rounded-2xl p-5 space-y-4 shadow-sm flex flex-col">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-black text-[var(--store-text)]">{review.customerName}</h3>
+                  <h3 className="font-black text-[var(--store-text)]">{review.userName || review.customerName || 'مستخدم'}</h3>
                   <div className="flex text-amber-400 mt-1">
                     {[1,2,3,4,5].map(i => (
                       <Star key={i} className={`w-4 h-4 ${i <= review.rating ? 'fill-current' : 'text-[var(--store-border)]'}`} />
