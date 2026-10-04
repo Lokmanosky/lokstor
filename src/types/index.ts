@@ -53,7 +53,8 @@ export interface Order {
   productName: string;
   productPrice: number;
   currency: string;
-  customerName: string;
+  customerName?: string;
+  userName?: string;
   customerPhone?: string;
   customerEmail: string;
   variantId?: string;
@@ -84,7 +85,8 @@ export interface Order {
 
 export interface CreateCheckoutInput {
   productId: string;
-  customerName: string;
+  customerName?: string;
+  userName?: string;
   customerPhone?: string;
   customerEmail: string;
 }
@@ -109,7 +111,8 @@ export interface UserProfile {
 export interface Review {
   id: string;
   productId?: string;
-  customerName: string;
+  customerName?: string;
+  userName?: string;
   rating: number; // 1-5
   comment: string;
   status: 'pending' | 'approved' | 'rejected';
