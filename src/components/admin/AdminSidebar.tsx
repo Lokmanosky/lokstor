@@ -9,7 +9,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   LayoutDashboard, ShoppingCart, Package,
   Settings, ChevronLeft, AlertTriangle, Boxes,
-  Sun, Moon, Store, FolderOpen, Star
+  Sun, Moon, Store, FolderOpen, Star, Megaphone
 } from 'lucide-react';
 
 interface Props { open: boolean; setOpen: (v: boolean) => void; isMobile?: boolean; }
@@ -68,21 +68,16 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
     { href: '/admin/abandoned', label: t('nav.adminAbandoned'), icon: AlertTriangle },
     { href: '/admin/products', label: t('nav.adminProducts'), icon: Package },
     { href: '/admin/categories', label: 'أقسام المتجر', icon: FolderOpen },
+    { href: '/admin/ticker', label: 'الشريط الإعلاني', icon: Megaphone },
     { href: '/admin/inventory', label: t('nav.adminInventory'), icon: Boxes },
     { href: '/admin/reviews', label: 'التقييمات', icon: Star, badge: pendingReviewsCount },
     { href: '/admin/settings', label: t('nav.adminSettings'), icon: Settings },
   ];
 
-  // Logic for positioning based on mobile state
-  let transformClass = '';
-  if (isMobile) {
-     transformClass = open ? 'translate-x-0' : 'translate-x-full';
-  }
-
   return (
-    <div className={`fixed top-0 right-0 h-full bg-[var(--admin-sidebar)] border-l border-[var(--admin-border)] z-50 flex flex-col transition-all duration-300 ${
-      isMobile ? 'w-64' : (open ? 'w-64' : 'w-16')
-    } ${transformClass}`}>
+    <aside className={`fixed top-0 right-0 h-full z-40 bg-[var(--admin-sidebar)] border-l border-[var(--admin-border)] flex flex-col transition-all duration-300 ${
+      isMobile ? (open ? 'w-64 translate-x-0' : 'w-64 translate-x-full') : (open ? 'w-64' : 'w-16')
+    }`}>
       {/* Sidebar Header: Arrow on Right (Start in RTL), Lokstor on Left (End in RTL) */}
       <div className={`h-16 flex items-center border-b border-[var(--admin-border)] px-4 ${(!isMobile && !open) ? 'justify-center' : 'justify-between'}`}>
         {!isMobile ? (
@@ -198,6 +193,6 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           )}
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

@@ -96,16 +96,16 @@ body {
 }
 
 .dark {
-  --store-bg: #0a0a0a;
-  --store-card: #141414;
+  --store-bg: #16181C;
+  --store-card: #1D1F24;
   --store-card-shadow: none;
   --store-card-hover-shadow: 0 0 0 1px #2a2a2a;
-  --store-border: #252525;
-  --store-text: #F5F5F5;
-  --store-text-muted: #a3a3a3;
-  --store-hover: #1a1a1a;
+  --store-border: #2C2E33;
+  --store-text: #F3F4F6;
+  --store-text-muted: #9CA3AF;
+  --store-hover: #25272D;
   --store-primary: #34d399;
-  --store-header-bg: rgba(10,10,10,0.95);
+  --store-header-bg: rgba(22, 24, 28, 0.95);
 }
 
 .store-card {

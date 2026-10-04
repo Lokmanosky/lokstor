@@ -301,7 +301,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               setIsImagePreviewOpen(true);
               setZoomLevel(1);
             }}
-            className="group relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm cursor-zoom-in transition-all hover:shadow-md bg-slate-50 dark:bg-slate-900/40 flex items-center justify-center min-h-[300px]"
+            className="group relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl overflow-hidden shadow-sm cursor-zoom-in transition-all hover:shadow-md bg-slate-50 dark:bg-[#1D1F24] flex items-center justify-center min-h-[300px]"
             title={t('product.zoomHint')}
           >
             <img

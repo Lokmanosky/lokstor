@@ -2,7 +2,12 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+
+export interface TickerItem {
+  text: string;
+  icon?: string;
+}
 
 export interface StoreSettings {
   storeName: string;
@@ -11,7 +16,16 @@ export interface StoreSettings {
   logoLetter: string;
   logoImageUrl?: string;
   adminNotificationEmail?: string;
+  tickerItems?: TickerItem[];
+  tickerEnabled?: boolean;
 }
+
+export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
+  { text: "دعم متوفر 24/7", icon: "🎧" },
+  { text: "أسعار تنافسية", icon: "⭐" },
+  { text: "تسليم فوري وآمن", icon: "🚀" },
+  { text: "مرحباً بك في متجرنا", icon: "✨" }
+];
 
 const defaultSettings: StoreSettings = {
   storeName: 'Lokstor',
@@ -20,6 +34,8 @@ const defaultSettings: StoreSettings = {
   logoLetter: 'L',
   logoImageUrl: '',
   adminNotificationEmail: 'admin@lokstor.dz',
+  tickerItems: DEFAULT_TICKER_ITEMS,
+  tickerEnabled: true,
 };
 
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);
@@ -28,27 +44,30 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
 
   useEffect(() => {
-    async function load() {
+    // Real-time listener for public store settings
+    const unsub = onSnapshot(doc(db, 'settings', 'store'), async (snap) => {
+      let privateData: any = {};
       try {
-        const snap = await getDoc(doc(db, 'settings', 'store'));
-        let privateSnap: any = null;
-        try {
-          // Attempt to load private settings if admin
-          privateSnap = await getDoc(doc(db, 'settings', 'private'));
-        } catch (err) {}
-        
-        if (snap.exists()) {
-          const combined = { ...snap.data() };
-          if (privateSnap && privateSnap.exists()) {
-            Object.assign(combined, privateSnap.data());
-          }
-          setSettings({ ...defaultSettings, ...combined } as StoreSettings);
+        const privateSnap = await getDoc(doc(db, 'settings', 'private'));
+        if (privateSnap.exists()) {
+          privateData = privateSnap.data();
         }
-      } catch (e) {
-        // fallback to defaults
+      } catch (err) {}
+
+      if (snap.exists()) {
+        const combined = { ...snap.data(), ...privateData };
+        setSettings(prev => ({
+          ...defaultSettings,
+          ...combined,
+          tickerItems: combined.tickerItems && Array.isArray(combined.tickerItems) && combined.tickerItems.length > 0
+            ? combined.tickerItems
+            : DEFAULT_TICKER_ITEMS,
+          tickerEnabled: combined.tickerEnabled !== undefined ? combined.tickerEnabled : true,
+        } as StoreSettings));
       }
-    }
-    load();
+    }, () => {});
+
+    return () => unsub();
   }, []);
 
   return (

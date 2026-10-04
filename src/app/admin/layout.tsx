@@ -120,7 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Admin verified
   return (
-    <div className="min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] flex overflow-x-hidden" dir="rtl">
+    <div className="min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] relative overflow-x-hidden" dir="rtl">
       {isMobile && sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 transition-opacity"
@@ -130,9 +130,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <AdminSidebar open={sidebarOpen} setOpen={setSidebarOpen} isMobile={isMobile} />
       
-      <div className={`flex-1 flex flex-col transition-all duration-300 w-full md:w-auto ${isMobile ? 'mr-0' : (sidebarOpen ? 'mr-64' : 'mr-16')}`}>
+      <div 
+        className="flex flex-col min-w-0 transition-all duration-300 min-h-screen"
+        style={{
+          marginRight: isMobile ? 0 : (sidebarOpen ? '16rem' : '4rem'),
+          width: isMobile ? '100%' : (sidebarOpen ? 'calc(100% - 16rem)' : 'calc(100% - 4rem)'),
+        }}
+      >
         <AdminTopBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isLoginPage={false} />
-        <main className="flex-1 p-6 overflow-y-auto bg-[var(--admin-bg)]">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto bg-[var(--admin-bg)] min-w-0">
           {children}
         </main>
       </div>

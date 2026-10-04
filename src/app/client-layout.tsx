@@ -3,7 +3,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import Link from 'next/link';
 import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu, Bell } from 'lucide-react';
-import { useStoreSettings, StoreSettingsProvider } from '@/lib/store-settings';
+import { useStoreSettings, StoreSettingsProvider, DEFAULT_TICKER_ITEMS } from '@/lib/store-settings';
 import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
@@ -24,16 +24,30 @@ const GoogleIcon = () => (
 
 export function TopTicker() {
   const s = useStoreSettings();
-  
-  const tickerItems = [
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🎧</span>, text: "دعم متوفر 24/7", colorClass: "text-amber-600 dark:text-amber-400" },
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">⭐</span>, text: "أسعار تنافسية", colorClass: "text-emerald-600 dark:text-emerald-400" },
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">🚀</span>, text: "تسليم فوري وآمن", colorClass: "text-purple-600 dark:text-purple-400" },
-    { icon: <span className="text-amber-500 text-sm leading-none drop-shadow-sm">✨</span>, text: `مرحباً بك في ${s.storeName || 'متجرنا'}`, colorClass: "text-rose-600 dark:text-rose-400" }
+
+  if (s.tickerEnabled === false) return null;
+
+  const rawList = (s.tickerItems && s.tickerItems.length > 0) ? s.tickerItems : DEFAULT_TICKER_ITEMS;
+
+  const colorClasses = [
+    "text-amber-600 dark:text-amber-400",
+    "text-emerald-600 dark:text-emerald-400",
+    "text-purple-600 dark:text-purple-400",
+    "text-rose-600 dark:text-rose-400"
   ];
 
+  const tickerItems = rawList
+    .filter(item => item && item.text && item.text.trim())
+    .map((item, i) => ({
+      icon: item.icon ? <span className="text-amber-500 text-sm leading-none drop-shadow-sm">{item.icon}</span> : null,
+      text: item.text,
+      colorClass: colorClasses[i % colorClasses.length]
+    }));
+
+  if (tickerItems.length === 0) return null;
+
   return (
-    <div className="bg-slate-100 dark:bg-black text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 transition-colors" dir="ltr">
+    <div className="bg-slate-100 dark:bg-[#131417] text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 transition-colors" dir="ltr">
       <style>{`
         @keyframes marquee-left {
           0% { transform: translateX(0); }
@@ -61,7 +75,7 @@ export function TopTicker() {
         {/* Second block (duplicate for seamless loop) */}
         <div className="flex flex-nowrap items-center gap-8 sm:gap-16 pr-8 sm:pr-16" dir="rtl" aria-hidden="true">
           {tickerItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
+            <div key={`dup-${i}`} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
               {item.icon}
               <span className={`tracking-wide whitespace-nowrap ${item.colorClass}`}>{item.text}</span>
             </div>

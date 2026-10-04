@@ -302,9 +302,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
   if (!product) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-white border-2 border-slate-300 rounded-3xl p-8 my-12 shadow-sm">
-        <h2 className="text-2xl font-black text-black mb-4">{t('checkout.outOfStockTitle')}</h2>
-        <Link href="/" className="text-emerald-700 font-bold hover:underline text-sm">
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-white dark:bg-[#1D1F24] border-2 border-slate-300 dark:border-[#2C2E33] rounded-3xl p-8 my-12 shadow-sm">
+        <h2 className="text-2xl font-black text-black dark:text-white mb-4">{t('checkout.outOfStockTitle')}</h2>
+        <Link href="/" className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline text-sm">
           {t('checkout.backToStore')}
         </Link>
       </div>
@@ -335,8 +335,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
         
         {/* Order Summary Box */}
-        <div className="md:col-span-5 bg-white p-6 sm:p-7 rounded-2xl space-y-6 border-2 border-slate-300 shadow-sm">
-          <h3 className="font-black text-black text-lg border-b-2 border-slate-200 pb-3">
+        <div className="md:col-span-5 bg-white dark:bg-[#1D1F24] p-6 sm:p-7 rounded-2xl space-y-6 border-2 border-slate-300 dark:border-[#2C2E33] shadow-sm">
+          <h3 className="font-black text-black dark:text-white text-lg border-b-2 border-slate-200 dark:border-[#2C2E33] pb-3">
             {t('checkout.orderSummary')}
           </h3>
 
@@ -344,22 +344,22 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
             <img
               src={(product.imageUrl || product.image || '').replace(/^"+|"+$/g, '')}
               alt={product.name}
-              className="w-16 h-16 rounded-xl object-cover bg-slate-50 border-2 border-slate-300 shrink-0"
+              className="w-16 h-16 rounded-xl object-cover bg-slate-50 dark:bg-[#16181C] border-2 border-slate-300 dark:border-[#2C2E33] shrink-0"
             />
             <div className="space-y-1">
-              <h4 className="font-black text-sm text-black line-clamp-2 leading-snug">
+              <h4 className="font-black text-sm text-black dark:text-white line-clamp-2 leading-snug">
                 {product.name} {selectedVariant ? `(${selectedVariant.name})` : ''}
               </h4>
-              <span className="text-xs text-blue-950 font-bold block">
+              <span className="text-xs text-blue-950 dark:text-slate-400 font-bold block">
                 {product.fileType || t('checkout.defaultType')}
               </span>
             </div>
           </div>
 
           {Object.keys(gameInfo).length > 0 && (
-            <div className="p-3.5 bg-indigo-50/80 border-2 border-indigo-200 rounded-xl space-y-2 text-xs text-right">
-              <span className="font-black text-indigo-950 flex items-center gap-1.5">
-                <Gamepad2 className="w-4 h-4 text-indigo-600" />
+            <div className="p-3.5 bg-indigo-50/80 dark:bg-indigo-950/25 border-2 border-indigo-200 dark:border-indigo-900/40 rounded-xl space-y-2 text-xs text-right">
+              <span className="font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                <Gamepad2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span>{lang === 'ar' ? 'بيانات شحن الحساب المُدخلة:' : lang === 'fr' ? 'Informations du compte de jeu :' : 'Game Account Details:'}</span>
               </span>
               {Object.entries(gameInfo).map(([k, v]) => {
@@ -369,8 +369,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   k === 'game_password' ? (lang === 'ar' ? 'كلمة المرور' : 'Password') :
                   k === 'player_id' ? (lang === 'ar' ? 'معرف اللاعب' : 'Player ID') : k;
                 return (
-                  <div key={k} className="flex justify-between items-center text-blue-950 font-bold gap-2">
-                    <span className="text-slate-600 shrink-0">{friendlyLabel}:</span>
+                  <div key={k} className="flex justify-between items-center text-blue-950 dark:text-slate-200 font-bold gap-2">
+                    <span className="text-slate-600 dark:text-slate-400 shrink-0">{friendlyLabel}:</span>
                     <span className="font-mono text-[11px] truncate max-w-[180px] text-left dir-ltr">
                       {isSecret ? '••••••••' : v}
                     </span>
@@ -379,77 +379,77 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               })}
             </div>
           )}
-          <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 text-sm">
-            <div className="flex justify-between items-center text-blue-950 font-bold">
+          <div className="space-y-2.5 pt-4 border-t-2 border-slate-200 dark:border-[#2C2E33] text-sm">
+            <div className="flex justify-between items-center text-blue-950 dark:text-slate-300 font-bold">
               <span>{t('checkout.productPrice')}</span>
-              <span className="text-black font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} ${t('common.currency')}`}</span>
+              <span className="text-black dark:text-white font-black">{selectedVariant ? `${selectedVariant.price.toLocaleString('en-US')} د.ج` : product.priceUnspecified ? `${customAmount.toLocaleString('en-US')} د.ج (محدد حسب طلبك)` : `${product.price.toLocaleString('en-US')} ${t('common.currency')}`}</span>
             </div>
-            <div className="flex justify-between items-center text-blue-950 font-bold">
+            <div className="flex justify-between items-center text-blue-950 dark:text-slate-300 font-bold">
               <span>{t('checkout.deliveryMethod')}</span>
-              <span className="text-emerald-700 font-black">{t('checkout.instantDelivery')}</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-black">{t('checkout.instantDelivery')}</span>
             </div>
-            <div className="flex justify-between items-center text-black font-black text-base pt-3 border-t-2 border-slate-200">
+            <div className="flex justify-between items-center text-black dark:text-white font-black text-base pt-3 border-t-2 border-slate-200 dark:border-[#2C2E33]">
               <span>{t('checkout.totalAmount')}</span>
               <div className="text-left">
-                <span className="text-emerald-600 text-2xl font-black block leading-none">
+                <span className="text-emerald-600 dark:text-emerald-400 text-2xl font-black block leading-none">
                   {effectivePrice.toLocaleString('en-US')} د.ج
                 </span>
-                <span className="text-xs text-slate-500 font-bold">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">
                   ({cryptoUsdtEquivalent})
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-emerald-50 p-3.5 rounded-xl border-2 border-emerald-300 text-xs text-blue-950 font-bold flex items-start gap-2.5 leading-relaxed">
-            <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+          <div className="bg-emerald-50 dark:bg-emerald-950/25 p-3.5 rounded-xl border-2 border-emerald-300 dark:border-emerald-800 text-xs text-blue-950 dark:text-emerald-200 font-bold flex items-start gap-2.5 leading-relaxed">
+            <ShieldCheck className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
             <span>{t('checkout.guaranteeBadge')}</span>
           </div>
         </div>
 
         {/* Customer Form Box */}
-        <div className="md:col-span-7 bg-white p-6 sm:p-8 rounded-2xl space-y-6 border-2 border-slate-300 shadow-sm">
+        <div className="md:col-span-7 bg-white dark:bg-[#1D1F24] p-6 sm:p-8 rounded-2xl space-y-6 border-2 border-slate-300 dark:border-[#2C2E33] shadow-sm">
           
           {/* Manual Payment Success State (RedotPay or Binance) */}
           {submittedOrder ? (
             <div className="space-y-6 py-4 text-center">
-              <div className="w-16 h-16 bg-emerald-100 border-2 border-emerald-400 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 border-2 border-emerald-400 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center justify-center mx-auto shadow-sm">
                 <CheckCircle2 className="w-9 h-9" />
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-2xl font-black text-black">
+                <h3 className="text-2xl font-black text-black dark:text-white">
                   تم تسجيل طلبك بنجاح! 🎉
                 </h3>
-                <p className="text-sm font-bold text-blue-950">
-                  رقم الطلب المرجعي: <span className="font-mono text-emerald-700 font-black text-base">#{submittedOrder.orderRef}</span>
+                <p className="text-sm font-bold text-blue-950 dark:text-slate-300">
+                  رقم الطلب المرجعي: <span className="font-mono text-emerald-700 dark:text-emerald-400 font-black text-base">#{submittedOrder.orderRef}</span>
                 </p>
-                <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-md mx-auto">
                   تم فتح محادثة التلغرام تلقائياً لنقل تفاصيل طلبك. يرجى إرسال لقطة شاشة وصل التحويل (${submittedOrder.method === 'binance' ? 'بايننس' : 'RedotPay'}) ليتم التفعيل والتسليم معك فوراً.
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-200 text-right space-y-2 text-xs">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#16181C] border-2 border-slate-200 dark:border-[#2C2E33] text-right space-y-2 text-xs">
                 {submittedOrder.method === 'binance' ? (
                   <>
                     <div className="flex justify-between font-bold">
-                      <span className="text-slate-600">Binance Pay UID:</span>
-                      <span className="font-mono text-black font-black">427636242</span>
+                      <span className="text-slate-600 dark:text-slate-400">Binance Pay UID:</span>
+                      <span className="font-mono text-black dark:text-white font-black">427636242</span>
                     </div>
                     <div className="flex justify-between font-bold">
-                      <span className="text-slate-600">USDT (BEP20 BSC):</span>
-                      <span className="font-mono text-slate-800 text-[11px] truncate max-w-[200px]">0xf0782cc454c9f0b273a11aba636fac62f18b24dd</span>
+                      <span className="text-slate-600 dark:text-slate-400">USDT (BEP20 BSC):</span>
+                      <span className="font-mono text-slate-800 dark:text-slate-200 text-[11px] truncate max-w-[200px]">0xf0782cc454c9f0b273a11aba636fac62f18b24dd</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between font-bold">
-                    <span className="text-slate-600">حساب RedotPay المستلم:</span>
-                    <span className="font-mono text-black font-black">1622725404 (Lokmanosky)</span>
+                    <span className="text-slate-600 dark:text-slate-400">حساب RedotPay المستلم:</span>
+                    <span className="font-mono text-black dark:text-white font-black">1622725404 (Lokmanosky)</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold">
-                  <span className="text-slate-600">المبلغ المطلوب:</span>
-                  <span className="text-emerald-700 font-black">{effectivePrice.toLocaleString('en-US')} د.ج ({cryptoUsdtEquivalent})</span>
+                  <span className="text-slate-600 dark:text-slate-400">المبلغ المطلوب:</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-black">{effectivePrice.toLocaleString('en-US')} د.ج ({cryptoUsdtEquivalent})</span>
                 </div>
               </div>
 
@@ -467,13 +467,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 <div className="flex items-center gap-3">
                   <Link
                     href="/account"
-                    className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-300 hover:border-slate-400 font-black text-xs text-black text-center transition-all"
+                    className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-300 dark:border-[#2C2E33] hover:border-slate-400 dark:hover:border-[#3E4249] font-black text-xs text-black dark:text-white text-center transition-all"
                   >
                     عرض الطلب في حسابي
                   </Link>
                   <Link
                     href="/"
-                    className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-300 hover:border-slate-400 font-black text-xs text-slate-700 text-center transition-all"
+                    className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-300 dark:border-[#2C2E33] hover:border-slate-400 dark:hover:border-[#3E4249] font-black text-xs text-slate-700 dark:text-slate-300 text-center transition-all"
                   >
                     العودة للمتجر
                   </Link>
@@ -483,15 +483,15 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
           ) : (
             <form onSubmit={handleSubmitCheckout} className="space-y-6">
               {errorMessage && (
-                <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-red-700 text-sm font-bold flex items-center gap-2">
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-300 text-sm font-bold flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {isOutOfStock && (
-                <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 text-red-700 text-sm font-bold flex items-center gap-3">
-                  <Ban className="w-6 h-6 shrink-0 text-red-600" />
+                <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-300 text-sm font-bold flex items-center gap-3">
+                  <Ban className="w-6 h-6 shrink-0 text-red-600 dark:text-red-400" />
                   <div>
                     <span className="font-black block text-base">{t('product.outOfStock')}</span>
                     <span className="text-xs font-semibold">{t('checkout.outOfStock')}</span>
@@ -501,8 +501,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
               {/* PAYMENT METHOD SELECTION */}
               <div className="space-y-2.5">
-                <label className="text-sm font-black text-black block">
-                  {t('checkout.selectMethod')} <span className="text-red-600">*</span>
+                <label className="text-sm font-black text-black dark:text-white block">
+                  {t('checkout.selectMethod')} <span className="text-red-600 dark:text-red-400">*</span>
                 </label>
                 
                 {/* 2 Top Options: Chargily & RedotPay */}
@@ -513,13 +513,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     onClick={() => setPaymentMethod('chargily')}
                     className={`p-3.5 sm:p-4 rounded-2xl border-2 text-right transition-all cursor-pointer ${
                       paymentMethod === 'chargily'
-                        ? 'border-emerald-600 bg-emerald-50/70 shadow-md ring-2 ring-emerald-600/20'
-                        : 'border-slate-300 hover:border-slate-400 bg-white'
+                        ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/25 dark:border-emerald-500 shadow-md ring-2 ring-emerald-600/20 dark:ring-emerald-500/20'
+                        : 'border-slate-300 dark:border-[#2C2E33]/80 hover:border-slate-400 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-sm text-black flex items-center gap-1.5">
-                        <CreditCard className="w-4 h-4 text-emerald-600" />
+                      <span className="font-black text-sm text-black dark:text-white flex items-center gap-1.5">
+                        <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         {t('checkout.edahabiaCib')}
                       </span>
                       {paymentMethod === 'chargily' && (
@@ -528,7 +528,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-blue-950 font-bold">
+                    <p className="text-xs text-blue-950 dark:text-slate-300 font-bold">
                       {t('checkout.chargilyDesc')}
                     </p>
                   </button>
@@ -539,12 +539,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     onClick={() => setPaymentMethod('redotpay')}
                     className={`p-3.5 sm:p-4 rounded-2xl border-2 text-right transition-all cursor-pointer ${
                       paymentMethod === 'redotpay'
-                        ? 'border-rose-600 bg-rose-50/70 shadow-md ring-2 ring-rose-600/20'
-                        : 'border-slate-300 hover:border-slate-400 bg-white'
+                        ? 'border-rose-600 bg-rose-50/70 dark:bg-rose-950/25 dark:border-rose-500 shadow-md ring-2 ring-rose-600/20 dark:ring-rose-500/20'
+                        : 'border-slate-300 dark:border-[#2C2E33]/80 hover:border-slate-400 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-sm text-black flex items-center gap-1.5">
+                      <span className="font-black text-sm text-black dark:text-white flex items-center gap-1.5">
                         <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-black">
                           R
                         </span>
@@ -556,7 +556,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-rose-900 font-bold">
+                    <p className="text-xs text-rose-900 dark:text-rose-300 font-bold">
                       {t('checkout.redotpayDesc')}
                     </p>
                   </button>
@@ -568,8 +568,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   onClick={() => setPaymentMethod('binance')}
                   className={`w-full p-3 sm:p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-3 ${
                     paymentMethod === 'binance'
-                      ? 'border-amber-500 bg-amber-50/80 shadow-md ring-2 ring-amber-500/20'
-                      : 'border-slate-300 hover:border-slate-400 bg-white'
+                      ? 'border-amber-500 bg-amber-50/80 dark:bg-amber-950/25 dark:border-amber-500 shadow-md ring-2 ring-amber-500/20 dark:ring-amber-500/20'
+                      : 'border-slate-300 dark:border-[#2C2E33]/80 hover:border-slate-400 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -582,27 +582,27 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
                     <div className="text-right">
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-sm text-black">
+                        <span className="font-black text-sm text-black dark:text-white">
                           {t('checkout.binance')}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-700 border border-emerald-300">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                           USDT
                         </span>
                       </div>
-                      <p className="text-xs text-amber-950 font-semibold mt-0.5">
+                      <p className="text-xs text-amber-950 dark:text-amber-300 font-semibold mt-0.5">
                         {t('checkout.binanceDesc')}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="hidden sm:inline-block text-[11px] font-bold text-slate-500">
+                    <span className="hidden sm:inline-block text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       {t('checkout.binanceFee')}
                     </span>
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                       paymentMethod === 'binance' 
                         ? 'bg-[#F0B90B] text-slate-950' 
-                        : 'border border-slate-300 text-transparent'
+                        : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
                     }`}>
                       ✓
                     </span>
@@ -612,25 +612,25 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
               {/* Logged-in recognition or Login Prompt */}
               {user ? (
-                <div className="p-3.5 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-xs flex items-center justify-between gap-3">
+                <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-300 dark:border-emerald-800/40 text-xs flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
                       ✓
                     </div>
                     <div>
-                      <span className="font-black text-black block text-sm">{t('checkout.accountRecognized')} ({user.email})</span>
-                      <span className="text-emerald-900 font-bold block">مرحباً {user.displayName} - سيتم ربط الطلب بحسابك</span>
+                      <span className="font-black text-black dark:text-white block text-sm">{t('checkout.accountRecognized')} ({user.email})</span>
+                      <span className="text-emerald-900 dark:text-emerald-300 font-bold block">مرحباً {user.displayName} - سيتم ربط الطلب بحسابك</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-5 rounded-xl bg-blue-50/80 border-2 border-blue-200 text-center space-y-4 shadow-sm">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto text-blue-600">
+                <div className="p-5 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-900/50 text-center space-y-4 shadow-sm">
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mx-auto text-blue-600 dark:text-blue-400">
                     <Lock className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-blue-950 font-black text-lg mb-1">تسجيل الدخول مطلوب</h3>
-                    <p className="text-sm font-bold text-blue-800/80">
+                    <h3 className="text-blue-950 dark:text-blue-200 font-black text-lg mb-1">تسجيل الدخول مطلوب</h3>
+                    <p className="text-sm font-bold text-blue-800/80 dark:text-blue-300/80">
                       لحماية مشترياتك وضمان وصول التفعيل لبريدك الصحيح، يرجى تسجيل الدخول أولاً.
                     </p>
                   </div>
@@ -644,16 +644,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
               {/* GAME ACCOUNT REQUIRED INPUTS */}
               {activeRequiredFields.length > 0 && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 border-2 border-indigo-300 space-y-3.5 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-indigo-200/80 pb-2.5">
+                <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-900/40 space-y-3.5 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-indigo-200/80 dark:border-indigo-800/50 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <Gamepad2 className="w-5 h-5 text-indigo-600" />
-                      <span className="font-black text-sm text-indigo-950">
+                      <Gamepad2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                      <span className="font-black text-sm text-indigo-950 dark:text-indigo-200">
                         {lang === 'ar' ? 'بيانات حساب اللعبة لشحن الطلب' : lang === 'fr' ? 'Identifiants du jeu pour la recharge' : 'Game Account Details for Recharge'}
                       </span>
-                      <span className="text-red-600 font-bold">*</span>
+                      <span className="text-red-600 dark:text-red-400 font-bold">*</span>
                     </div>
-                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                    <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">
                       {lang === 'ar' ? 'معلومات مشفرة ومحمية 🔒' : 'Encrypted & Secure 🔒'}
                     </span>
                   </div>
@@ -661,8 +661,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   <div className="space-y-3">
                     {activeRequiredFields.map((field: any) => (
                       <div key={field.id} className="space-y-1.5">
-                        <label className="text-xs font-black text-slate-800 flex items-center justify-between">
-                          <span>{field.label} {field.required && <span className="text-red-600">*</span>}</span>
+                        <label className="text-xs font-black text-slate-800 dark:text-slate-300 flex items-center justify-between">
+                          <span>{field.label} {field.required && <span className="text-red-600 dark:text-red-400">*</span>}</span>
                         </label>
                         <input
                           type={field.type || (field.id.includes('pass') ? 'password' : 'text')}
@@ -670,7 +670,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                           value={gameInfo[field.id] || ''}
                           onChange={(e) => handleGameInfoChange(field.id, e.target.value)}
                           placeholder={field.placeholder || `أدخل ${field.label}...`}
-                          className="w-full px-3.5 py-3 bg-white border-2 border-indigo-200 rounded-xl text-xs font-mono font-bold text-black focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 shadow-xs"
+                          className="w-full px-3.5 py-3 bg-white dark:bg-[#16181C] border-2 border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-mono font-bold text-black dark:text-white focus:outline-none focus:border-indigo-600 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-600/20 shadow-xs"
                         />
                       </div>
                     ))}
@@ -682,12 +682,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {paymentMethod === 'chargily' && (
                 <>
                   {/* Chargily Notice */}
-                  <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-xs space-y-1.5 leading-relaxed">
-                    <div className="flex items-center gap-2 font-black text-emerald-800 text-sm">
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-300 dark:border-emerald-800/40 text-xs space-y-1.5 leading-relaxed">
+                    <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300 text-sm">
                       <CreditCard className="w-4 h-4" />
                       <span>{t('checkout.chargilyNoticeTitle')}</span>
                     </div>
-                    <p className="text-blue-950 font-semibold">
+                    <p className="text-blue-950 dark:text-emerald-200/90 font-semibold">
                       {t('checkout.chargilyNoticeDesc')}
                     </p>
                   </div>
@@ -725,42 +725,42 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {paymentMethod === 'redotpay' && (
                 <>
                   {/* RedotPay Details Box */}
-                  <div className="p-5 rounded-2xl bg-rose-50/80 border-2 border-rose-300 space-y-4">
-                    <div className="flex items-center justify-between border-b-2 border-rose-200/80 pb-3">
+                  <div className="p-5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-900/40 space-y-4">
+                    <div className="flex items-center justify-between border-b-2 border-rose-200/80 dark:border-rose-900/40 pb-3">
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-black">
                           R
                         </span>
-                        <h4 className="font-black text-sm text-black">
+                        <h4 className="font-black text-sm text-black dark:text-white">
                           بيانات التحويل عبر RedotPay
                         </h4>
                       </div>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-200/80 text-rose-900">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-200/80 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200">
                         تحويل داخلي 0% رسوم
                       </span>
                     </div>
 
                     {/* RedotPay ID & Name with Copy Button */}
-                    <div className="bg-white p-3.5 rounded-xl border-2 border-rose-200 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                    <div className="bg-white dark:bg-[#16181C] p-3.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/40 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
                         <span>معرّف الحساب (RedotPay ID):</span>
-                        <span className="text-black font-semibold">الاسم: Lokmanosky</span>
+                        <span className="text-black dark:text-white font-semibold">الاسم: Lokmanosky</span>
                       </div>
                       
                       <div className="flex items-center justify-between gap-2 pt-1">
-                        <span className="font-mono text-xl sm:text-2xl font-black text-rose-600 tracking-wider">
+                        <span className="font-mono text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-wider">
                           1622725404
                         </span>
                         
                         <button
                           type="button"
                           onClick={handleCopyRedotId}
-                          className="px-3.5 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 border border-rose-300"
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-950/80 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 border border-rose-300 dark:border-rose-800"
                         >
                           {copiedRedotId ? (
                             <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              <span className="text-emerald-700">تم النسخ!</span>
+                              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-emerald-700 dark:text-emerald-400">تم النسخ!</span>
                             </>
                           ) : (
                             <>
@@ -773,8 +773,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     </div>
 
                     {/* Steps instructions */}
-                    <div className="space-y-2 text-xs font-bold text-blue-950">
-                      <p className="font-black text-black">خطوات الإتمام السريعة:</p>
+                    <div className="space-y-2 text-xs font-bold text-blue-950 dark:text-slate-300">
+                      <p className="font-black text-black dark:text-white">خطوات الإتمام السريعة:</p>
                       <div className="space-y-1.5 pr-2">
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
@@ -782,7 +782,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
-                          <span>الصق المعرّف <strong className="font-mono text-rose-600">1622725404</strong> وحوّل المبلغ المطلوب ({cryptoUsdtEquivalent}).</span>
+                          <span>الصق المعرّف <strong className="font-mono text-rose-600 dark:text-rose-400">1622725404</strong> وحوّل المبلغ المطلوب ({cryptoUsdtEquivalent}).</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
@@ -825,35 +825,35 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {paymentMethod === 'binance' && (
                 <>
                   {/* Binance Details Box */}
-                  <div className="p-5 rounded-2xl bg-amber-50/70 border-2 border-amber-300 space-y-4">
-                    <div className="flex items-center justify-between border-b-2 border-amber-200 pb-3">
+                  <div className="p-5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-900/40 space-y-4">
+                    <div className="flex items-center justify-between border-b-2 border-amber-200 dark:border-amber-900/40 pb-3">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-lg bg-[#F0B90B] flex items-center justify-center text-slate-950 font-black text-xs">
                           B
                         </div>
-                        <h4 className="font-black text-sm text-black">
+                        <h4 className="font-black text-sm text-black dark:text-white">
                           بيانات التحويل عبر منصة Binance (بايننس)
                         </h4>
                       </div>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                         USDT مقبول
                       </span>
                     </div>
 
                     {/* Method 1: Binance Pay UID */}
-                    <div className="bg-white p-3.5 rounded-xl border-2 border-amber-200 space-y-2">
+                    <div className="bg-white dark:bg-[#16181C] p-3.5 rounded-xl border-2 border-amber-200 dark:border-amber-900/40 space-y-2">
                       <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-700 flex items-center gap-1.5">
+                        <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                           <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px]">1</span>
                           <span>تحويل داخلي عبر Binance Pay (بدون رسوم 0%):</span>
                         </span>
-                        <span className="text-emerald-700 font-extrabold text-[11px]">موصى به (أسرع)</span>
+                        <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-[11px]">موصى به (أسرع)</span>
                       </div>
 
                       <div className="flex items-center justify-between gap-2 pt-1">
                         <div>
-                          <span className="text-[11px] text-slate-500 block font-semibold">Binance UID (المعرّف):</span>
-                          <span className="font-mono text-xl sm:text-2xl font-black text-amber-700 tracking-wider">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">Binance UID (المعرّف):</span>
+                          <span className="font-mono text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-400 tracking-wider">
                             427636242
                           </span>
                         </div>
@@ -861,12 +861,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         <button
                           type="button"
                           onClick={handleCopyBinanceUid}
-                          className="px-3.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 border border-amber-300"
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 border border-amber-300 dark:border-amber-800"
                         >
                           {copiedBinanceUid ? (
                             <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              <span className="text-emerald-700">تم النسخ!</span>
+                              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-emerald-700 dark:text-emerald-400">تم النسخ!</span>
                             </>
                           ) : (
                             <>
@@ -879,30 +879,30 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     </div>
 
                     {/* Method 2: USDT BEP20 Address */}
-                    <div className="bg-white p-3.5 rounded-xl border-2 border-emerald-200 space-y-2">
+                    <div className="bg-white dark:bg-[#16181C] p-3.5 rounded-xl border-2 border-emerald-200 dark:border-[#2C2E33] space-y-2">
                       <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-700 flex items-center gap-1.5">
+                        <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                           <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">2</span>
                           <span>إيداع USDT عبر الشبكة:</span>
                         </span>
-                        <span className="text-emerald-700 font-black px-1.5 py-0.5 rounded bg-emerald-50 text-[10px] border border-emerald-200">
+                        <span className="text-emerald-700 dark:text-emerald-300 font-black px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[10px] border border-emerald-200 dark:border-emerald-700">
                           BNB Smart Chain (BEP20) BSC
                         </span>
                       </div>
 
                       <div className="pt-1 space-y-1.5">
-                        <span className="text-[11px] text-slate-500 block font-semibold">عنوان الإيداع (Deposit Address):</span>
-                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-300 flex items-center justify-between gap-2">
-                          <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-800 break-all text-left dir-ltr select-all">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">عنوان الإيداع (Deposit Address):</span>
+                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#1D1F24] border border-slate-300 dark:border-[#2C2E33] flex items-center justify-between gap-2">
+                          <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 break-all text-left dir-ltr select-all">
                             0xf0782cc454c9f0b273a11aba636fac62f18b24dd
                           </span>
                           <button
                             type="button"
                             onClick={handleCopyBscAddress}
-                            className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 shrink-0 transition-all active:scale-95 cursor-pointer"
+                            className="p-1.5 rounded-lg bg-white dark:bg-[#16181C] hover:bg-slate-100 dark:hover:bg-[#25272D] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-[#2C2E33] shrink-0 transition-all active:scale-95 cursor-pointer"
                             title="نسخ عنوان المحفظة"
                           >
-                            {copiedBscAddress ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                            {copiedBscAddress ? <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -912,7 +912,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         <button
                           type="button"
                           onClick={() => setShowQrModal(!showQrModal)}
-                          className="text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer"
+                          className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <QrCode className="w-3.5 h-3.5" />
                           <span>{showQrModal ? 'إخفاء رمز الـ QR' : 'عرض رمز الـ QR للمسح المباشر'}</span>
@@ -934,8 +934,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     </div>
 
                     {/* Steps instructions */}
-                    <div className="space-y-2 text-xs font-bold text-amber-950">
-                      <p className="font-black text-black">خطوات الإتمام السريعة:</p>
+                    <div className="space-y-2 text-xs font-bold text-amber-950 dark:text-slate-300">
+                      <p className="font-black text-black dark:text-white">خطوات الإتمام السريعة:</p>
                       <div className="space-y-1.5 pr-2">
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
