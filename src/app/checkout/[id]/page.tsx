@@ -129,12 +129,40 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     }
   }, [product, variantParamId]);
 
-  // Compute effective price based on selected variant, custom amount, or base price
+  const [appliedDiscount, setAppliedDiscount] = useState<{ value: number, type: 'percentage' | 'fixed' } | null>(null);
+
+  useEffect(() => {
+    const coupon = searchParams.get('coupon');
+    if (coupon && product && user) {
+      const basePrice = selectedVariant ? Number(selectedVariant.price) : Number(product.price || 0);
+      fetch('/api/validate-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: coupon, productId: product.id, basePrice, userEmail: user.email })
+      }).then(res => res.json()).then(data => {
+        if (data.success) {
+          setAppliedDiscount({ value: data.value, type: data.type });
+        }
+      }).catch(() => {});
+    }
+  }, [searchParams, product, selectedVariant, user]);
+
+  // Compute effective price based on selected variant, custom amount, base price, and discount
   const effectivePrice = useMemo(() => {
-    if (selectedVariant) return Number(selectedVariant.price);
-    if (product?.priceUnspecified && customAmount) return Number(customAmount);
-    return Number(product?.price || 0);
-  }, [selectedVariant, product, customAmount]);
+    let base = 0;
+    if (selectedVariant) base = Number(selectedVariant.price);
+    else if (product?.priceUnspecified && customAmount) base = Number(customAmount);
+    else base = Number(product?.price || 0);
+
+    if (appliedDiscount) {
+      if (appliedDiscount.type === 'percentage') {
+        return Math.max(0, Math.round(base * (1 - appliedDiscount.value / 100)));
+      } else {
+        return Math.max(0, base - appliedDiscount.value);
+      }
+    }
+    return base;
+  }, [selectedVariant, product, customAmount, appliedDiscount]);
 
   // Dynamic USDT equivalent (approx 265 DZD = 1 USDT)
   const cryptoUsdtEquivalent = useMemo(() => {

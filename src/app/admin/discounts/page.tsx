@@ -110,7 +110,7 @@ export default function DiscountCodesPage() {
     setIsSaving(true);
     try {
       const selectedProduct = products.find(p => p.id === form.productId);
-      const payload: Omit<DiscountCode, 'id'> = {
+      const payload: any = {
         code: form.code.trim().toUpperCase(),
         type: form.type,
         value: Number(form.value),
@@ -126,6 +126,12 @@ export default function DiscountCodesPage() {
           ? (codes.find(c => c.id === editingId)?.createdAt || Date.now())
           : Date.now(),
       };
+
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
 
       if (editingId) {
         await updateDoc(doc(db, 'discountCodes', editingId), payload as any);

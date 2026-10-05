@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
 import { adminDb, adminMessaging } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
@@ -339,7 +340,7 @@ export async function POST(req: NextRequest) {
       batch.set(adminDb.collection('orders').doc(orderId), orderData);
       if (appliedDiscount && discountUsageKey && discountDocId) {
         batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
-        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: adminDb.FieldValue.increment(1) } as any);
+        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: FieldValue.increment(1) } as any);
       }
       await batch.commit();
       
@@ -376,7 +377,7 @@ export async function POST(req: NextRequest) {
       batch.set(adminDb.collection('orders').doc(orderId), orderData);
       if (appliedDiscount && discountUsageKey && discountDocId) {
         batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
-        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: adminDb.FieldValue.increment(1) } as any);
+        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: FieldValue.increment(1) } as any);
       }
       await batch.commit();
 
@@ -407,7 +408,7 @@ export async function POST(req: NextRequest) {
     batch.set(adminDb.collection('orders').doc(orderId), orderData);
     if (appliedDiscount && discountUsageKey && discountDocId) {
       batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
-      batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: adminDb.FieldValue.increment(1) } as any);
+      batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: FieldValue.increment(1) } as any);
     }
     await batch.commit();
 

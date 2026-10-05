@@ -282,42 +282,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     setIsSubmittingReview(false);
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="inline-block w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mb-4" />
-        <p className="text-[var(--store-text-muted)] text-sm font-semibold">جاري جلب تفاصيل المنتج...</p>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-12 my-12 shadow-sm">
-        <h2 className="text-2xl font-bold text-[var(--store-text)] mb-4">المنتج غير موجود</h2>
-        <p className="text-[var(--store-text-muted)] text-sm mb-6">عذراً، لم نتمكن من العثور على المنتج المطلوب.</p>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-colors"
-        >
-          <ArrowRight className="w-4 h-4" />
-          <span>العودة للرئيسية</span>
-        </Link>
-      </div>
-    );
-  }
-
-
-  const isOutOfStock = Boolean(
-    product.status === 'out_of_stock' ||
-    (product.stockType === 'numeric'
-      ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
-      : (product.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product.stock === 'number' && product.stock <= 0))
-  );
-
-  const displayPrice = selectedVariant ? selectedVariant.price : product.price;
-
   // ── Discount Code State ─────────────────────────────
+  const displayPrice = selectedVariant ? selectedVariant.price : (product?.price || 0);
   const [discountInput, setDiscountInput] = useState('');
   const [discountCode, setDiscountCode] = useState<DiscountCode | null>(null);
   const [discountError, setDiscountError] = useState('');
@@ -390,6 +356,39 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     setDiscountInput('');
     setDiscountError('');
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+        <div className="inline-block w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mb-4" />
+        <p className="text-[var(--store-text-muted)] text-sm font-semibold">جاري جلب تفاصيل المنتج...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-12 my-12 shadow-sm">
+        <h2 className="text-2xl font-bold text-[var(--store-text)] mb-4">المنتج غير موجود</h2>
+        <p className="text-[var(--store-text-muted)] text-sm mb-6">عذراً، لم نتمكن من العثور على المنتج المطلوب.</p>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-colors"
+        >
+          <ArrowRight className="w-4 h-4" />
+          <span>العودة للرئيسية</span>
+        </Link>
+      </div>
+    );
+  }
+
+
+  const isOutOfStock = Boolean(
+    product.status === 'out_of_stock' ||
+    (product.stockType === 'numeric'
+      ? (!product.unlimitedStock && typeof product.stock === 'number' && product.stock <= 0)
+      : (product.stockLinks && Array.isArray(product.stockLinks) ? product.stockLinks.length === 0 : typeof product.stock === 'number' && product.stock <= 0))
+  );
 
 
   return (
