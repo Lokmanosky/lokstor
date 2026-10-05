@@ -948,7 +948,7 @@ export default function OrdersPage() {
       {/* ORDER DETAILS & GAME ACCOUNT MODAL */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-right animate-in fade-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl text-right animate-in fade-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-[var(--admin-border)] pb-3">
               <div className="flex items-center gap-2">
                 <span className="font-black text-sm text-[var(--admin-text)]">طلب #{selectedOrder.id?.slice(0, 8)}</span>
@@ -1062,6 +1062,16 @@ export default function OrdersPage() {
                   {copiedKey === 'all' ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedKey === 'all' ? 'تم نسخ جميع بيانات الحساب!' : 'نسخ جميع بيانات الحساب دفعة واحدة 📋'}</span>
                 </button>
+              </div>
+            ) : selectedOrder.customFieldsData && Object.keys(selectedOrder.customFieldsData).length === 0 ? (
+              <div className="p-4 rounded-xl bg-emerald-500/10 border-2 border-emerald-500/30 space-y-1.5 text-xs text-right">
+                <div className="font-black flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>تم حذف بيانات العميل من السحابة بنجاح!</span>
+                </div>
+                <p className="text-[11px] text-[var(--admin-text-muted)] leading-relaxed">
+                  قمت بحذف بيانات هذا العميل (مثل كلمات المرور) بشكل جذري من قاعدة البيانات لحمايتها من أي اختراق.
+                </p>
               </div>
             ) : Boolean(
               selectedOrder.productName && (

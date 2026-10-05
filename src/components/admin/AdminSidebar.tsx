@@ -9,7 +9,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   LayoutDashboard, ShoppingCart, Package,
   Settings, ChevronLeft, AlertTriangle, Boxes,
-  Sun, Moon, Store, FolderOpen, Star, Megaphone
+  Sun, Moon, Store, FolderOpen, Star, Megaphone, Tag
 } from 'lucide-react';
 
 interface Props { open: boolean; setOpen: (v: boolean) => void; isMobile?: boolean; }
@@ -68,6 +68,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
     { href: '/admin/abandoned', label: t('nav.adminAbandoned'), icon: AlertTriangle },
     { href: '/admin/products', label: t('nav.adminProducts'), icon: Package },
     { href: '/admin/categories', label: 'أقسام المتجر', icon: FolderOpen },
+    { href: '/admin/discounts', label: 'أكواد الخصم', icon: Tag },
     { href: '/admin/ticker', label: 'الشريط الإعلاني', icon: Megaphone },
     { href: '/admin/inventory', label: t('nav.adminInventory'), icon: Boxes },
     { href: '/admin/reviews', label: 'التقييمات', icon: Star, badge: pendingReviewsCount },

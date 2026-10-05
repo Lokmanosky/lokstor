@@ -51,6 +51,7 @@ export const checkoutSchema = z.object({
   customFieldsData: z.record(z.string(), z.string()).optional(),
   fcmToken: z.string().optional(),
   customerEmail: z.string().email().optional(), // kept optional for TS types, but overridden
+  discountCode: z.string().optional(),
 });
 
 // Login Schema

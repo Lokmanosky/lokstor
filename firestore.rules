@@ -76,6 +76,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /discountCodes/{codeId} {
+      // Only admin can read/write discount codes from client SDK (admin dashboard)
+      // Public validation goes through /api/validate-coupon (server-side, rate-limited)
+      allow read, write: if isAdmin();
+    }
+
+    match /ticker/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

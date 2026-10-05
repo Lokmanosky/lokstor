@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, quantity = 1 } = validationResult.data as any;
+    const { productId, customerName, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, quantity = 1, discountCode } = validationResult.data as any;
 
     // 3. Clean inputs
     const cleanName = sanitizeText(customerName);
@@ -243,6 +243,53 @@ export async function POST(req: NextRequest) {
       finalOrderPrice = Number(customAmount);
     }
 
+    // 5.6. Handle Discount Code Server-Side
+    let appliedDiscount: any = null;
+    let discountUsageKey: string | null = null;
+    let discountDocId: string | null = null;
+    
+    if (discountCode && adminDb && tokenEmail) {
+      const codeStr = String(discountCode).trim().toUpperCase();
+      const snap = await adminDb.collection('discountCodes').where('code', '==', codeStr).limit(1).get();
+      
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        const data = docSnap.data();
+        discountDocId = docSnap.id;
+        
+        // Re-validate all rules
+        const isActive = data.isActive !== false;
+        const notExpired = !data.expiresAt || data.expiresAt > Date.now();
+        const underMaxUsage = !data.maxUsage || (data.usageCount || 0) < data.maxUsage;
+        const validScope = data.scope !== 'product' || data.productId === productId;
+        const validMinOrder = !data.minOrderAmount || finalOrderPrice >= data.minOrderAmount;
+        
+        if (isActive && notExpired && underMaxUsage && validScope && validMinOrder) {
+          // Check per-email usage
+          discountUsageKey = `${docSnap.id}_${tokenEmail.replace(/[^a-z0-9@._-]/gi, '_')}`;
+          const usageSnap = await adminDb.collection('discountUsages').doc(discountUsageKey).get();
+          
+          if (!usageSnap.exists) {
+            // Valid! Apply discount
+            const originalPrice = finalOrderPrice;
+            if (data.type === 'percentage') {
+              finalOrderPrice = Math.max(0, Math.round(originalPrice * (1 - data.value / 100)));
+            } else {
+              finalOrderPrice = Math.max(0, originalPrice - data.value);
+            }
+            appliedDiscount = {
+              code: data.code,
+              type: data.type,
+              value: data.value,
+              originalPrice,
+              discountedPrice: finalOrderPrice,
+              savings: originalPrice - finalOrderPrice,
+            };
+          }
+        }
+      }
+    }
+
     // 6. Create Order object without undefined fields (Strictly sanitized for Firestore)
     const orderData: any = {
       id: orderId,
@@ -269,6 +316,9 @@ export async function POST(req: NextRequest) {
     if (cleanPhone) {
       orderData.customerPhone = cleanPhone;
     }
+    if (appliedDiscount) {
+      orderData.discount = appliedDiscount;
+    }
 
     // Safety check: remove any undefined keys
     Object.keys(orderData).forEach(key => {
@@ -284,7 +334,14 @@ export async function POST(req: NextRequest) {
       orderData.status = 'pending';
 
       if (!adminDb) throw new Error('adminDb not initialized');
-      await adminDb.collection('orders').doc(orderId).set(orderData);
+      
+      const batch = adminDb.batch();
+      batch.set(adminDb.collection('orders').doc(orderId), orderData);
+      if (appliedDiscount && discountUsageKey && discountDocId) {
+        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
+        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: adminDb.FieldValue.increment(1) } as any);
+      }
+      await batch.commit();
       
       // Notify admins via push notification
       await notifyAdminsOfNewOrder(orderData, baseUrl);
@@ -314,7 +371,14 @@ export async function POST(req: NextRequest) {
       orderData.status = 'pending';
 
       if (!adminDb) throw new Error('adminDb not initialized');
-      await adminDb.collection('orders').doc(orderId).set(orderData);
+      
+      const batch = adminDb.batch();
+      batch.set(adminDb.collection('orders').doc(orderId), orderData);
+      if (appliedDiscount && discountUsageKey && discountDocId) {
+        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
+        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: adminDb.FieldValue.increment(1) } as any);
+      }
+      await batch.commit();
 
       // Notify admins via push notification
       await notifyAdminsOfNewOrder(orderData, baseUrl);
@@ -338,7 +402,14 @@ export async function POST(req: NextRequest) {
 
     // Save initial order for Chargily
     if (!adminDb) throw new Error('adminDb not initialized');
-    await adminDb.collection('orders').doc(orderId).set(orderData);
+    
+    const batch = adminDb.batch();
+    batch.set(adminDb.collection('orders').doc(orderId), orderData);
+    if (appliedDiscount && discountUsageKey && discountDocId) {
+      batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
+      batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: adminDb.FieldValue.increment(1) } as any);
+    }
+    await batch.commit();
 
     // Notify admins via push notification
     await notifyAdminsOfNewOrder(orderData, baseUrl);

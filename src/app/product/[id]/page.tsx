@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, query, collection, where, onSnapshot, addDoc } from 'firebase/firestore';
 import { Product, ProductVariant, GameFieldRequirement } from '@/types';
+import type { DiscountCode } from '@/types/discount';
 import { INITIAL_PRODUCTS } from '@/lib/seed-data';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
@@ -31,7 +32,9 @@ import { Star,
   LogIn, 
   ClipboardList, 
   Layers,
-  Send
+  Send,
+  Tag,
+  Loader2
 } from 'lucide-react';
 
 const DEFAULT_COD_VARIANTS: ProductVariant[] = [
@@ -313,6 +316,81 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   );
 
   const displayPrice = selectedVariant ? selectedVariant.price : product.price;
+
+  // ── Discount Code State ─────────────────────────────
+  const [discountInput, setDiscountInput] = useState('');
+  const [discountCode, setDiscountCode] = useState<DiscountCode | null>(null);
+  const [discountError, setDiscountError] = useState('');
+  const [isCheckingDiscount, setIsCheckingDiscount] = useState(false);
+  const [discountApplied, setDiscountApplied] = useState(false);
+
+  const discountedPrice = useMemo(() => {
+    if (!discountCode || !discountCode.isActive) return displayPrice;
+    if (discountCode.expiresAt && discountCode.expiresAt < Date.now()) return displayPrice;
+    if (discountCode.maxUsage && discountCode.usageCount >= discountCode.maxUsage) return displayPrice;
+    if (discountCode.minOrderAmount && displayPrice < discountCode.minOrderAmount) return displayPrice;
+    if (discountCode.type === 'percentage') {
+      return Math.max(0, Math.round(displayPrice * (1 - discountCode.value / 100)));
+    } else {
+      return Math.max(0, displayPrice - discountCode.value);
+    }
+  }, [discountCode, displayPrice]);
+
+  const savingsAmount = displayPrice - discountedPrice;
+
+  const handleCheckDiscount = async () => {
+    const code = discountInput.trim().toUpperCase();
+    if (!code) return;
+    setIsCheckingDiscount(true);
+    setDiscountError('');
+    setDiscountCode(null);
+    setDiscountApplied(false);
+    try {
+      const basePrice = selectedVariant ? selectedVariant.price : (product?.price || 0);
+      const res = await fetch('/api/validate-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, productId, basePrice, userEmail: user?.email }),
+      });
+      const data = await res.json();
+
+      if (res.status === 429) {
+        setDiscountError(data.error || 'تجاوزت عدد المحاولات. حاول مجدداً بعد دقيقة.');
+        setIsCheckingDiscount(false);
+        return;
+      }
+
+      if (!data.success) {
+        setDiscountError(data.error || 'كود غير صحيح');
+        setIsCheckingDiscount(false);
+        return;
+      }
+
+      // Build a minimal DiscountCode object from the server response
+      setDiscountCode({
+        id: data.discountId,
+        code: data.code,
+        type: data.type,
+        value: data.value,
+        scope: data.scope,
+        isActive: true,
+        usageCount: 0,
+        createdAt: 0,
+      });
+      setDiscountApplied(true);
+    } catch (e: any) {
+      setDiscountError('حدث خطأ، حاول مجدداً');
+    }
+    setIsCheckingDiscount(false);
+  };
+
+  const removeDiscount = () => {
+    setDiscountCode(null);
+    setDiscountApplied(false);
+    setDiscountInput('');
+    setDiscountError('');
+  };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -653,11 +731,79 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          {/* ── 7. Purchase CTA Buttons ── */}
+          {/* ── 7. Discount Code Input ── */}
+          <div className="pt-3 border-t border-[var(--store-border)] space-y-2">
+            <h3 className="text-xs font-black text-[var(--store-text)] flex items-center gap-2">
+              <Tag className="w-4 h-4 text-indigo-500" />
+              <span>هل لديك كود خصم؟</span>
+            </h3>
+
+            {discountApplied && discountCode ? (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <div>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                      {discountCode.code}
+                    </span>
+                    <span className="text-xs text-[var(--store-text-muted)] mr-2">
+                      وفّرت {savingsAmount.toLocaleString('en-US')} د.ج
+                      {discountCode.type === 'percentage'
+                        ? ` (${discountCode.value}% خصم)`
+                        : ''}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeDiscount}
+                  className="p-1 rounded-md text-[var(--store-text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+                  title="إزالة الكود"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={discountInput}
+                  onChange={e => {
+                    setDiscountInput(e.target.value.toUpperCase());
+                    if (discountError) setDiscountError('');
+                  }}
+                  onKeyDown={e => e.key === 'Enter' && handleCheckDiscount()}
+                  placeholder="أدخل كود الخصم..."
+                  className="flex-1 px-3.5 py-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] text-xs font-mono font-bold text-[var(--store-text)] focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm tracking-widest uppercase"
+                />
+                <button
+                  type="button"
+                  onClick={handleCheckDiscount}
+                  disabled={isCheckingDiscount || !discountInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50 shrink-0 active:scale-95"
+                >
+                  {isCheckingDiscount
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Tag className="w-3.5 h-3.5" />}
+                  تطبيق
+                </button>
+              </div>
+            )}
+
+            {discountError && (
+              <p className="text-xs text-rose-500 font-bold flex items-center gap-1.5">
+                <X className="w-3 h-3" />
+                {discountError}
+              </p>
+            )}
+          </div>
+
+          {/* ── 8. Purchase CTA Buttons ── */}
           <div className="pt-3 border-t border-[var(--store-border)] space-y-3">
+
             <div className="flex items-center gap-3">
               <Link
-                href={isOutOfStock ? '#' : `/checkout/${product.id}${selectedVariant ? `?variant=${selectedVariant.id}` : ''}`}
+                href={isOutOfStock ? '#' : `/checkout/${product.id}${selectedVariant ? `?variant=${selectedVariant.id}` : ''}${discountCode ? `${selectedVariant ? '&' : '?'}coupon=${discountCode.code}` : ''}`}
                 onClick={(e) => {
                   if (activeRequiredFields.length > 0) {
                     const errors: Record<string, string> = {};
@@ -674,6 +820,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   }
                   if (typeof window !== 'undefined') {
                     sessionStorage.setItem('lokstor_game_info', JSON.stringify(customFieldsData));
+                    if (discountCode) {
+                      sessionStorage.setItem('lokstor_discount', JSON.stringify({
+                        code: discountCode.code,
+                        id: discountCode.id,
+                        type: discountCode.type,
+                        value: discountCode.value,
+                        discountedPrice,
+                        originalPrice: displayPrice,
+                        savings: savingsAmount,
+                      }));
+                    } else {
+                      sessionStorage.removeItem('lokstor_discount');
+                    }
                   }
                 }}
                 className={`flex-1 py-3 px-3 sm:py-4 sm:px-6 rounded-2xl font-black text-xs sm:text-base text-white flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg transition-all text-center leading-tight ${
@@ -687,6 +846,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <span>
                   {isOutOfStock
                     ? t('product.outOfStock')
+                    : discountCode
+                    ? `${t('product.buyAndPay')} (${discountedPrice.toLocaleString('en-US')} ${t('common.currency')})`
                     : selectedVariant
                     ? `${t('product.buyAndPay')} (${selectedVariant.price.toLocaleString('en-US')} ${t('common.currency')})`
                     : `${t('product.buyAndPay')} (${product.price.toLocaleString('en-US')} ${t('common.currency')})`}
