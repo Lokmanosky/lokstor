@@ -55,6 +55,16 @@ export default function OrdersPage() {
   const [pendingTargetOrder, setPendingTargetOrder] = useState<Order | null>(null);
   const [isBulkPendingConfirmOpen, setIsBulkPendingConfirmOpen] = useState(false);
 
+  // Generic Confirmation Modal
+  const [genericConfirm, setGenericConfirm] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDanger?: boolean;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, 'orders'),
@@ -167,27 +177,41 @@ export default function OrdersPage() {
 
   const handleDelete = async (id: string) => {
     if(!id) return;
-    if(confirm('هل أنت متأكد من حذف هذا الطلب نهائياً؟')) {
-      await deleteDoc(doc(db, 'orders', id));
-      setSelectedOrderIds(prev => prev.filter(item => item !== id));
-    }
+    setGenericConfirm({
+      isOpen: true,
+      title: 'حذف الطلب',
+      message: 'هل أنت متأكد من حذف هذا الطلب نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',
+      confirmText: 'حذف نهائي',
+      isDanger: true,
+      onConfirm: async () => {
+        await deleteDoc(doc(db, 'orders', id));
+        setSelectedOrderIds(prev => prev.filter(item => item !== id));
+      }
+    });
   };
 
   const handleDeleteCustomFieldsData = async (orderId: string) => {
     if(!orderId) return;
-    if(confirm('هل أنت متأكد من حذف بيانات العميل (مثل كلمات المرور) من السحابة نهائياً للحماية؟')) {
-      try {
-        await updateDoc(doc(db, 'orders', orderId), {
-          customFieldsData: {}
-        });
-        setBulkFeedback('تم حذف بيانات العميل من السحابة بنجاح.');
-        setTimeout(() => setBulkFeedback(null), 5000);
-        setSelectedOrder(prev => prev ? { ...prev, customFieldsData: {} } : null);
-      } catch(e: any) {
-        console.error(e);
-        alert('حدث خطأ أثناء الحذف: ' + e?.message);
+    setGenericConfirm({
+      isOpen: true,
+      title: 'حذف بيانات العميل من السحابة',
+      message: 'هل أنت متأكد من حذف بيانات العميل (مثل كلمات المرور) من السحابة نهائياً للحماية؟ لا يمكن التراجع عن هذا الإجراء.',
+      confirmText: 'نعم، احذف البيانات',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await updateDoc(doc(db, 'orders', orderId), {
+            customFieldsData: {}
+          });
+          setBulkFeedback('تم حذف بيانات العميل من السحابة بنجاح.');
+          setTimeout(() => setBulkFeedback(null), 5000);
+          setSelectedOrder(prev => prev ? { ...prev, customFieldsData: {} } : null);
+        } catch(e: any) {
+          console.error(e);
+          alert('حدث خطأ أثناء الحذف: ' + e?.message);
+        }
       }
-    }
+    });
   };
 
   // ── Bulk Selection & Batch Actions Handlers ────────────────────────────────
@@ -249,30 +273,36 @@ export default function OrdersPage() {
   const handleBulkDelete = async () => {
     if (selectedOrderIds.length === 0) return;
     const count = selectedOrderIds.length;
-    if (!confirm(`هل أنت متأكد من حذف (${count}) طلب نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.`)) {
-      return;
-    }
-
-    setIsBulkProcessing(true);
-    try {
-      const chunkSize = 450;
-      for (let i = 0; i < selectedOrderIds.length; i += chunkSize) {
-        const chunk = selectedOrderIds.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        chunk.forEach(id => {
-          batch.delete(doc(db, 'orders', id));
-        });
-        await batch.commit();
+    
+    setGenericConfirm({
+      isOpen: true,
+      title: 'حذف طلبات متعددة',
+      message: `هل أنت متأكد من حذف (${count}) طلب نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.`,
+      confirmText: 'حذف نهائي',
+      isDanger: true,
+      onConfirm: async () => {
+        setIsBulkProcessing(true);
+        try {
+          const chunkSize = 450;
+          for (let i = 0; i < selectedOrderIds.length; i += chunkSize) {
+            const chunk = selectedOrderIds.slice(i, i + chunkSize);
+            const batch = writeBatch(db);
+            chunk.forEach(id => {
+              batch.delete(doc(db, 'orders', id));
+            });
+            await batch.commit();
+          }
+          setBulkFeedback(`تم حذف (${count}) طلب نهائياً بنجاح.`);
+          setSelectedOrderIds([]);
+          setTimeout(() => setBulkFeedback(null), 4500);
+        } catch (err: any) {
+          console.error(err);
+          alert('حدث خطأ أثناء حذف الطلبات: ' + err.message);
+        } finally {
+          setIsBulkProcessing(false);
+        }
       }
-      setBulkFeedback(`تم حذف (${count}) طلب نهائياً بنجاح.`);
-      setSelectedOrderIds([]);
-      setTimeout(() => setBulkFeedback(null), 4500);
-    } catch (err: any) {
-      console.error(err);
-      alert('حدث خطأ أثناء حذف الطلبات: ' + err.message);
-    } finally {
-      setIsBulkProcessing(false);
-    }
+    });
   };
 
   // Stats counts
@@ -1298,6 +1328,55 @@ export default function OrdersPage() {
                 className="py-3 px-4 rounded-xl border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text)] font-bold text-xs cursor-pointer transition-all text-center"
               >
                 إلغاء التراجع (إبقاء الطلب كما هو)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── GENERIC CONFIRMATION MODAL ── */}
+      {genericConfirm.isOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" 
+          onClick={() => setGenericConfirm(prev => ({ ...prev, isOpen: false }))}
+        >
+          <div 
+            className={`bg-[var(--admin-card)] border-2 ${genericConfirm.isDanger ? 'border-rose-500/80 ring-rose-500/20' : 'border-[var(--admin-border)] ring-indigo-500/20'} rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-right ring-4 animate-in zoom-in-95 duration-150`}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={`flex items-center gap-3 border-b ${genericConfirm.isDanger ? 'border-rose-500/30' : 'border-[var(--admin-border)]'} pb-3`}>
+              <div className={`w-11 h-11 rounded-2xl ${genericConfirm.isDanger ? 'bg-rose-500/15 border-rose-500/30 text-rose-500' : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-500'} border-2 flex items-center justify-center shrink-0 shadow-inner`}>
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className={`text-lg font-black ${genericConfirm.isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--admin-text)]'}`}>
+                {genericConfirm.title}
+              </h3>
+            </div>
+            
+            <p className="text-sm text-[var(--admin-text)] leading-relaxed py-2">
+              {genericConfirm.message}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-[var(--admin-border)]">
+              <button
+                type="button"
+                onClick={() => {
+                  genericConfirm.onConfirm();
+                  setGenericConfirm(prev => ({ ...prev, isOpen: false }));
+                }}
+                className={`flex-1 py-3 px-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all text-white ${
+                  genericConfirm.isDanger ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                }`}
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>{genericConfirm.confirmText || 'تأكيد'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGenericConfirm(prev => ({ ...prev, isOpen: false }))}
+                className="py-3 px-4 rounded-xl border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text)] font-bold text-xs cursor-pointer transition-all text-center"
+              >
+                إلغاء
               </button>
             </div>
           </div>
