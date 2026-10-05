@@ -1,4 +1,5 @@
 import { adminDb } from '@/lib/firebaseAdmin';
+import { FieldValue } from 'firebase-admin/firestore';
 import nodemailer from 'nodemailer';
 
 export async function processOrderDelivery(orderId: string, paidAmount: number, paymentMethodDetail: string) {
@@ -111,6 +112,12 @@ export async function processOrderDelivery(orderId: string, paidAmount: number, 
     }
 
     transaction.update(orderRef, orderUpdate);
+
+    // Track confirmed usage if a discount was applied
+    if (orderData.discount && orderData.discount.id && newStatus === 'paid') {
+      const discountRef = adminDb.collection('discountCodes').doc(orderData.discount.id);
+      transaction.update(discountRef, { confirmedUsageCount: FieldValue.increment(1) } as any);
+    }
 
     return { 
       success: true, 

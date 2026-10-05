@@ -279,6 +279,7 @@ export async function POST(req: NextRequest) {
               finalOrderPrice = Math.max(0, originalPrice - data.value);
             }
             appliedDiscount = {
+              id: discountDocId,
               code: data.code,
               type: data.type,
               value: data.value,

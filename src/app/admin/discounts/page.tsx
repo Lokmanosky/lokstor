@@ -119,6 +119,7 @@ export default function DiscountCodesPage() {
         productName: form.scope === 'product' ? selectedProduct?.name : undefined,
         isActive: form.isActive,
         usageCount: editingId ? (codes.find(c => c.id === editingId)?.usageCount || 0) : 0,
+        confirmedUsageCount: editingId ? (codes.find(c => c.id === editingId)?.confirmedUsageCount || 0) : 0,
         maxUsage: form.maxUsage ? Number(form.maxUsage) : undefined,
         minOrderAmount: form.minOrderAmount ? Number(form.minOrderAmount) : undefined,
         expiresAt: form.expiresAt ? new Date(form.expiresAt).getTime() : undefined,
@@ -508,7 +509,10 @@ export default function DiscountCodesPage() {
 
                   {/* Meta info */}
                   <div className="flex items-center gap-3 flex-wrap text-[10px] text-[var(--admin-text-muted)] font-medium">
-                    <span>استُخدم {c.usageCount} مرة{c.maxUsage ? ` / ${c.maxUsage}` : ''}</span>
+                    <span>
+                      محجوز قيد الدفع: {c.usageCount} / مؤكد تم الدفع: {c.confirmedUsageCount || 0}
+                      {c.maxUsage ? ` / الأقصى: ${c.maxUsage}` : ''}
+                    </span>
                     {c.minOrderAmount && <span>حد أدنى: {c.minOrderAmount.toLocaleString()} د.ج</span>}
                     {c.expiresAt && (
                       <span className={expired ? 'text-rose-500 font-bold' : ''}>

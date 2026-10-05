@@ -7,7 +7,8 @@ export interface DiscountCode {
   productId?: string;        // معرف المنتج (إذا كان scope = 'product')
   productName?: string;      // اسم المنتج (للعرض)
   isActive: boolean;
-  usageCount: number;        // عدد مرات الاستخدام
+  usageCount: number;        // عدد مرات الاستخدام المبدئي (في Checkout)
+  confirmedUsageCount?: number; // عدد مرات الدفع المؤكد
   maxUsage?: number;         // الحد الأقصى للاستخدام (اختياري)
   minOrderAmount?: number;   // الحد الأدنى للطلب (اختياري)
   expiresAt?: number;        // تاريخ الانتهاء (timestamp، اختياري)
