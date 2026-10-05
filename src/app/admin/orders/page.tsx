@@ -173,6 +173,23 @@ export default function OrdersPage() {
     }
   };
 
+  const handleDeleteCustomFieldsData = async (orderId: string) => {
+    if(!orderId) return;
+    if(confirm('هل أنت متأكد من حذف بيانات العميل (مثل كلمات المرور) من السحابة نهائياً للحماية؟')) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), {
+          customFieldsData: {}
+        });
+        setBulkFeedback('تم حذف بيانات العميل من السحابة بنجاح.');
+        setTimeout(() => setBulkFeedback(null), 5000);
+        setSelectedOrder(prev => prev ? { ...prev, customFieldsData: {} } : null);
+      } catch(e: any) {
+        console.error(e);
+        alert('حدث خطأ أثناء الحذف: ' + e?.message);
+      }
+    }
+  };
+
   // ── Bulk Selection & Batch Actions Handlers ────────────────────────────────
   const handleToggleSelectOrder = (id: string) => {
     setSelectedOrderIds(prev => 
@@ -944,14 +961,25 @@ export default function OrdersPage() {
                     <Gamepad2 className="w-4 h-4" />
                     <span>بيانات حساب اللعبة لشحن الطلب:</span>
                   </h4>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    <span>{showPassword ? 'إخفاء كلمات المرور' : 'إظهار كلمات المرور'}</span>
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustomFieldsData(selectedOrder.id)}
+                      className="text-[11px] font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                      title="حذف هذه البيانات من السحابة نهائياً"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف البيانات</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>{showPassword ? 'إخفاء كلمات المرور' : 'إظهار كلمات المرور'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
