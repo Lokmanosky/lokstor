@@ -84,7 +84,11 @@ function getSenderEmail(): string {
 }
 
 function getBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app').replace(/\/$/, '');
+  const envUrl = (process.env.NEXT_PUBLIC_BASE_URL || '').trim();
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl.replace(/\/$/, '');
+  }
+  return 'https://lokstor.vercel.app';
 }
 
 function formatDzd(amount: number): string {
@@ -915,9 +919,14 @@ function renderCustomerPaymentReminderHtml(params: {
       </table>
 
       <!-- Main Action: Complete Payment Button -->
-      <div style="text-align:center;margin:24px 0 18px;">
+      <div style="text-align:center;margin:24px 0 12px;">
         <a href="${checkoutUrl}" target="_blank" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:12px 30px;border-radius:10px;box-shadow:0 3px 6px rgba(5,150,105,0.25);">
           إتمام عملية الدفع واستلام الطلب الآن ←
+        </a>
+      </div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <a href="${storeUrl}/account" target="_blank" style="display:inline-block;color:#475569;text-decoration:underline;font-size:12px;font-weight:600;">
+          أو استعراض سجل طلباتي في حسابي
         </a>
       </div>
 

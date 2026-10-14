@@ -61,7 +61,10 @@ async function handleReminders(req: NextRequest) {
       .where('status', '==', 'pending')
       .get();
 
-    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app').replace(/\/$/, '');
+    const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL || '').trim();
+    const baseUrl = (!rawBaseUrl || rawBaseUrl.includes('localhost') || rawBaseUrl.includes('127.0.0.1'))
+      ? 'https://lokstor.vercel.app'
+      : rawBaseUrl.replace(/\/$/, '');
     let scannedCount = 0;
     let eligibleCount = 0;
     let remindedCount = 0;
