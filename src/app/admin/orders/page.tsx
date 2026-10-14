@@ -521,12 +521,30 @@ export default function OrdersPage() {
           <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">إدارة جميع الطلبات والمدفوعات ومتابعة حالات الشراء</p>
         </div>
 
-        {/* Total revenue badge */}
-        <div className="flex items-center gap-2 bg-[var(--admin-card)] border border-[var(--admin-border)] px-3 py-1.5 rounded-lg shadow-xs self-start sm:self-auto">
-          <span className="text-[11px] text-[var(--admin-text-muted)]">إجمالي المبيعات المدفوعة:</span>
-          <span className="text-xs font-bold text-[var(--admin-primary)]">
-            {filteredPaidSum.toLocaleString('en-US')} د.ج
-          </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Total revenue badge */}
+          <div className="flex items-center gap-2 bg-[var(--admin-card)] border border-[var(--admin-border)] px-3 py-1.5 rounded-lg shadow-xs">
+            <span className="text-[11px] text-[var(--admin-text-muted)]">إجمالي المبيعات المدفوعة:</span>
+            <span className="text-xs font-bold text-[var(--admin-primary)]">
+              {filteredPaidSum.toLocaleString('en-US')} د.ج
+            </span>
+          </div>
+
+          {/* 24h Reminder Trigger Button - Prominent in Header */}
+          <button
+            type="button"
+            disabled={isSendingReminders}
+            onClick={handleTriggerPaymentReminders}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-900 font-extrabold text-xs transition-all cursor-pointer shadow-md disabled:opacity-50 active:scale-95"
+            title="فحص كافة الطلبات المعلقة لأكثر من 24 ساعة وإرسال إيميل تذكير بالدفع للعملاء (مرة واحدة فقط)"
+          >
+            {isSendingReminders ? (
+              <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
+            ) : (
+              <Send className="w-4 h-4 text-slate-900" />
+            )}
+            <span>تذكير المعلقين (&gt;24 س)</span>
+          </button>
         </div>
       </div>
 
@@ -627,25 +645,6 @@ export default function OrdersPage() {
           }`}>
             {stats.failed}
           </span>
-        </button>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* 24h Reminder Trigger Button */}
-        <button
-          type="button"
-          disabled={isSendingReminders}
-          onClick={handleTriggerPaymentReminders}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50"
-          title="فحص الطلبات المعلقة لأكثر من 24 ساعة وإرسال إيميل تذكير بالدفع للعملاء (مرة واحدة فقط)"
-        >
-          {isSendingReminders ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Send className="w-3.5 h-3.5" />
-          )}
-          <span>تذكير المعلقين (&gt;24 س)</span>
         </button>
       </div>
 
@@ -974,9 +973,9 @@ export default function OrdersPage() {
 
                     {/* Status Badge */}
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col gap-1 items-start">
                         <span className="inline-flex items-center gap-1.5 text-xs">
-                          <span className={`w-1.5 h-1.5 rounded-full ${
+                          <span className={`w-2 h-2 rounded-full ${
                             o.status === 'paid' 
                               ? 'bg-[var(--admin-primary)]' 
                               : o.status === 'pending_manual_review'
@@ -985,7 +984,7 @@ export default function OrdersPage() {
                               ? 'bg-amber-400' 
                               : 'bg-[var(--admin-danger)]'
                           }`} />
-                          <span className="text-[var(--admin-text)] font-medium text-xs">
+                          <span className="text-[var(--admin-text)] font-semibold text-xs">
                             {o.status === 'paid' 
                               ? 'مكتمل' 
                               : o.status === 'pending_manual_review'
@@ -996,9 +995,12 @@ export default function OrdersPage() {
                           </span>
                         </span>
                         {o.status === 'pending' && o.paymentReminderSent && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20" title="تم إرسال إيميل تذكير بالدفع للعميل عبر البريد الإلكتروني">
-                            <Send className="w-2.5 h-2.5" />
-                            <span>تم التذكير</span>
+                          <span 
+                            className="inline-flex items-center gap-1 text-[10px] text-amber-500 bg-amber-500/15 font-bold px-2 py-0.5 rounded-md border border-amber-500/30 shadow-2xs" 
+                            title={`تم إرسال إيميل تذكير بالدفع للعميل${o.paymentReminderSentAt ? ` في ${formatDate(o.paymentReminderSentAt)}` : ''}`}
+                          >
+                            <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                            <span>⏳ تم التذكير</span>
                           </span>
                         )}
                       </div>
@@ -1084,13 +1086,19 @@ export default function OrdersPage() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" onClick={() => setSelectedOrder(null)}>
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl text-right animate-in fade-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-[var(--admin-border)] pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-sm text-[var(--admin-text)]">طلب #{selectedOrder.id?.slice(0, 8)}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                   selectedOrder.status === 'paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-500'
                 }`}>
                   {selectedOrder.status === 'paid' ? 'مدفوع' : 'معلق'}
                 </span>
+                {selectedOrder.status === 'pending' && selectedOrder.paymentReminderSent && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    <span>تم إرسال تذكير الدفع ✉️</span>
+                  </span>
+                )}
               </div>
               <button onClick={() => { setSelectedOrder(null); setDeliveryLinkInput(''); }} className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer">
                 <X className="w-4 h-4" />
