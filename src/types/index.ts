@@ -81,6 +81,8 @@ export interface Order {
   linkDeliveredAt?: string | number;
   createdAt: number | string;
   paidAt?: number | string;
+  paymentReminderSent?: boolean;
+  paymentReminderSentAt?: number;
 }
 
 export interface CreateCheckoutInput {

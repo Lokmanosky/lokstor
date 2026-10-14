@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/remind-pending-orders",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

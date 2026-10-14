@@ -657,3 +657,341 @@ export async function sendDeliveryEmail(params: { to: string; link: string; prod
     return false;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. Template: Customer Order Cancellation Notification
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCustomerOrderCancelledHtml(params: {
+  order: OrderEmailData;
+  reason?: string;
+  storeUrl: string;
+}): string {
+  const { order, reason, storeUrl } = params;
+  const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+  const orderAmount = Number(order.productPrice || order.amount || 0);
+
+  const paymentLabel = order.paymentMethodDetails?.toLowerCase().includes('edahabia')
+    ? 'البطاقة الذهبية (Edahabia)'
+    : order.paymentMethodDetails?.toLowerCase().includes('cib')
+    ? 'بطاقة بنكية (CIB)'
+    : order.paymentMethod === 'chargily'
+    ? 'شارجيلي (Chargily Pay)'
+    : order.paymentMethod === 'binance'
+    ? 'بايننس (Binance Pay)'
+    : order.paymentMethod === 'redotpay'
+    ? 'ريدوت باي (RedotPay)'
+    : 'دفع إلكتروني';
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>إشعار بإلغاء الطلب</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table { border-collapse: collapse; }
+    .email-container { width:100% !important; max-width:540px !important; margin:0 auto !important; }
+    @media only screen and (max-width: 480px) {
+      .email-wrapper { padding: 8px 4px !important; }
+      .email-body { padding: 16px 12px !important; }
+      .label-col { width: 36% !important; font-size: 12px !important; }
+      .val-col { width: 64% !important; font-size: 13px !important; }
+    }
+  </style>
+</head>
+<body class="email-wrapper" style="margin:0;padding:12px 6px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;direction:rtl;text-align:right;">
+  <div class="email-container" style="width:100%;max-width:540px;margin:0 auto;background:#ffffff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.04);box-sizing:border-box;">
+    
+    <!-- Header -->
+    <div style="background:#0f172a;padding:22px 16px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">متجر Lokstor</h1>
+      <p style="margin:4px 0 0;color:#f87171;font-size:12px;font-weight:600;">إشعار بإلغاء الطلب</p>
+    </div>
+
+    <div class="email-body" style="padding:20px 16px;box-sizing:border-box;">
+      
+      <!-- Greeting -->
+      <h2 style="margin:0 0 10px;font-size:16px;font-weight:700;color:#0f172a;">
+        مرحباً ${order.customerName || 'عميلنا العزيز'} 👋
+      </h2>
+      <p style="margin:0 0 16px;font-size:13px;color:#475569;line-height:1.5;">
+        نود إعلامك بأنه تم إلغاء طلبك رقم <strong dir="ltr">#${shortId}</strong> في متجر Lokstor.
+      </p>
+
+      <!-- Alert Box -->
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:13px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;color:#991b1b;font-size:13px;">❌ حالة الطلب: ملغي (Cancelled)</div>
+        <div style="color:#b91c1c;font-size:11px;margin-top:3px;line-height:1.5;">
+          ${reason ? `سبب الإلغاء: <strong>${reason}</strong>` : 'تم إلغاء هذا الطلب من قبل إدارة المتجر.'}
+        </div>
+      </div>
+
+      <!-- Order Details Summary Table -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:13px;table-layout:fixed;box-sizing:border-box;">
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;white-space:nowrap;">رقم الطلب:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:700;color:#0f172a;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;overflow-wrap:anywhere;" dir="ltr">#${shortId}</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;">المنتج:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:700;color:#0f172a;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;overflow-wrap:anywhere;">${order.productName || 'منتج رقمي'}</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;white-space:nowrap;">المبلغ:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:800;color:#0f172a;font-size:14px;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;" dir="ltr">${formatDzd(orderAmount)} DZD</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;white-space:nowrap;">وسيلة الدفع:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:600;color:#475569;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;">${paymentLabel}</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;font-size:12px;vertical-align:top;white-space:nowrap;">تاريخ الطلب:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;color:#475569;text-align:left;font-size:12px;word-break:break-word;">${formatDateTime(order.createdAt)}</td>
+        </tr>
+      </table>
+
+      <!-- Assistance / Help Note -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;color:#334155;font-size:12px;margin-bottom:4px;">💬 هل قمت بالدفع مسبقاً أو تعتقد أن هذا خطأ؟</div>
+        <p style="margin:0;font-size:12px;color:#64748b;line-height:1.5;">
+          إذا كنت قد أتممت عملية التحويل أو واجهتك أي صعوبة، يُرجى عدم القلق والتواصل معنا مباشرة وتزويدنا برقم الطلب لنقوم بمساعدتك وحل المسألة فوراً.
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="text-align:center;margin-top:20px;">
+        <a href="https://t.me/Loktech" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 20px;border-radius:8px;box-shadow:0 2px 4px rgba(2,132,199,0.2);margin-bottom:8px;">
+          تواصل مع الدعم الفني عبر تليغرام ←
+        </a>
+        <br>
+        <a href="${storeUrl}" target="_blank" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-size:12px;font-weight:600;padding:9px 18px;border-radius:8px;margin-top:4px;">
+          تصفح المتجر الرئيسي
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;padding:14px;text-align:center;border-top:1px solid #e2e8f0;">
+      <p style="margin:0;color:#94a3b8;font-size:11px;">متجر Lokstor للمنتجات الرقمية في الجزائر | نسعد دائماً بخدمتكم.</p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Send an email notification to the customer when their order is cancelled.
+ */
+export async function sendOrderCancelledCustomerEmail(params: {
+  order: OrderEmailData;
+  reason?: string;
+}): Promise<{ customerSent: boolean; error?: string }> {
+  const { order, reason } = params;
+  const transporter = getTransporter();
+
+  if (!transporter) {
+    console.warn('[Nodemailer] GMAIL_USER or GMAIL_APP_PASSWORD is not configured. Cancellation email skipped.');
+    return { customerSent: false, error: 'Gmail credentials missing' };
+  }
+
+  const customerEmail = (order.customerEmail || '').trim();
+  if (!customerEmail || !customerEmail.includes('@')) {
+    console.warn(`[Nodemailer] Order #${order.id} has no valid customer email: "${customerEmail}". Skipping cancellation email.`);
+    return { customerSent: false, error: 'Invalid customer email' };
+  }
+
+  const sender = getSenderEmail();
+  const baseUrl = getBaseUrl();
+  const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+
+  try {
+    await transporter.sendMail({
+      from: sender,
+      to: customerEmail,
+      subject: `[Lokstor] إشعار بإلغاء طلبك #${shortId}`,
+      html: renderCustomerOrderCancelledHtml({
+        order,
+        reason,
+        storeUrl: baseUrl,
+      }),
+    });
+
+    console.log(`[Nodemailer] Cancellation email sent successfully to ${customerEmail} for order #${shortId}`);
+    return { customerSent: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[Nodemailer] Failed to send cancellation email for order #${shortId}:`, err);
+    return { customerSent: false, error: errorMsg };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. Template: 24-Hour Payment Reminder for Pending Orders
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCustomerPaymentReminderHtml(params: {
+  order: OrderEmailData;
+  checkoutUrl: string;
+  storeUrl: string;
+}): string {
+  const { order, checkoutUrl, storeUrl } = params;
+  const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+  const orderAmount = Number(order.productPrice || order.amount || 0);
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>تذكير: طلبك بانتظار استكمال الدفع</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table { border-collapse: collapse; }
+    .email-container { width:100% !important; max-width:540px !important; margin:0 auto !important; }
+    @media only screen and (max-width: 480px) {
+      .email-wrapper { padding: 8px 4px !important; }
+      .email-body { padding: 16px 12px !important; }
+      .label-col { width: 36% !important; font-size: 12px !important; }
+      .val-col { width: 64% !important; font-size: 13px !important; }
+    }
+  </style>
+</head>
+<body class="email-wrapper" style="margin:0;padding:12px 6px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;direction:rtl;text-align:right;">
+  <div class="email-container" style="width:100%;max-width:540px;margin:0 auto;background:#ffffff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.04);box-sizing:border-box;">
+    
+    <!-- Header -->
+    <div style="background:#0f172a;padding:22px 16px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">متجر Lokstor</h1>
+      <p style="margin:4px 0 0;color:#fcd34d;font-size:12px;font-weight:600;">⏳ تذكير بإتمام عملية الدفع</p>
+    </div>
+
+    <div class="email-body" style="padding:20px 16px;box-sizing:border-box;">
+      
+      <!-- Greeting -->
+      <h2 style="margin:0 0 10px;font-size:16px;font-weight:700;color:#0f172a;">
+        مرحباً ${order.customerName || 'عميلنا العزيز'} 👋
+      </h2>
+      <p style="margin:0 0 16px;font-size:13px;color:#475569;line-height:1.6;">
+        لاحظنا أنك بدأت طلباً لشراء <strong>${order.productName || 'منتج رقمي'}</strong> في متجر Lokstor ولكن لم تستكمل عملية الدفع بعد.
+      </p>
+
+      <!-- Alert Box -->
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:13px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;color:#92400e;font-size:13px;">⏳ طلبك ما زال محفوظاً وبانتظارك!</div>
+        <div style="color:#b45309;font-size:11px;margin-top:4px;line-height:1.5;">
+          يمكنك إكمال الدفع بسهولة وأمان عبر <strong>البطاقة الذهبية، بايننس (Binance)، أو ريدوت باي (RedotPay)</strong> واستلام طلبك فوراً.
+        </div>
+      </div>
+
+      <!-- Order Details Summary Table -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-size:13px;table-layout:fixed;box-sizing:border-box;">
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;white-space:nowrap;">رقم الطلب:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:700;color:#0f172a;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;overflow-wrap:anywhere;" dir="ltr">#${shortId}</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;">المنتج:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:700;color:#0f172a;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;overflow-wrap:anywhere;">${order.productName || 'منتج رقمي'}</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:top;white-space:nowrap;">المبلغ المطلوب:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;font-weight:800;color:#059669;font-size:14px;text-align:left;border-bottom:1px solid #f1f5f9;word-break:break-word;" dir="ltr">${formatDzd(orderAmount)} DZD</td>
+        </tr>
+        <tr>
+          <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;font-size:12px;vertical-align:top;white-space:nowrap;">تاريخ بدء الطلب:</td>
+          <td class="val-col" style="width:64%;padding:8px 4px;color:#475569;text-align:left;font-size:12px;word-break:break-word;">${formatDateTime(order.createdAt)}</td>
+        </tr>
+      </table>
+
+      <!-- Main Action: Complete Payment Button -->
+      <div style="text-align:center;margin:24px 0 18px;">
+        <a href="${checkoutUrl}" target="_blank" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:12px 30px;border-radius:10px;box-shadow:0 3px 6px rgba(5,150,105,0.25);">
+          إتمام عملية الدفع واستلام الطلب الآن ←
+        </a>
+      </div>
+
+      <!-- Assistance / Help Note -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;color:#334155;font-size:12px;margin-bottom:4px;">💬 هل واجهتك أي مشكلة أثناء الدفع؟</div>
+        <p style="margin:0;font-size:12px;color:#64748b;line-height:1.5;">
+          إذا واجهت أي صعوبة أو كان لديك استفسار عن طرق الدفع المتاحة، لا تتردد بالتواصل مع فريق الدعم الفني لمساعدتك فوراً.
+        </p>
+      </div>
+
+      <!-- Support Link -->
+      <div style="text-align:center;margin-top:14px;">
+        <a href="https://t.me/Loktech" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:9px 18px;border-radius:8px;">
+          تواصل مع الدعم الفني عبر تليغرام
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;padding:14px;text-align:center;border-top:1px solid #e2e8f0;">
+      <p style="margin:0 0 4px;color:#94a3b8;font-size:11px;">متجر Lokstor للمنتجات الرقمية في الجزائر</p>
+      <p style="margin:0;color:#cbd5e1;font-size:10px;">إذا كنت قد أتممت الدفع بالفعل أو لا ترغب في إكمال هذا الطلب، يمكنك تجاهل هذه الرسالة بأمان.</p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Send a 24-hour payment reminder email to the customer for a pending order.
+ */
+export async function sendPaymentReminderCustomerEmail(params: {
+  order: OrderEmailData;
+  checkoutUrl: string;
+}): Promise<{ customerSent: boolean; error?: string }> {
+  const { order, checkoutUrl } = params;
+  const transporter = getTransporter();
+
+  if (!transporter) {
+    console.warn('[Nodemailer] GMAIL_USER or GMAIL_APP_PASSWORD is not configured. Reminder email skipped.');
+    return { customerSent: false, error: 'Gmail credentials missing' };
+  }
+
+  const customerEmail = (order.customerEmail || '').trim();
+  if (!customerEmail || !customerEmail.includes('@')) {
+    console.warn(`[Nodemailer] Order #${order.id} has no valid customer email: "${customerEmail}". Skipping reminder email.`);
+    return { customerSent: false, error: 'Invalid customer email' };
+  }
+
+  const sender = getSenderEmail();
+  const baseUrl = getBaseUrl();
+  const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+
+  try {
+    await transporter.sendMail({
+      from: sender,
+      to: customerEmail,
+      subject: `[Lokstor] ⏳ تذكير: طلبك #${shortId} بانتظار استكمال الدفع`,
+      html: renderCustomerPaymentReminderHtml({
+        order,
+        checkoutUrl: checkoutUrl || `${baseUrl}/checkout/${order.id}`,
+        storeUrl: baseUrl,
+      }),
+    });
+
+    console.log(`[Nodemailer] Payment reminder email sent successfully to ${customerEmail} for order #${shortId}`);
+    return { customerSent: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[Nodemailer] Failed to send payment reminder email for order #${shortId}:`, err);
+    return { customerSent: false, error: errorMsg };
+  }
+}

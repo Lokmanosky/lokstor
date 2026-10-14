@@ -26,7 +26,9 @@ import {
   Check,
   CheckSquare,
   Square,
-  Loader2
+  Loader2,
+  Send,
+  Bell
 } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -50,6 +52,7 @@ export default function OrdersPage() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
 
   // Red Warning Confirmation Modals for Setting to Pending
   const [pendingTargetOrder, setPendingTargetOrder] = useState<Order | null>(null);
@@ -143,10 +146,74 @@ export default function OrdersPage() {
     await handleBulkUpdateStatus('pending');
   };
 
+  const handleTriggerPaymentReminders = async () => {
+    setIsSendingReminders(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/cron/remind-pending-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBulkFeedback(data.message || `تم فحص الطلبات وإرسال التذكيرات بنجاح (${data.remindedCount} إيميل).`);
+      } else {
+        alert('حدث خطأ: ' + (data.error || 'تعذر إرسال التذكيرات'));
+      }
+      setTimeout(() => setBulkFeedback(null), 6000);
+    } catch (e: any) {
+      console.error(e);
+      alert('خطأ أثناء إرسال تذكيرات الدفع: ' + e?.message);
+    } finally {
+      setIsSendingReminders(false);
+    }
+  };
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if(!id) return;
     try {
-      if (newStatus === 'paid') {
+      if (newStatus === 'failed') {
+        const targetOrder = orders.find(o => o.id === id);
+        const customerNote = targetOrder?.customerEmail ? ` وإرسال إيميل إشعار للعميل (${targetOrder.customerEmail})` : '';
+        setGenericConfirm({
+          isOpen: true,
+          title: 'إلغاء الطلب وإشعار العميل',
+          message: `هل أنت متأكد من إلغاء هذا الطلب؟ سيتم تحويل حالته إلى "ملغي"${customerNote}.`,
+          confirmText: 'نعم، إلغاء الطلب',
+          isDanger: true,
+          onConfirm: async () => {
+            try {
+              const token = await auth.currentUser?.getIdToken();
+              const res = await fetch('/api/admin/cancel-order', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ orderId: id })
+              });
+              const data = await res.json();
+              if (data.success) {
+                if (data.emailsSentCount > 0) {
+                  setBulkFeedback('تم إلغاء الطلب بنجاح وإرسال إيميل إشعار للعميل ✉️');
+                } else {
+                  setBulkFeedback('تم إلغاء الطلب بنجاح (لم يتم إرسال إيميل لعدم توفر بريد إلكتروني للعميل).');
+                }
+              } else {
+                alert('فشل إلغاء الطلب: ' + (data.error || 'حدث خطأ غير معروف'));
+              }
+              setTimeout(() => setBulkFeedback(null), 5000);
+            } catch (err: any) {
+              console.error(err);
+              alert('حدث خطأ أثناء إلغاء الطلب: ' + err.message);
+            }
+          }
+        });
+        return;
+      } else if (newStatus === 'paid') {
         const res = await fulfillOrderAndDeductStock(id);
         if (res && res.pulledFromStock) {
           setBulkFeedback(`تم تفعيل الطلب بنجاح وسحب رابط/حساب من المخزون فوراً وتوصيله للعميل`);
@@ -235,6 +302,46 @@ export default function OrdersPage() {
 
   const handleBulkUpdateStatus = async (newStatus: string) => {
     if (selectedOrderIds.length === 0) return;
+
+    if (newStatus === 'failed') {
+      const count = selectedOrderIds.length;
+      setGenericConfirm({
+        isOpen: true,
+        title: 'إلغاء الطلبات المحددة وإشعار العملاء',
+        message: `هل أنت متأكد من إلغاء (${count}) طلب؟ سيتم تحويل حالتها إلى ملغية وإرسال إيميل إشعار رسمي لكل عميل عبر بريده المسجل.`,
+        confirmText: `نعم، إلغاء (${count}) طلب وإرسال الإيميلات`,
+        isDanger: true,
+        onConfirm: async () => {
+          setIsBulkProcessing(true);
+          try {
+            const token = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/admin/cancel-order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ orderIds: selectedOrderIds })
+            });
+            const data = await res.json();
+            if (data.success) {
+              setBulkFeedback(`تم بنجاح إلغاء (${data.cancelledCount}) طلب، وإرسال إيميل إشعار لـ (${data.emailsSentCount}) عميل ✉️`);
+              setSelectedOrderIds([]);
+              setTimeout(() => setBulkFeedback(null), 5000);
+            } else {
+              alert('فشل الإلغاء الجماعي: ' + (data.error || 'حدث خطأ'));
+            }
+          } catch (err: any) {
+            console.error(err);
+            alert('حدث خطأ أثناء تنفيذ الإجراء الجماعي: ' + err.message);
+          } finally {
+            setIsBulkProcessing(false);
+          }
+        }
+      });
+      return;
+    }
+
     setIsBulkProcessing(true);
     try {
       if (newStatus === 'paid') {
@@ -520,6 +627,25 @@ export default function OrdersPage() {
           }`}>
             {stats.failed}
           </span>
+        </button>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* 24h Reminder Trigger Button */}
+        <button
+          type="button"
+          disabled={isSendingReminders}
+          onClick={handleTriggerPaymentReminders}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50"
+          title="فحص الطلبات المعلقة لأكثر من 24 ساعة وإرسال إيميل تذكير بالدفع للعملاء (مرة واحدة فقط)"
+        >
+          {isSendingReminders ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Send className="w-3.5 h-3.5" />
+          )}
+          <span>تذكير المعلقين (&gt;24 س)</span>
         </button>
       </div>
 
@@ -848,26 +974,34 @@ export default function OrdersPage() {
 
                     {/* Status Badge */}
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 text-xs">
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          o.status === 'paid' 
-                            ? 'bg-[var(--admin-primary)]' 
-                            : o.status === 'pending_manual_review'
-                            ? 'bg-blue-500'
-                            : o.status === 'pending' 
-                            ? 'bg-amber-400' 
-                            : 'bg-[var(--admin-danger)]'
-                        }`} />
-                        <span className="text-[var(--admin-text)] font-medium text-xs">
-                          {o.status === 'paid' 
-                            ? 'مكتمل' 
-                            : o.status === 'pending_manual_review'
-                            ? 'مراجعة'
-                            : o.status === 'pending' 
-                            ? 'انتظار' 
-                            : 'ملغي'}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            o.status === 'paid' 
+                              ? 'bg-[var(--admin-primary)]' 
+                              : o.status === 'pending_manual_review'
+                              ? 'bg-blue-500'
+                              : o.status === 'pending' 
+                              ? 'bg-amber-400' 
+                              : 'bg-[var(--admin-danger)]'
+                          }`} />
+                          <span className="text-[var(--admin-text)] font-medium text-xs">
+                            {o.status === 'paid' 
+                              ? 'مكتمل' 
+                              : o.status === 'pending_manual_review'
+                              ? 'مراجعة'
+                              : o.status === 'pending' 
+                              ? 'انتظار' 
+                              : 'ملغي'}
+                          </span>
                         </span>
-                      </span>
+                        {o.status === 'pending' && o.paymentReminderSent && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20" title="تم إرسال إيميل تذكير بالدفع للعميل عبر البريد الإلكتروني">
+                            <Send className="w-2.5 h-2.5" />
+                            <span>تم التذكير</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Date */}
@@ -1230,6 +1364,21 @@ export default function OrdersPage() {
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span>تأكيد كمدفوع (تم شحن الحساب)</span>
+                </button>
+              )}
+              {selectedOrder.status !== 'failed' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetId = selectedOrder.id!;
+                    setSelectedOrder(null);
+                    setDeliveryLinkInput('');
+                    handleUpdateStatus(targetId, 'failed');
+                  }}
+                  className="px-3 py-2 rounded-lg bg-rose-600/10 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-500/20 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>إلغاء الطلب</span>
                 </button>
               )}
               <button
