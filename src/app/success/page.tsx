@@ -77,6 +77,7 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id');
   const isMock = searchParams.get('mock') === 'true';
+  const guestToken = searchParams.get('token');
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -85,14 +86,24 @@ function SuccessContent() {
   const { user } = useAuth();
 
   const fetchOrder = async (confirmDemo = false) => {
-    if (!orderId || !user) return;
+    if (!orderId) return;
     try {
       setLoading(true);
-      const token = await user.getIdToken();
-      const url = confirmDemo
-        ? `/api/orders/${orderId}?mock_confirm=true`
-        : `/api/orders/${orderId}`;
-      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const headers: Record<string, string> = {};
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        } catch {}
+      }
+
+      const q = new URLSearchParams();
+      if (confirmDemo) q.set('mock_confirm', 'true');
+      if (guestToken) q.set('token', guestToken);
+      const qs = q.toString();
+      const url = `/api/orders/${orderId}${qs ? `?${qs}` : ''}`;
+
+      const res = await fetch(url, { headers });
       const data = await res.json();
 
       if (res.ok && data.order) {
@@ -109,7 +120,7 @@ function SuccessContent() {
   };
 
   useEffect(() => {
-    if (!orderId || !user) {
+    if (!orderId) {
       setLoading(false);
       return;
     }
@@ -128,7 +139,7 @@ function SuccessContent() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [orderId, isMock, order?.status]);
+  }, [orderId, isMock, order?.status, user, guestToken]);
 
   if (loading) {
     return (

@@ -53,7 +53,23 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
   // Form states
   const { user } = useAuth();
+  const [customerEmail, setCustomerEmail] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>('');
   const [gameInfo, setGameInfo] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (user) {
+      if (user.email) setCustomerEmail(user.email);
+      if (user.displayName) setCustomerName(user.displayName);
+    } else {
+      try {
+        const savedEmail = localStorage.getItem('lokstor_customer_email');
+        const savedName = localStorage.getItem('lokstor_customer_name');
+        if (savedEmail && !customerEmail) setCustomerEmail(savedEmail);
+        if (savedName && !customerName) setCustomerName(savedName);
+      } catch {}
+    }
+  }, [user]);
 
   useEffect(() => {
     try {
@@ -133,19 +149,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     const coupon = searchParams.get('coupon');
-    if (coupon && product && user) {
+    const targetEmail = user?.email || customerEmail;
+    if (coupon && product) {
       const basePrice = selectedVariant ? Number(selectedVariant.price) : Number(product.price || 0);
       fetch('/api/validate-coupon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: coupon, productId: product.id, basePrice, userEmail: user.email })
+        body: JSON.stringify({ code: coupon, productId: product.id, basePrice, userEmail: targetEmail || undefined })
       }).then(res => res.json()).then(data => {
         if (data.success) {
           setAppliedDiscount({ value: data.value, type: data.type });
         }
       }).catch(() => {});
     }
-  }, [searchParams, product, selectedVariant, user]);
+  }, [searchParams, product, selectedVariant, user, customerEmail]);
 
   // Compute effective price based on selected variant, custom amount, base price, and discount
   const effectivePrice = useMemo(() => {
@@ -164,9 +181,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     return base;
   }, [selectedVariant, product, customAmount, appliedDiscount]);
 
-  // Dynamic USDT equivalent (approx 265 DZD = 1 USDT)
+  // Dynamic USDT equivalent (approx 250 DZD = 1 USDT)
   const cryptoUsdtEquivalent = useMemo(() => {
-    const approx = Math.max(1, Math.round((effectivePrice / 265) * 100) / 100);
+    const approx = Math.max(1, Math.round((effectivePrice / 250) * 100) / 100);
     return `~${approx}$ USDT`;
   }, [effectivePrice]);
 
@@ -181,7 +198,14 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       return [];
     }
     if (product?.requiredFields && product.requiredFields.length > 0) {
-      return product.requiredFields;
+      // Don't duplicate email input if already captured in customer delivery box
+      return product.requiredFields.filter((f: any) => {
+        const id = (f.id || '').toLowerCase();
+        const label = (f.label || '').toLowerCase();
+        const isEmailField = id === 'email' || id === 'customer_email' || id === 'user_email' ||
+          ((label.includes('بريد') || label.includes('email')) && !label.includes('لعبة') && !id.includes('game') && !id.includes('pass'));
+        return !isEmailField;
+      });
     }
     if (product?.requiresCustomerInfo === true && isGameProduct) {
       return [
@@ -229,9 +253,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     e.preventDefault();
     setErrorMessage('');
 
-    if (!user) {
-      sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
-      window.location.href = '/register';
+    const finalEmail = (user?.email || customerEmail).trim().toLowerCase();
+    const finalName = (customerName || user?.displayName || 'عميل').trim();
+
+    if (!finalEmail) {
+      setErrorMessage(lang === 'ar' ? 'يرجى إدخال البريد الإلكتروني لتسليم الطلب.' : 'Please enter your email to receive your order.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(finalEmail)) {
+      setErrorMessage(lang === 'ar' ? 'صيغة البريد الإلكتروني غير صحيحة، يرجى كتابته بشكل سليم (مثال: name@gmail.com).' : 'Invalid email address format.');
       return;
     }
 
@@ -240,20 +272,40 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       return;
     }
 
+    // Save to local storage for guest convenience
+    try {
+      localStorage.setItem('lokstor_customer_email', finalEmail);
+      if (finalName && finalName !== 'عميل') {
+        localStorage.setItem('lokstor_customer_name', finalName);
+      }
+    } catch {}
+
     setIsSubmitting(true);
 
     try {
-      const token = await user.getIdToken();
+      let token: string | undefined = undefined;
+      if (user) {
+        try {
+          token = await user.getIdToken();
+        } catch (tokErr) {
+          console.warn('Could not retrieve token:', tokErr);
+        }
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({
           productId,
-          customerName: user.displayName || user.email?.split('@')[0] || 'عميل',
-          customerEmail: user.email,
+          customerName: finalName,
+          customerEmail: finalEmail,
           paymentMethod,
           variantId: selectedVariant?.id || undefined,
           customFieldsData: Object.keys(gameInfo).length > 0 ? gameInfo : undefined,
@@ -282,9 +334,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         const telegramMessage = 
 `مرحباً، أرغب في تأكيد شراء منتج عبر ${methodTitle}\n\n` +
 `📦 المنتج: ${product?.name}\n` +
-`💰 المبلغ: ${effectivePrice.toLocaleString('en-US')} د.ج ({cryptoUsdtEquivalent})\n` +
-`👤 الاسم: ${user.displayName || user.email?.split('@')[0] || 'عميل'}\n` +
-`📧 البريد: ${user.email}\n` +
+`💰 المبلغ: ${effectivePrice.toLocaleString('en-US')} د.ج (${cryptoUsdtEquivalent})\n` +
+`👤 الاسم: ${finalName}\n` +
+`📧 البريد: ${finalEmail}\n` +
 `🔖 رقم الطلب: #${orderRef}\n` +
 (Object.keys(gameInfo).length > 0
   ? `\n🎮 بيانات حساب اللعبة للشحن:\n` + Object.entries(gameInfo).map(([k, v]) => `• ${k}: ${v}`).join('\n') + '\n\n'
@@ -341,7 +393,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header back link */}
       <Link
         href={`/product/${product.id}`}
@@ -352,20 +404,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       </Link>
 
       {/* Main Title & Subtitle */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight checkout-main-title">
+      <div className="text-center space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight checkout-main-title">
           {t('checkout.title')}
         </h1>
-        <p className="text-emerald-600 dark:text-emerald-400 text-sm sm:text-base font-semibold max-w-xl mx-auto">
+        <p className="text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-semibold max-w-xl mx-auto">
           {t('checkout.subtitle')}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
         
         {/* Order Summary Box */}
-        <div className="md:col-span-5 bg-white dark:bg-[#1D1F24] p-6 sm:p-7 rounded-2xl space-y-6 border-2 border-slate-300 dark:border-[#2C2E33] shadow-sm">
-          <h3 className="font-black text-black dark:text-white text-lg border-b-2 border-slate-200 dark:border-[#2C2E33] pb-3">
+        <div className="md:col-span-5 bg-white dark:bg-[#1D1F24] p-5 sm:p-6 rounded-2xl space-y-4 border-2 border-slate-300 dark:border-[#2C2E33] shadow-sm">
+          <h3 className="font-black text-black dark:text-white text-base sm:text-lg border-b-2 border-slate-200 dark:border-[#2C2E33] pb-2.5">
             {t('checkout.orderSummary')}
           </h3>
 
@@ -437,17 +489,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Customer Form Box */}
-        <div className="md:col-span-7 bg-white dark:bg-[#1D1F24] p-6 sm:p-8 rounded-2xl space-y-6 border-2 border-slate-300 dark:border-[#2C2E33] shadow-sm">
+        <div className="md:col-span-7 bg-white dark:bg-[#1D1F24] p-4 sm:p-5 rounded-2xl space-y-3.5 border-2 border-slate-300 dark:border-[#2C2E33] shadow-sm">
           
           {/* Manual Payment Success State (RedotPay or Binance) */}
           {submittedOrder ? (
-            <div className="space-y-6 py-4 text-center">
-              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 border-2 border-emerald-400 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center justify-center mx-auto shadow-sm">
-                <CheckCircle2 className="w-9 h-9" />
+            <div className="space-y-5 py-3 text-center">
+              <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/60 border-2 border-emerald-400 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                <CheckCircle2 className="w-8 h-8" />
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-black dark:text-white">
+              <div className="space-y-1.5">
+                <h3 className="text-xl sm:text-2xl font-black text-black dark:text-white">
                   تم تسجيل طلبك بنجاح! 🎉
                 </h3>
                 <p className="text-sm font-bold text-blue-950 dark:text-slate-300">
@@ -458,7 +510,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#16181C] border-2 border-slate-200 dark:border-[#2C2E33] text-right space-y-2 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#16181C] border-2 border-slate-200 dark:border-[#2C2E33] text-right space-y-2 text-xs">
                 {submittedOrder.method === 'binance' ? (
                   <>
                     <div className="flex justify-between font-bold">
@@ -482,27 +534,27 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 pt-1">
                 <a
                   href={submittedOrder.telegramUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3.5 px-6 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white font-black text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+                  className="w-full py-3 px-6 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white font-black text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
                 >
                   <Send className="w-4 h-4" />
                   <span>فتح محادثة تلغرام لإرسال الوصل ✈️</span>
                 </a>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <Link
                     href="/account"
-                    className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-300 dark:border-[#2C2E33] hover:border-slate-400 dark:hover:border-[#3E4249] font-black text-xs text-black dark:text-white text-center transition-all"
+                    className="flex-1 py-2.5 px-4 rounded-xl border-2 border-slate-300 dark:border-[#2C2E33] hover:border-slate-400 dark:hover:border-[#3E4249] font-black text-xs text-black dark:text-white text-center transition-all"
                   >
                     عرض الطلب في حسابي
                   </Link>
                   <Link
                     href="/"
-                    className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-300 dark:border-[#2C2E33] hover:border-slate-400 dark:hover:border-[#3E4249] font-black text-xs text-slate-700 dark:text-slate-300 text-center transition-all"
+                    className="flex-1 py-2.5 px-4 rounded-xl border-2 border-slate-300 dark:border-[#2C2E33] hover:border-slate-400 dark:hover:border-[#3E4249] font-black text-xs text-slate-700 dark:text-slate-300 text-center transition-all"
                   >
                     العودة للمتجر
                   </Link>
@@ -510,17 +562,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmitCheckout} className="space-y-6">
+            <form onSubmit={handleSubmitCheckout} className="space-y-3">
               {errorMessage && (
-                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-300 text-sm font-bold flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
+                <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs sm:text-sm font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {isOutOfStock && (
-                <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-300 text-sm font-bold flex items-center gap-3">
-                  <Ban className="w-6 h-6 shrink-0 text-red-600 dark:text-red-400" />
+                <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-300 text-sm font-bold flex items-center gap-3">
+                  <Ban className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />
                   <div>
                     <span className="font-black block text-base">{t('product.outOfStock')}</span>
                     <span className="text-xs font-semibold">{t('checkout.outOfStock')}</span>
@@ -529,168 +581,248 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               )}
 
               {/* PAYMENT METHOD SELECTION */}
-              <div className="space-y-2.5">
-                <label className="text-sm font-black text-black dark:text-white block">
-                  {t('checkout.selectMethod')} <span className="text-red-600 dark:text-red-400">*</span>
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                  <span>{t('checkout.selectMethod')} <span className="text-red-500">*</span></span>
                 </label>
                 
-                {/* 2 Top Options: Chargily & RedotPay */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Option 1: Chargily */}
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('chargily')}
-                    className={`p-3.5 sm:p-4 rounded-2xl border-2 text-right transition-all cursor-pointer ${
-                      paymentMethod === 'chargily'
-                        ? 'border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/25 dark:border-emerald-500 shadow-md ring-2 ring-emerald-600/20 dark:ring-emerald-500/20'
-                        : 'border-slate-300 dark:border-[#2C2E33]/80 hover:border-slate-400 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-sm text-black dark:text-white flex items-center gap-1.5">
-                        <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        {t('checkout.edahabiaCib')}
-                      </span>
-                      {paymentMethod === 'chargily' && (
-                        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-blue-950 dark:text-slate-300 font-bold">
-                      {t('checkout.chargilyDesc')}
-                    </p>
-                  </button>
-
-                  {/* Option 2: RedotPay */}
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('redotpay')}
-                    className={`p-3.5 sm:p-4 rounded-2xl border-2 text-right transition-all cursor-pointer ${
-                      paymentMethod === 'redotpay'
-                        ? 'border-rose-600 bg-rose-50/70 dark:bg-rose-950/25 dark:border-rose-500 shadow-md ring-2 ring-rose-600/20 dark:ring-rose-500/20'
-                        : 'border-slate-300 dark:border-[#2C2E33]/80 hover:border-slate-400 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-sm text-black dark:text-white flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-black">
-                          R
-                        </span>
-                        {t('checkout.redotpay')}
-                      </span>
-                      {paymentMethod === 'redotpay' && (
-                        <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-rose-900 dark:text-rose-300 font-bold">
-                      {t('checkout.redotpayDesc')}
-                    </p>
-                  </button>
-                </div>
-
-                {/* Option 3: Binance - Slim Rectangle Full-Width underneath */}
+                {/* 1. Top Wide Rectangle: Chargily (الذهبية / CIB) */}
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('binance')}
-                  className={`w-full p-3 sm:p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    paymentMethod === 'binance'
-                      ? 'border-amber-500 bg-amber-50/80 dark:bg-amber-950/25 dark:border-amber-500 shadow-md ring-2 ring-amber-500/20 dark:ring-amber-500/20'
-                      : 'border-slate-300 dark:border-[#2C2E33]/80 hover:border-slate-400 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
+                  onClick={() => setPaymentMethod('chargily')}
+                  className={`w-full p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                    paymentMethod === 'chargily'
+                      ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/25 dark:border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                      : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-[#F0B90B] flex items-center justify-center text-slate-950 font-black shadow-sm shrink-0">
-                      {/* Binance Diamond Icon */}
-                      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-slate-950" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2.5l3.5 3.5-3.5 3.5-3.5-3.5L12 2.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm11 0l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm0-4.5l2 2-2 2-2-2 2-2z"/>
-                      </svg>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white dark:bg-[#1C1F26] p-1 flex items-center justify-center shadow-xs shrink-0 border border-slate-200 dark:border-slate-700/60 overflow-hidden">
+                      <img 
+                        src="/images/algerie-poste.svg" 
+                        alt="بريد الجزائر - Algérie Poste" 
+                        className="w-full h-full object-contain"
+                      />
                     </div>
 
                     <div className="text-right">
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-sm text-black dark:text-white">
-                          {t('checkout.binance')}
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">
+                          {t('checkout.edahabiaCib')}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                          USDT
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                          بريد الجزائر 🇩🇿
                         </span>
                       </div>
-                      <p className="text-xs text-amber-950 dark:text-amber-300 font-semibold mt-0.5">
-                        {t('checkout.binanceDesc')}
+                      <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-normal mt-0.5">
+                        {t('checkout.chargilyDesc')}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="hidden sm:inline-block text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                      {t('checkout.binanceFee')}
-                    </span>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                      paymentMethod === 'binance' 
-                        ? 'bg-[#F0B90B] text-slate-950' 
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      paymentMethod === 'chargily' 
+                        ? 'bg-emerald-600 text-white shadow-xs' 
                         : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
                     }`}>
                       ✓
                     </span>
                   </div>
                 </button>
+
+                {/* 2. Bottom 2 Options Side-by-Side: Binance & RedotPay */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* Option 2: Binance */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('binance')}
+                    className={`p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
+                      paymentMethod === 'binance'
+                        ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/25 dark:border-amber-500 shadow-sm ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded bg-[#F0B90B] flex items-center justify-center text-slate-950 font-bold shrink-0">
+                          <svg viewBox="0 0 24 24" className="w-3 h-3 fill-slate-950" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2.5l3.5 3.5-3.5 3.5-3.5-3.5L12 2.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm11 0l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm0-4.5l2 2-2 2-2-2 2-2z"/>
+                          </svg>
+                        </div>
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                          {t('checkout.binance')}
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                          USDT
+                        </span>
+                      </div>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                        paymentMethod === 'binance' 
+                          ? 'bg-[#F0B90B] text-slate-950 shadow-xs' 
+                          : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
+                      }`}>
+                        ✓
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-normal leading-tight">
+                      تحويل داخلي بالـ UID (0% عمولة) أو إيداع USDT
+                    </p>
+                  </button>
+
+                  {/* Option 3: RedotPay */}
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('redotpay')}
+                    className={`p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
+                      paymentMethod === 'redotpay'
+                        ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/25 dark:border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+                        : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                          R
+                        </span>
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                          {t('checkout.redotpay')}
+                        </span>
+                      </div>
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                        paymentMethod === 'redotpay' 
+                          ? 'bg-rose-600 text-white shadow-xs' 
+                          : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
+                      }`}>
+                        ✓
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-normal leading-tight">
+                      {t('checkout.redotpayDesc')}
+                    </p>
+                  </button>
+                </div>
               </div>
 
-              {/* Logged-in recognition or Login Prompt */}
+              {/* Logged-in recognition or Guest Contact Inputs */}
               {user ? (
-                <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-300 dark:border-emerald-800/40 text-xs flex items-center justify-between gap-3">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800/40 text-xs flex items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                       ✓
                     </div>
                     <div>
-                      <span className="font-black text-black dark:text-white block text-sm">{t('checkout.accountRecognized')} ({user.email})</span>
-                      <span className="text-emerald-900 dark:text-emerald-300 font-bold block">مرحباً {user.displayName} - سيتم ربط الطلب بحسابك</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{t('checkout.accountRecognized')}</span>
+                        <span className="px-2 py-0.2 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">مسجل دخول</span>
+                      </div>
+                      <span className="text-emerald-800 dark:text-emerald-300 font-medium block text-xs mt-0.5">
+                        {user.displayName ? `مرحباً ${user.displayName} • ` : ''}{user.email}
+                      </span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-5 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-900/50 text-center space-y-4 shadow-sm">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mx-auto text-blue-600 dark:text-blue-400">
-                    <Lock className="w-6 h-6" />
+                <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="font-bold text-xs sm:text-sm text-slate-950 dark:text-slate-100">
+                        بيانات استلام الطلب
+                      </span>
+                    </div>
+                    <Link 
+                      href="/register" 
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
+                        }
+                      }}
+                      className="text-[11px] sm:text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 transition-colors"
+                    >
+                      <User className="w-3 h-3" />
+                      <span>لديك حساب؟ تسجيل الدخول</span>
+                    </Link>
                   </div>
-                  <div>
-                    <h3 className="text-blue-950 dark:text-blue-200 font-black text-lg mb-1">تسجيل الدخول مطلوب</h3>
-                    <p className="text-sm font-bold text-blue-800/80 dark:text-blue-300/80">
-                      لحماية مشترياتك وضمان وصول التفعيل لبريدك الصحيح، يرجى تسجيل الدخول أولاً.
-                    </p>
+
+                  <div className="space-y-2">
+                    {/* Email Input (Mandatory) */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <span>البريد الإلكتروني لتسليم الطلب</span>
+                          <span className="text-red-500 font-bold">*</span>
+                        </span>
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          إجباري (يصلك الكود فوراً عليه)
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          required
+                          dir="ltr"
+                          value={customerEmail}
+                          onChange={(e) => setCustomerEmail(e.target.value)}
+                          placeholder="name@gmail.com"
+                          className="w-full px-3 py-2 pr-9 bg-white dark:bg-[#16181C] border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 shadow-xs transition-all"
+                        />
+                        <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                        سنرسل كود التفعيل ورابط التحميل وفاتورة الشراء تلقائياً إلى هذا البريد.
+                      </p>
+                    </div>
+
+                    {/* Name Input (Optional) */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span>الاسم</span>
+                          <span className="text-slate-400 text-[11px] font-normal">(اختياري)</span>
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="مثال: محمد، سفيان (أو اتركه فارغاً)"
+                          className="w-full px-3 py-2 pr-9 bg-white dark:bg-[#16181C] border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 shadow-xs transition-all"
+                        />
+                        <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
                   </div>
-                  <Link href="/register" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl transition-all shadow-sm w-full">
-                    <User className="w-4 h-4" />
-                    تسجيل الدخول أو إنشاء حساب
-                  </Link>
                 </div>
               )}
 
-
               {/* GAME ACCOUNT REQUIRED INPUTS */}
               {activeRequiredFields.length > 0 && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-900/40 space-y-3.5 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-indigo-200/80 dark:border-indigo-800/50 pb-2.5">
+                <div className="p-3.5 sm:p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-900/40 space-y-2.5 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-indigo-200/80 dark:border-indigo-800/50 pb-2">
                     <div className="flex items-center gap-2">
-                      <Gamepad2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                      <span className="font-black text-sm text-indigo-950 dark:text-indigo-200">
-                        {lang === 'ar' ? 'بيانات حساب اللعبة لشحن الطلب' : lang === 'fr' ? 'Identifiants du jeu pour la recharge' : 'Game Account Details for Recharge'}
+                      {isGameProduct ? (
+                        <Gamepad2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      )}
+                      <span className="font-bold text-xs sm:text-sm text-indigo-950 dark:text-indigo-200">
+                        {isGameProduct
+                          ? (lang === 'ar' ? 'بيانات حساب اللعبة لشحن الطلب' : 'Game Account Details for Recharge')
+                          : (lang === 'ar' ? 'بيانات إضافية لتفعيل الحساب' : 'Account Activation Details')}
                       </span>
                       <span className="text-red-600 dark:text-red-400 font-bold">*</span>
                     </div>
-                    <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">
                       {lang === 'ar' ? 'معلومات مشفرة ومحمية 🔒' : 'Encrypted & Secure 🔒'}
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {activeRequiredFields.map((field: any) => (
-                      <div key={field.id} className="space-y-1.5">
-                        <label className="text-xs font-black text-slate-800 dark:text-slate-300 flex items-center justify-between">
+                      <div key={field.id} className="space-y-1">
+                        <label className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center justify-between">
                           <span>{field.label} {field.required && <span className="text-red-600 dark:text-red-400">*</span>}</span>
                         </label>
                         <input
@@ -699,7 +831,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                           value={gameInfo[field.id] || ''}
                           onChange={(e) => handleGameInfoChange(field.id, e.target.value)}
                           placeholder={field.placeholder || `أدخل ${field.label}...`}
-                          className="w-full px-3.5 py-3 bg-white dark:bg-[#16181C] border-2 border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-mono font-bold text-black dark:text-white focus:outline-none focus:border-indigo-600 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-600/20 shadow-xs"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#16181C] border-2 border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-mono font-bold text-black dark:text-white focus:outline-none focus:border-indigo-600 dark:focus:border-indigo-400 focus:ring-2 focus:ring-indigo-600/20 shadow-xs"
                         />
                       </div>
                     ))}
@@ -711,12 +843,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               {paymentMethod === 'chargily' && (
                 <>
                   {/* Chargily Notice */}
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-300 dark:border-emerald-800/40 text-xs space-y-1.5 leading-relaxed">
-                    <div className="flex items-center gap-2 font-black text-emerald-800 dark:text-emerald-300 text-sm">
-                      <CreditCard className="w-4 h-4" />
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-xs space-y-0.5">
+                    <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm">
+                      <CreditCard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <span>{t('checkout.chargilyNoticeTitle')}</span>
                     </div>
-                    <p className="text-blue-950 dark:text-emerald-200/90 font-semibold">
+                    <p className="text-slate-600 dark:text-slate-400 font-normal pr-5 text-[11px] sm:text-xs leading-normal">
                       {t('checkout.chargilyNoticeDesc')}
                     </p>
                   </div>
@@ -725,10 +857,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   <button
                     type="submit"
                     disabled={isSubmitting || isOutOfStock}
-                    className={`w-full py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 transition-all ${
+                    className={`w-full py-3 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all ${
                       isOutOfStock
                         ? 'bg-red-600 hover:bg-red-700 text-white cursor-not-allowed shadow-md opacity-95'
-                        : 'chargily-btn text-white disabled:opacity-50 shadow-lg hover:shadow-emerald-500/25 cursor-pointer'
+                        : 'chargily-btn text-white disabled:opacity-50 shadow-md hover:shadow-emerald-500/25 cursor-pointer'
                     }`}
                   >
                     {isOutOfStock ? (

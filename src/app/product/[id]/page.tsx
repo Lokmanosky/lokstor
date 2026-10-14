@@ -1008,6 +1008,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <span className="text-xs font-bold">{t('product.loginToast')}</span>
           <Link
             href="/register"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
+              }
+            }}
             className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-colors"
           >
             {t('product.loginBtn')}

@@ -19,19 +19,20 @@ export async function GET(
       return NextResponse.json({ error: 'مُعرّف الطلب مطلوب' }, { status: 400 });
     }
 
+    const guestToken = searchParams.get('token');
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    let decodedToken: any = null;
+    let isOwner = false;
 
-    const idToken = authHeader.split('Bearer ')[1];
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
-    } catch (e) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const idToken = authHeader.split('Bearer ')[1];
+      try {
+        decodedToken = await adminAuth.verifyIdToken(idToken);
+        isOwner = decodedToken.email?.toLowerCase() === 'loktech.dz@gmail.com' && decodedToken.email_verified;
+      } catch (e) {
+        // Token verification failed; fallback to guest token if present
+      }
     }
-    const isOwner = decodedToken.email?.toLowerCase() === 'loktech.dz@gmail.com' && decodedToken.email_verified;
 
     let order: Order | null = null;
 
@@ -58,8 +59,18 @@ export async function GET(
       return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
     }
 
-    if (!isOwner && (order as any).userId !== decodedToken.uid) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const isUserOrder = decodedToken && (
+      (order as any).userId === decodedToken.uid ||
+      ((order as any).customerEmail && (order as any).customerEmail.toLowerCase() === decodedToken.email?.toLowerCase())
+    );
+    const isGuestTokenValid = Boolean(
+      guestToken &&
+      (order as any).guestAccessToken &&
+      (order as any).guestAccessToken === guestToken
+    );
+
+    if (!isOwner && !isUserOrder && !isGuestTokenValid) {
+      return NextResponse.json({ error: 'غير مصرح لك بعرض هذا الطلب' }, { status: 403 });
     }
 
     // Auto-verify with Chargily API if pending and chargilyInvoiceId exists

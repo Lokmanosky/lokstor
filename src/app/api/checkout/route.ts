@@ -33,7 +33,13 @@ async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
     if (tokensArray.length > 0) {
       const notifTitle = 'طلب جديد قيد الانتظار! 🛍️';
       const notifBody = `طلب جديد من ${orderData.customerName} بقيمة ${orderData.productPrice} د.ج`;
-      const notifUrl = `${baseUrl}/admin/orders?search=${orderData.id}`;
+      
+      // Admin push notifications are received on mobile phones / remote devices.
+      // If baseUrl is localhost (e.g. testing locally), point to production so the admin can open it on mobile!
+      const adminBaseUrl = (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'))
+        ? (process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app').replace(/\/$/, '')
+        : baseUrl.replace(/\/$/, '');
+      const notifUrl = `${adminBaseUrl}/admin/orders?search=${orderData.id}`;
 
       await adminMessaging.sendEachForMulticast({
         tokens: tokensArray,
@@ -49,6 +55,9 @@ async function notifyAdminsOfNewOrder(orderData: any, baseUrl: string) {
           headers: {
             Urgency: 'high',
             TTL: '86400'
+          },
+          fcmOptions: {
+            link: notifUrl
           }
         },
         android: {
@@ -114,18 +123,19 @@ export async function POST(req: NextRequest) {
     }
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+    let userId = 'guest';
+    let tokenEmail = '';
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const idToken = authHeader.split('Bearer ')[1];
+      try {
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        userId = decodedToken.uid;
+        tokenEmail = decodedToken.email || '';
+      } catch (e) {
+        console.warn('IdToken verification failed or expired, proceeding as guest if email provided');
+      }
     }
-    const idToken = authHeader.split('Bearer ')[1];
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
-    } catch (e) {
-      return NextResponse.json({ success: false, error: 'Invalid token.' }, { status: 401 });
-    }
-    const userId = decodedToken.uid;
-    const tokenEmail = decodedToken.email || '';
 
     // 2. Server-side Validation with Zod
     const validationResult = checkoutSchema.safeParse(body);
@@ -137,11 +147,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productId, customerName, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, quantity = 1, discountCode } = validationResult.data as any;
+    const { productId, customerName, customerPhone, paymentMethod = 'chargily', customAmount, variantId, customFieldsData, fcmToken, quantity = 1, discountCode, customerEmail } = validationResult.data as any;
 
     // 3. Clean inputs
-    const cleanName = sanitizeText(customerName);
-    const cleanEmail = sanitizeText(tokenEmail).toLowerCase().trim();
+    const cleanEmail = sanitizeText(tokenEmail || customerEmail || '').toLowerCase().trim();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return NextResponse.json({ success: false, error: 'يرجى إدخال بريد إلكتروني صالح لتسليم الطلب.' }, { status: 400 });
+    }
+    const cleanName = sanitizeText(customerName) || (tokenEmail ? tokenEmail.split('@')[0] : 'عميل');
     const cleanPhone = customerPhone ? sanitizeText(customerPhone) : undefined;
 
     // 4. Fetch Product from Firestore or local fallback
@@ -203,8 +216,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Generate Order ID
+    // 5. Generate Order ID & Guest Access Token
     const orderId = 'ord_' + crypto.randomBytes(8).toString('hex');
+    const guestAccessToken = crypto.randomBytes(16).toString('hex');
     
     // Dynamic Base URL detection (works on Vercel, localhost, custom domains)
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
@@ -249,7 +263,7 @@ export async function POST(req: NextRequest) {
     let discountUsageKey: string | null = null;
     let discountDocId: string | null = null;
     
-    if (discountCode && adminDb && tokenEmail) {
+    if (discountCode && adminDb && cleanEmail) {
       const codeStr = String(discountCode).trim().toUpperCase();
       const snap = await adminDb.collection('discountCodes').where('code', '==', codeStr).limit(1).get();
       
@@ -267,7 +281,7 @@ export async function POST(req: NextRequest) {
         
         if (isActive && notExpired && underMaxUsage && validScope && validMinOrder) {
           // Check per-email usage
-          discountUsageKey = `${docSnap.id}_${tokenEmail.replace(/[^a-z0-9@._-]/gi, '_')}`;
+          discountUsageKey = `${docSnap.id}_${cleanEmail.replace(/[^a-z0-9@._-]/gi, '_')}`;
           const usageSnap = await adminDb.collection('discountUsages').doc(discountUsageKey).get();
           
           if (!usageSnap.exists) {
@@ -306,6 +320,7 @@ export async function POST(req: NextRequest) {
       createdAt: Date.now(),
       fcmToken: fcmToken || null,
       userId,
+      guestAccessToken,
       quantity,
     };
 
@@ -340,7 +355,7 @@ export async function POST(req: NextRequest) {
       const batch = adminDb.batch();
       batch.set(adminDb.collection('orders').doc(orderId), orderData);
       if (appliedDiscount && discountUsageKey && discountDocId) {
-        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
+        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: cleanEmail });
         batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: FieldValue.increment(1) } as any);
       }
       await batch.commit();
@@ -361,6 +376,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         orderId,
+        guestAccessToken,
         paymentMethod: 'binance',
       });
     }
@@ -377,7 +393,7 @@ export async function POST(req: NextRequest) {
       const batch = adminDb.batch();
       batch.set(adminDb.collection('orders').doc(orderId), orderData);
       if (appliedDiscount && discountUsageKey && discountDocId) {
-        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: tokenEmail });
+        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: cleanEmail });
         batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: FieldValue.increment(1) } as any);
       }
       await batch.commit();
@@ -398,6 +414,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         orderId,
+        guestAccessToken,
         paymentMethod: 'redotpay',
       });
     }
@@ -436,7 +453,7 @@ export async function POST(req: NextRequest) {
       const checkoutPayload: any = {
         amount: finalOrderPrice * quantity,
         currency: 'dzd',
-        success_url: `${baseUrl}/success?order_id=${orderId}`,
+        success_url: `${baseUrl}/success?order_id=${orderId}&token=${guestAccessToken}`,
         failure_url: `${baseUrl}/failure?order_id=${orderId}`,
         webhook_endpoint: `${baseUrl}/api/webhook/chargily`,
         description: `طلب شراء: ${product.name}`,
@@ -464,6 +481,7 @@ export async function POST(req: NextRequest) {
         success: true,
         checkoutUrl: checkout.checkout_url,
         orderId,
+        guestAccessToken,
       });
     } else {
       // Mock mode: blocked in production
@@ -475,7 +493,7 @@ export async function POST(req: NextRequest) {
         );
       }
       // Mock mode fallback if Chargily keys are not yet configured on environment
-      const mockCheckoutUrl = `${baseUrl}/success?order_id=${orderId}&mock=true`;
+      const mockCheckoutUrl = `${baseUrl}/success?order_id=${orderId}&token=${guestAccessToken}&mock=true`;
       const updatePayload = {
         chargilyInvoiceId: 'mock_inv_' + orderId,
         chargilyCheckoutUrl: mockCheckoutUrl,
@@ -488,6 +506,7 @@ export async function POST(req: NextRequest) {
         success: true,
         checkoutUrl: mockCheckoutUrl,
         orderId,
+        guestAccessToken,
         isMock: true,
       });
     }

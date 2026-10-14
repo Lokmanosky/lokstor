@@ -502,6 +502,11 @@ function NavBar() {
                 </button>
                 <Link 
                   href="/register" 
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
+                    }
+                  }}
                   className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 bg-[var(--store-text)] text-[var(--store-bg)] rounded-xl hover:opacity-90 transition-opacity shadow-xs"
                 >
                   <UserPlus className="w-4 h-4" />
@@ -721,7 +726,12 @@ function NavBar() {
                 </button>
                 <Link 
                   href="/register" 
-                  onClick={() => setMobileMenuOpen(false)} 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
+                    }
+                  }} 
                   className="w-full text-center py-3 px-4 bg-[var(--store-text)] text-[var(--store-bg)] rounded-xl text-sm font-bold transition-all shadow-sm cursor-pointer"
                 >
                   {t('nav.register')}
@@ -774,78 +784,21 @@ function NavBar() {
             <X className="w-5 h-5" />
           </button>
           
-          <div className="p-8">
-            <div className="text-center mb-8">
-              <div className="w-12 h-12 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-5 h-5 text-[var(--store-text)]" />
+          <div className="p-4 sm:p-6">
+            <div className="text-center mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] flex items-center justify-center mx-auto mb-2">
+                <Lock className="w-4 h-4 text-[var(--store-text)]" />
               </div>
-              <h2 className="text-xl font-bold text-[var(--store-text)] mb-1">مرحباً بعودتك</h2>
-              <p className="text-sm text-[var(--store-text-muted)]">قم بتسجيل الدخول للمتابعة</p>
+              <h2 className="text-lg font-bold text-[var(--store-text)] mb-0.5">مرحباً بعودتك</h2>
+              <p className="text-xs text-[var(--store-text-muted)]">قم بتسجيل الدخول للمتابعة</p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[var(--store-text-muted)] mb-1.5">البريد الإلكتروني</label>
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-md px-4 py-2.5 focus:outline-none focus:border-neutral-600 transition-colors"
-                  placeholder="name@example.com"
-                  dir="ltr"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-[var(--store-text-muted)]">كلمة المرور</label>
-                  <button type="button" onClick={handleResetPassword} className="text-xs text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">نسيت كلمة المرور؟</button>
-                </div>
-                <div className="relative">
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] text-sm rounded-md pr-4 pl-10 py-2.5 focus:outline-none focus:border-neutral-600 transition-colors"
-                    placeholder="••••••••"
-                    dir="ltr"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && <p className="text-red-400 text-xs text-center">{error}</p>}
-              {success && (
-                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center py-2.5 rounded-md font-medium">
-                  {success}
-                </div>
-              )}
-              <button 
-                type="submit"
-                disabled={loading}
-                className="chargily-btn w-full py-3 text-white font-black text-sm rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all mt-2 disabled:opacity-50 cursor-pointer"
-              >
-                {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
-              </button>
-            </form>
-
-            <div className="my-4 flex items-center gap-2">
-              <div className="flex-1 h-px bg-[var(--store-border)]"></div>
-              <span className="text-xs text-[var(--store-text-muted)]">أو</span>
-              <div className="flex-1 h-px bg-[var(--store-border)]"></div>
-            </div>
-
+            {/* Google Login on Top */}
             <button 
               type="button"
               onClick={handleGoogleLogin}
               disabled={googleLoading || loading}
-              className="w-full py-3 px-4 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+              className="w-full py-2.5 px-3 bg-[var(--store-bg)] border-2 border-[var(--store-border)] hover:border-emerald-500 text-[var(--store-text)] font-bold text-xs sm:text-sm rounded-xl hover:bg-[var(--store-hover)] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
             >
               {googleLoading ? (
                 <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
@@ -854,9 +807,72 @@ function NavBar() {
               )}
               <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة باستخدام Google'}</span>
             </button>
+
+            <div className="my-2.5 flex items-center gap-2">
+              <div className="flex-1 h-px bg-[var(--store-border)]"></div>
+              <span className="text-[11px] text-[var(--store-text-muted)] font-bold">أو عبر البريد الإلكتروني</span>
+              <div className="flex-1 h-px bg-[var(--store-border)]"></div>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-2.5">
+              <div>
+                <label className="block text-xs font-bold text-[var(--store-text)] mb-1">البريد الإلكتروني</label>
+                <input 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] text-xs sm:text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 transition-colors"
+                  placeholder="name@example.com"
+                  dir="ltr"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-[var(--store-text)]">كلمة المرور</label>
+                  <button type="button" onClick={handleResetPassword} className="text-[11px] text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors">نسيت كلمة المرور؟</button>
+                </div>
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-[var(--store-text)] text-xs sm:text-sm rounded-lg pr-3 pl-9 py-2 focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder="••••••••"
+                    dir="ltr"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && <p className="text-red-400 text-xs text-center font-bold">{error}</p>}
+              {success && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center py-2 rounded-md font-medium">
+                  {success}
+                </div>
+              )}
+              <button 
+                type="submit"
+                disabled={loading}
+                className="chargily-btn w-full py-2.5 sm:py-3 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-emerald-500/25 transition-all mt-1 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+              </button>
+            </form>
             
-            <div className="mt-6 text-center text-xs text-[var(--store-text-muted)]">
-              ليس لديك حساب؟ <Link href="/register" onClick={() => setIsLoginModalOpen(false)} className="text-[var(--store-text)] font-medium hover:underline">إنشاء حساب جديد</Link>
+            <div className="mt-3.5 text-center text-xs text-[var(--store-text-muted)]">
+              ليس لديك حساب؟ <Link href="/register" onClick={() => {
+                setIsLoginModalOpen(false);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
+                }
+              }} className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">إنشاء حساب جديد</Link>
             </div>
           </div>
         </div>
@@ -874,16 +890,16 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-12 border-b border-[var(--store-border)]">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <Link href="/" className="inline-flex items-center gap-2 mb-4 hover:opacity-85 transition-opacity cursor-pointer group">
               {s.logoImageUrl ? (
-                <img src={s.logoImageUrl} alt="logo" className="w-8 h-8 rounded-lg object-cover border border-[var(--store-border)]" />
+                <img src={s.logoImageUrl} alt="logo" className="w-8 h-8 rounded-lg object-cover border border-[var(--store-border)] group-hover:scale-105 transition-transform" />
               ) : (
-                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-black text-lg border border-[var(--store-border)]">
+                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-black text-lg border border-[var(--store-border)] group-hover:scale-105 transition-transform">
                   {s.logoLetter}
                 </div>
               )}
-              <span className="font-bold text-sm tracking-wide text-[var(--store-text)] uppercase">{s.storeName}</span>
-            </div>
+              <span className="font-bold text-sm tracking-wide text-[var(--store-text)] uppercase group-hover:text-emerald-500 transition-colors">{s.storeName}</span>
+            </Link>
             <p className="text-sm text-[var(--store-text-muted)] leading-relaxed mb-4">
               {lang === 'ar' ? s.storeSubtitle : t('footer.subtitle')}
             </p>

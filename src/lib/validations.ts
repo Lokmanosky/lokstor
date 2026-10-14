@@ -41,7 +41,8 @@ export const productSchema = z.object({
 
 // Checkout Schema
 export const checkoutSchema = z.object({
-  customerName: z.string().min(2, 'يرجى إدخال اسمك الحقيقي').max(80),
+  customerName: z.string().max(80).optional().or(z.literal('')),
+  customerEmail: z.string().email('يرجى إدخال بريد إلكتروني صالح'),
   customerPhone: z.string().max(20).optional(),
   productId: z.string().min(1),
   quantity: z.number().min(1).max(10).optional().default(1),
@@ -50,7 +51,6 @@ export const checkoutSchema = z.object({
   variantId: z.string().optional(),
   customFieldsData: z.record(z.string(), z.string()).optional(),
   fcmToken: z.string().optional(),
-  customerEmail: z.string().email().optional(), // kept optional for TS types, but overridden
   discountCode: z.string().optional(),
 });
 

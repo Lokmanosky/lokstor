@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
             headers: {
               Urgency: 'high',
               TTL: '86400'
+            },
+            fcmOptions: {
+              link: targetUrl
             }
           },
           android: {

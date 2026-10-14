@@ -28,8 +28,18 @@ self.addEventListener('push', (event) => {
 
   const title = d.title || n.title || '🔔 طلب جديد (Lokstor)';
   const body = d.body || n.body || 'لديك طلب جديد في المتجر';
-  const url = d.url || (p.fcmOptions && p.fcmOptions.link) || '/admin/orders';
+  let url = d.url || (p.fcmOptions && p.fcmOptions.link) || '/admin/orders';
   const tag = d.tag || 'lokstor-order';
+
+  // Sanitize url: if it points to localhost (from dev testing), rewrite to production
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    try {
+      const parsed = new URL(url);
+      url = `https://lokstor.vercel.app${parsed.pathname}${parsed.search}`;
+    } catch (e) {
+      url = 'https://lokstor.vercel.app/admin/orders';
+    }
+  }
 
   const notificationOptions = {
     body: body,
@@ -50,13 +60,31 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[SW] Notification clicked');
   event.notification.close();
-  const url = event.notification.data?.url || '/admin/orders';
+  let url = event.notification.data?.url || '/admin/orders';
+  
+  // If the notification URL mistakenly points to localhost (e.g. from local testing),
+  // redirect it to the live production site so it opens properly on mobile devices.
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    try {
+      const parsed = new URL(url);
+      url = `https://lokstor.vercel.app${parsed.pathname}${parsed.search}`;
+    } catch (e) {
+      url = 'https://lokstor.vercel.app/admin/orders';
+    }
+  } else if (url.startsWith('/')) {
+    const origin = (self.location && self.location.origin && !self.location.origin.includes('localhost'))
+      ? self.location.origin
+      : 'https://lokstor.vercel.app';
+    url = `${origin}${url}`;
+  }
   
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
-        if ('focus' in client) {
-          client.navigate(url);
+        if (client.url && (client.url.includes('/admin') || client.url.includes('lokstor.vercel.app')) && 'focus' in client) {
+          if ('navigate' in client) {
+            client.navigate(url);
+          }
           return client.focus();
         }
       }

@@ -168,7 +168,10 @@ export async function POST(req: NextRequest) {
     // 7. Send Push Notifications (FCM)
     try {
       if (adminMessaging) {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app';
+        const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app';
+        const baseUrl = (rawBaseUrl.includes('localhost') || rawBaseUrl.includes('127.0.0.1'))
+          ? 'https://lokstor.vercel.app'
+          : rawBaseUrl.replace(/\/$/, '');
         
         // Notify Customer
         if (orderData.fcmToken) {
@@ -180,6 +183,11 @@ export async function POST(req: NextRequest) {
             },
             data: {
               url: `${baseUrl}/account/orders`,
+            },
+            webpush: {
+              fcmOptions: {
+                link: `${baseUrl}/account/orders`
+              }
             }
           }).catch((e: any) => console.warn('Customer push failed:', e));
         }
@@ -214,6 +222,9 @@ export async function POST(req: NextRequest) {
               headers: {
                 Urgency: 'high',
                 TTL: '86400'
+              },
+              fcmOptions: {
+                link: notifUrl
               }
             },
             android: {
