@@ -28,7 +28,8 @@ import {
   Square,
   Loader2,
   Send,
-  Bell
+  Bell,
+  BellRing
 } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -53,6 +54,7 @@ export default function OrdersPage() {
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
+  const [remindingOrderId, setRemindingOrderId] = useState<string | null>(null);
 
   // Red Warning Confirmation Modals for Setting to Pending
   const [pendingTargetOrder, setPendingTargetOrder] = useState<Order | null>(null);
@@ -170,6 +172,91 @@ export default function OrdersPage() {
     } finally {
       setIsSendingReminders(false);
     }
+  };
+
+  const handleForcePaymentReminder = (order: Order) => {
+    if (!order.id) return;
+    const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+    const customerEmail = (order.customerEmail || '').trim();
+
+    if (!customerEmail || !customerEmail.includes('@')) {
+      alert('لا يوجد بريد إلكتروني صالح لهذا العميل لإرسال التذكير.');
+      return;
+    }
+
+    setGenericConfirm({
+      isOpen: true,
+      title: 'تذكير قسري بالدفع فوري',
+      message: `هل أنت متأكد من إرسال إيميل تذكير بالدفع فوراً للطلب #${shortId} إلى العميل (${customerEmail})؟ سيتم تجاوز شرط الـ 24 ساعة وإرسال الإيميل مباشرة الآن.`,
+      confirmText: 'نعم، أرسل التذكير فوراً',
+      isDanger: false,
+      onConfirm: async () => {
+        setRemindingOrderId(order.id);
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          const res = await fetch('/api/admin/remind-order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ orderId: order.id })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setBulkFeedback(`تم بنجاح إرسال تذكير الدفع القسري للعميل (${customerEmail}) ✉️`);
+          } else {
+            alert('فشل إرسال التذكير: ' + (data.error || 'حدث خطأ غير معروف'));
+          }
+          setTimeout(() => setBulkFeedback(null), 5000);
+        } catch (err: any) {
+          console.error(err);
+          alert('خطأ أثناء إرسال التذكير: ' + err.message);
+        } finally {
+          setRemindingOrderId(null);
+        }
+      }
+    });
+  };
+
+  const handleBulkForcePaymentReminders = async () => {
+    if (selectedOrderIds.length === 0) return;
+    const count = selectedOrderIds.length;
+
+    setGenericConfirm({
+      isOpen: true,
+      title: 'تذكير قسري بالدفع للطلبات المحددة',
+      message: `هل أنت متأكد من إرسال إيميلات تذكير بالدفع قسرياً لـ (${count}) طلب محدد؟ سيتم تجاوز شرط الـ 24 ساعة وإرسال الإيميلات فوراً لجميع العملاء.`,
+      confirmText: `نعم، تذكير (${count}) عميل فوراً`,
+      isDanger: false,
+      onConfirm: async () => {
+        setIsBulkProcessing(true);
+        try {
+          const token = await auth.currentUser?.getIdToken();
+          const res = await fetch('/api/admin/remind-order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ orderIds: selectedOrderIds })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setBulkFeedback(data.message || `تم بنجاح إرسال تذكير الدفع القسري لـ (${data.remindedCount || count}) طلب.`);
+            setSelectedOrderIds([]);
+          } else {
+            alert('فشل إرسال التذكيرات: ' + (data.error || 'حدث خطأ غير معروف'));
+          }
+          setTimeout(() => setBulkFeedback(null), 5000);
+        } catch (err: any) {
+          console.error(err);
+          alert('حدث خطأ أثناء إرسال التذكيرات: ' + err.message);
+        } finally {
+          setIsBulkProcessing(false);
+        }
+      }
+    });
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -805,6 +892,18 @@ export default function OrdersPage() {
               <span>تحويل للانتظار ({selectedOrderIds.length})</span>
             </button>
 
+            {/* Bulk Force Reminder (Bypasses 24h) */}
+            <button
+              type="button"
+              disabled={isBulkProcessing}
+              onClick={handleBulkForcePaymentReminders}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              title="إرسال تذكير قسري بالدفع للطلبات المحددة فوراً (تجاوز شرط 24س)"
+            >
+              <BellRing className="w-3.5 h-3.5" />
+              <span>تذكير قسري ({selectedOrderIds.length})</span>
+            </button>
+
             {/* Mark as Failed / إلغاء */}
             <button
               type="button"
@@ -858,7 +957,7 @@ export default function OrdersPage() {
                 <th className="px-3 py-2.5 font-bold min-w-[80px]">المبلغ</th>
                 <th className="px-3 py-2.5 font-bold min-w-[80px]">الحالة</th>
                 <th className="px-3 py-2.5 font-bold min-w-[110px]">التاريخ</th>
-                <th className="px-2 py-2.5 font-bold text-center w-[90px]">الإجراءات</th>
+                <th className="px-2 py-2.5 font-bold text-center min-w-[115px] w-[115px]">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--admin-border)]">
@@ -1017,6 +1116,29 @@ export default function OrdersPage() {
                     {/* Action Buttons */}
                     <td className="px-2 py-2">
                       <div className="flex items-center justify-center gap-1">
+                        {/* Force Payment Reminder (Bypasses 24h requirement) */}
+                        {o.status !== 'paid' && (
+                          <button
+                            type="button"
+                            disabled={remindingOrderId === o.id}
+                            onClick={() => handleForcePaymentReminder(o)}
+                            title={o.paymentReminderSent 
+                              ? `إعادة إرسال تذكير الدفع قسرياً للعميل (أُرسل مسبقاً - تجاوز شرط 24س)` 
+                              : `تذكير قسري فوري بالدفع (تجاوز شرط 24س)`}
+                            className={`p-1 rounded transition-colors cursor-pointer disabled:opacity-50 ${
+                              o.paymentReminderSent
+                                ? 'text-amber-500 hover:bg-amber-500/15'
+                                : 'text-[var(--admin-text-muted)] hover:text-amber-500 hover:bg-amber-500/10'
+                            }`}
+                          >
+                            {remindingOrderId === o.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                            ) : (
+                              <BellRing className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => { setSelectedOrder(o); setShowPassword(false); }}
