@@ -1004,3 +1004,182 @@ export async function sendPaymentReminderCustomerEmail(params: {
     return { customerSent: false, error: errorMsg };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Template: Smart Consolidated Reminder for Multiple Pending Orders
+// ─────────────────────────────────────────────────────────────────────────────
+function renderCustomerMultipleOrdersReminderHtml(params: {
+  customerName: string;
+  customerEmail: string;
+  orders: OrderEmailData[];
+  accountUrl: string;
+  storeUrl: string;
+}): string {
+  const { customerName, orders, accountUrl } = params;
+  const totalAmount = orders.reduce((sum, o) => sum + Number(o.productPrice || o.amount || 0), 0);
+
+  const ordersRows = orders
+    .map((o) => {
+      const shortId = (o.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+      const price = Number(o.productPrice || o.amount || 0);
+      return `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:10px 6px;font-weight:700;color:#0f172a;font-size:12px;vertical-align:middle;" dir="ltr">#${shortId}</td>
+          <td style="padding:10px 6px;color:#334155;font-weight:600;font-size:12px;vertical-align:middle;">${o.productName || 'منتج رقمي'}</td>
+          <td style="padding:10px 6px;color:#059669;font-weight:800;font-size:12px;text-align:left;vertical-align:middle;" dir="ltr">${formatDzd(price)} DZD</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>تذكير: لديك طلبات بانتظار استكمال الدفع</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table { border-collapse: collapse; }
+    .email-container { width:100% !important; max-width:560px !important; margin:0 auto !important; }
+    @media only screen and (max-width: 480px) {
+      .email-wrapper { padding: 8px 4px !important; }
+      .email-body { padding: 16px 12px !important; }
+    }
+  </style>
+</head>
+<body class="email-wrapper" style="margin:0;padding:12px 6px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;direction:rtl;text-align:right;">
+  <div class="email-container" style="width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.04);box-sizing:border-box;">
+    
+    <!-- Header -->
+    <div style="background:#0f172a;padding:22px 16px;text-align:center;">
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">متجر Lokstor</h1>
+      <p style="margin:4px 0 0;color:#fcd34d;font-size:12px;font-weight:600;">⏳ تذكير بإتمام طلباتك المعلقة</p>
+    </div>
+
+    <div class="email-body" style="padding:20px 16px;box-sizing:border-box;">
+      
+      <!-- Greeting -->
+      <h2 style="margin:0 0 10px;font-size:16px;font-weight:700;color:#0f172a;">
+        مرحباً ${customerName || 'عميلنا العزيز'} 👋
+      </h2>
+      <p style="margin:0 0 16px;font-size:13px;color:#475569;line-height:1.6;">
+        لاحظنا أن لديك <strong>(${orders.length}) طلبات</strong> ما زالت بانتظار استكمال الدفع في متجر Lokstor. جميع طلباتك محفوظة لدينا ويمكنك إكمال دفعها واستلامها في أي وقت عبر البطاقة الذهبية، بايننس أو ريدوت باي.
+      </p>
+
+      <!-- Alert Box -->
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:13px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;color:#92400e;font-size:13px;">📋 قائمة طلباتك بانتظار الدفع:</div>
+        <div style="color:#b45309;font-size:11px;margin-top:3px;line-height:1.5;">
+          يمكنك مراجعة كل طلب وإتمام الدفع له مباشرة عبر حسابك في المتجر.
+        </div>
+      </div>
+
+      <!-- Orders Table -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12px;box-sizing:border-box;">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+            <th style="padding:8px 6px;text-align:right;color:#64748b;font-size:11px;">الطلب</th>
+            <th style="padding:8px 6px;text-align:right;color:#64748b;font-size:11px;">المنتج</th>
+            <th style="padding:8px 6px;text-align:left;color:#64748b;font-size:11px;">المبلغ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ordersRows}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f1f5f9;font-weight:800;border-top:2px solid #cbd5e1;">
+            <td colspan="2" style="padding:10px 8px;color:#0f172a;font-size:12px;">المجموع الإجمالي:</td>
+            <td style="padding:10px 8px;color:#059669;font-size:13px;text-align:left;" dir="ltr">${formatDzd(totalAmount)} DZD</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Main Action: Go to Account Button -->
+      <div style="text-align:center;margin:24px 0 14px;">
+        <a href="${accountUrl}" target="_blank" style="display:inline-block;background:#059669;color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;padding:12px 32px;border-radius:10px;box-shadow:0 3px 6px rgba(5,150,105,0.25);">
+          عرض طلباتي في حسابي وإتمام الدفع ←
+        </a>
+      </div>
+
+      <!-- Assistance / Help Note -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+        <div style="font-weight:700;color:#334155;font-size:12px;margin-bottom:4px;">💬 هل قمت بإنشاء بعض هذه الطلبات بالخطأ؟</div>
+        <p style="margin:0;font-size:12px;color:#64748b;line-height:1.5;">
+          إذا كررت الطلب بالخطأ، لا داعي للقلق، يمكنك فقط دفع الطلب الذي تريده وتجاهل البقية، أو التواصل معنا وسنكون سعداء بمساعدتك فوراً.
+        </p>
+      </div>
+
+      <!-- Support Link -->
+      <div style="text-align:center;margin-top:14px;">
+        <a href="https://t.me/Loktech" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:9px 18px;border-radius:8px;">
+          تواصل مع الدعم الفني عبر تليغرام
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;padding:14px;text-align:center;border-top:1px solid #e2e8f0;">
+      <p style="margin:0 0 4px;color:#94a3b8;font-size:11px;">متجر Lokstor للمنتجات الرقمية في الجزائر</p>
+      <p style="margin:0;color:#cbd5e1;font-size:10px;">رسالة تذكير مجمعة لطلباتك المعلقة | شكراً لتسوقك معنا.</p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Send a smart consolidated reminder email to a customer who has multiple pending orders.
+ */
+export async function sendMultipleOrdersReminderCustomerEmail(params: {
+  customerName: string;
+  customerEmail: string;
+  orders: OrderEmailData[];
+  accountUrl: string;
+}): Promise<{ customerSent: boolean; error?: string }> {
+  const { customerName, customerEmail, orders, accountUrl } = params;
+  const transporter = getTransporter();
+
+  if (!transporter) {
+    console.warn('[Nodemailer] GMAIL credentials missing. Multiple orders reminder skipped.');
+    return { customerSent: false, error: 'Gmail credentials missing' };
+  }
+
+  const cleanEmail = (customerEmail || '').trim();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { customerSent: false, error: 'Invalid customer email' };
+  }
+
+  const sender = getSenderEmail();
+  const baseUrl = getBaseUrl();
+
+  try {
+    await transporter.sendMail({
+      from: sender,
+      to: cleanEmail,
+      subject: `[Lokstor] ⏳ تذكير: لديك ${orders.length} طلبات بانتظار استكمال الدفع`,
+      html: renderCustomerMultipleOrdersReminderHtml({
+        customerName,
+        customerEmail: cleanEmail,
+        orders,
+        accountUrl: accountUrl || `${baseUrl}/account`,
+        storeUrl: baseUrl,
+      }),
+    });
+
+    console.log(`[Nodemailer] Smart multiple orders reminder sent successfully to ${cleanEmail} for ${orders.length} orders`);
+    return { customerSent: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[Nodemailer] Failed to send multiple orders reminder to ${cleanEmail}:`, err);
+    return { customerSent: false, error: errorMsg };
+  }
+}
+

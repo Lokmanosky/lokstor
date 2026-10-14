@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { sendPaymentReminderCustomerEmail, OrderEmailData } from '@/lib/email';
+import {
+  sendPaymentReminderCustomerEmail,
+  sendMultipleOrdersReminderCustomerEmail,
+  OrderEmailData,
+} from '@/lib/email';
 
 // Mark route as dynamic (not static cached)
 export const dynamic = 'force-dynamic';
@@ -38,6 +42,11 @@ async function verifyAuth(req: NextRequest): Promise<boolean> {
   return false;
 }
 
+interface CustomerGroupItem {
+  docSnap: FirebaseFirestore.QueryDocumentSnapshot;
+  orderData: OrderEmailData;
+}
+
 async function handleReminders(req: NextRequest) {
   try {
     const isAuthorized = await verifyAuth(req);
@@ -65,10 +74,21 @@ async function handleReminders(req: NextRequest) {
     const baseUrl = (!rawBaseUrl || rawBaseUrl.includes('localhost') || rawBaseUrl.includes('127.0.0.1'))
       ? 'https://lokstor.vercel.app'
       : rawBaseUrl.replace(/\/$/, '');
+
     let scannedCount = 0;
     let eligibleCount = 0;
     let remindedCount = 0;
+    let customersReminded = 0;
+    let singleRemindersCount = 0;
+    let multipleRemindersCount = 0;
     const errors: string[] = [];
+
+    // Group eligible orders by customerEmail (lowercase)
+    const customerGroups = new Map<string, {
+      customerName: string;
+      customerEmail: string;
+      items: CustomerGroupItem[];
+    }>();
 
     for (const docSnap of snapshot.docs) {
       scannedCount++;
@@ -83,57 +103,113 @@ async function handleReminders(req: NextRequest) {
       const isOlderThan24h = createdAt > 0 && createdAt <= cutoff24h;
       const isWithin14Days = createdAt >= maxAgeCutoff;
       const alreadyReminded = data.paymentReminderSent === true;
-      const customerEmail = (data.customerEmail || '').trim();
-      const hasValidEmail = Boolean(customerEmail && customerEmail.includes('@'));
+      const rawEmail = (data.customerEmail || '').trim();
+      const hasValidEmail = Boolean(rawEmail && rawEmail.includes('@'));
 
       if (isOlderThan24h && isWithin14Days && !alreadyReminded && hasValidEmail) {
         eligibleCount++;
-        try {
-          const orderData: OrderEmailData = {
-            id: docSnap.id,
-            productId: data.productId,
-            productName: data.productName || 'منتج رقمي',
-            productPrice: Number(data.productPrice || data.amount || 0),
-            amount: Number(data.amount || data.productPrice || 0),
-            customerName: data.customerName || data.userName || 'عميلنا العزيز',
-            customerEmail,
-            customerPhone: data.customerPhone || '',
-            paymentMethod: data.paymentMethod || '',
-            paymentMethodDetails: data.paymentMethodDetails || '',
-            createdAt,
-          };
+        const emailKey = rawEmail.toLowerCase();
+        const customerName = data.customerName || data.userName || 'عميلنا العزيز';
+        const orderData: OrderEmailData = {
+          id: docSnap.id,
+          productId: data.productId,
+          productName: data.productName || 'منتج رقمي',
+          productPrice: Number(data.productPrice || data.amount || 0),
+          amount: Number(data.amount || data.productPrice || 0),
+          customerName,
+          customerEmail: rawEmail,
+          customerPhone: data.customerPhone || '',
+          paymentMethod: data.paymentMethod || '',
+          paymentMethodDetails: data.paymentMethodDetails || '',
+          createdAt,
+        };
 
-          const checkoutUrl = `${baseUrl}/checkout/${docSnap.id}`;
+        if (!customerGroups.has(emailKey)) {
+          customerGroups.set(emailKey, {
+            customerName,
+            customerEmail: rawEmail,
+            items: [],
+          });
+        }
+        customerGroups.get(emailKey)!.items.push({
+          docSnap,
+          orderData,
+        });
+      }
+    }
+
+    // Now send reminders: single email for single order, consolidated digest for multiple orders
+    for (const [emailKey, group] of customerGroups.entries()) {
+      try {
+        if (group.items.length === 1) {
+          // Exactly 1 order -> Single Reminder with direct checkout link
+          const item = group.items[0];
+          const checkoutUrl = `${baseUrl}/checkout/${item.docSnap.id}`;
           const res = await sendPaymentReminderCustomerEmail({
-            order: orderData,
+            order: item.orderData,
             checkoutUrl,
           });
 
           if (res.customerSent) {
-            await docSnap.ref.update({
+            await item.docSnap.ref.update({
               paymentReminderSent: true,
               paymentReminderSentAt: now,
+              paymentReminderType: 'single',
             });
             remindedCount++;
+            customersReminded++;
+            singleRemindersCount++;
           } else {
-            errors.push(`فشل إرسال تذكير للطلب #${docSnap.id}: ${res.error || 'خطأ غير معروف'}`);
+            errors.push(`فشل إرسال تذكير للطلب #${item.docSnap.id}: ${res.error || 'خطأ غير معروف'}`);
           }
-        } catch (itemErr: any) {
-          console.error(`Error sending reminder for order #${docSnap.id}:`, itemErr);
-          errors.push(`خطأ مع الطلب #${docSnap.id}: ${itemErr.message}`);
+        } else if (group.items.length > 1) {
+          // Multiple orders -> Consolidated Reminder with link to account page
+          const ordersList = group.items.map((i) => i.orderData);
+          const accountUrl = `${baseUrl}/account`;
+          const res = await sendMultipleOrdersReminderCustomerEmail({
+            customerName: group.customerName,
+            customerEmail: group.customerEmail,
+            orders: ordersList,
+            accountUrl,
+          });
+
+          if (res.customerSent) {
+            const batch = adminDb.batch();
+            for (const item of group.items) {
+              batch.update(item.docSnap.ref, {
+                paymentReminderSent: true,
+                paymentReminderSentAt: now,
+                paymentReminderType: 'consolidated',
+                consolidatedWithCount: group.items.length,
+              });
+            }
+            await batch.commit();
+
+            remindedCount += group.items.length;
+            customersReminded++;
+            multipleRemindersCount++;
+          } else {
+            errors.push(`فشل إرسال تذكير مجمع للعميل (${group.customerEmail}): ${res.error || 'خطأ غير معروف'}`);
+          }
         }
+      } catch (custErr: any) {
+        console.error(`Error processing reminder for customer ${emailKey}:`, custErr);
+        errors.push(`خطأ مع العميل (${emailKey}): ${custErr?.message || custErr}`);
       }
     }
 
-    console.log(`[Cron: Payment Reminders] Scanned ${scannedCount} pending orders, ${eligibleCount} eligible, ${remindedCount} reminded.`);
+    console.log(`[Cron: Payment Reminders] Scanned ${scannedCount} pending orders, ${eligibleCount} eligible across ${customerGroups.size} customers. Sent reminders to ${customersReminded} customers for ${remindedCount} orders.`);
 
     return NextResponse.json({
       success: true,
       scannedCount,
       eligibleCount,
       remindedCount,
+      customersReminded,
+      singleRemindersCount,
+      multipleRemindersCount,
       errors: errors.length > 0 ? errors : undefined,
-      message: `تم فحص (${scannedCount}) طلب معلق، وإرسال تذكير الدفع لـ (${remindedCount}) طلب بنجاح.`
+      message: `تم فحص (${scannedCount}) طلب معلق. تم تذكير (${customersReminded}) عميل بنجاح (${remindedCount} طلب إجمالاً: ${singleRemindersCount} رسالة فردية + ${multipleRemindersCount} رسالة مجمعة).`
     });
 
   } catch (error: any) {
