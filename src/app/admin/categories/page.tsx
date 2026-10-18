@@ -17,6 +17,7 @@ import {
   Plus, Trash2, GripVertical, Package, FolderOpen, Upload,
   Pencil, X, Check, Loader2, ImageOff, ChevronDown, ChevronUp, Zap
 } from 'lucide-react';
+import { logAdminActivity } from '@/lib/admin-logger';
 
 interface StoreCategory {
   id: string; name: string; slug: string; emoji?: string; sortOrder: number; createdAt: number;
@@ -402,6 +403,13 @@ export default function CategoriesPage() {
         reordered.forEach(c => batch.update(doc(db, 'storeCategories', c.id), { sortOrder: c.sortOrder }));
         await batch.commit();
         notify('تم حفظ ترتيب الأقسام');
+        await logAdminActivity({
+          category: 'categories',
+          actionType: 'reorder',
+          title: 'إعادة ترتيب الأقسام',
+          description: `تم حفظ ترتيب جديد لـ (${reordered.length}) أقسام في المتجر`,
+          metadata: { count: reordered.length }
+        });
       } catch (e: any) { notify('فشل حفظ الترتيب: ' + e?.message, 'error'); }
       finally { setSaving(false); }
       return;
@@ -444,6 +452,15 @@ export default function CategoriesPage() {
           updates.type = targetCat.slug;
           updates.category = targetCat.name;
           notify('تم نقل "' + activeProd.name + '" إلى قسم ' + targetCat.name);
+          await logAdminActivity({
+            category: 'categories',
+            actionType: 'reorder',
+            title: `نقل منتج لقسم: ${targetCat.name}`,
+            description: `تم نقل المنتج "${activeProd.name}" إلى قسم "${targetCat.name}"`,
+            targetId: activeProd.id,
+            targetName: activeProd.name,
+            metadata: { toCategory: targetCat.name }
+          });
         } else {
           // Reorder within same category - get new position
           const sameCatProds = [...(prodsByCat[fromCatId] || [])];
@@ -456,6 +473,13 @@ export default function CategoriesPage() {
             reordered.forEach((p, i) => { if (p.id) batch.update(doc(db, 'products', p.id), { sortOrder: i }); });
             await batch.commit();
             notify('تم حفظ ترتيب المنتجات');
+            await logAdminActivity({
+              category: 'categories',
+              actionType: 'reorder',
+              title: `إعادة ترتيب منتجات داخل قسم`,
+              description: `تم حفظ ترتيب جديد للمنتجات داخل قسم "${targetCat?.name || 'عام'}"`,
+              metadata: { categoryName: targetCat?.name, count: reordered.length }
+            });
             return;
           }
           return;
@@ -473,13 +497,23 @@ export default function CategoriesPage() {
     setAdding(true);
     try {
       const slug = newSlug.trim() || slugify(newName);
-      await addDoc(collection(db, 'storeCategories'), {
-        name: newName.trim(), slug, emoji: newEmoji.trim() || '📦',
+      const catEmoji = newEmoji.trim() || '📦';
+      const docRef = await addDoc(collection(db, 'storeCategories'), {
+        name: newName.trim(), slug, emoji: catEmoji,
         sortOrder: cats.length, createdAt: Date.now(),
       });
       setNewName(''); setNewSlug(''); setNewEmoji('📦');
       setShowAdd(false);
       notify('تم إضافة القسم "' + newName.trim() + '"');
+      await logAdminActivity({
+        category: 'categories',
+        actionType: 'create',
+        title: `إضافة قسم جديد: ${newName.trim()}`,
+        description: `تم إنشاء قسم جديد باسم "${newName.trim()}" برمز ${catEmoji} ومعرف (${slug})`,
+        targetId: docRef.id,
+        targetName: newName.trim(),
+        metadata: { slug, emoji: catEmoji }
+      });
     } catch (e: any) { notify('فشل الإضافة: ' + e?.message, 'error'); }
     finally { setAdding(false); }
   };
@@ -490,6 +524,14 @@ export default function CategoriesPage() {
     try {
       await deleteDoc(doc(db, 'storeCategories', cat.id));
       notify('تم حذف القسم');
+      await logAdminActivity({
+        category: 'categories',
+        actionType: 'delete',
+        title: `حذف قسم: ${cat.name}`,
+        description: `تم حذف القسم "${cat.name}" من المتجر`,
+        targetId: cat.id,
+        targetName: cat.name,
+      });
     } catch (e: any) { notify('فشل الحذف: ' + e?.message, 'error'); }
   };
 
@@ -498,6 +540,18 @@ export default function CategoriesPage() {
     try {
       await updateDoc(doc(db, 'storeCategories', cat.id), { name: name.trim(), emoji: emoji.trim() || '📦' });
       notify('تم حفظ التعديلات');
+      await logAdminActivity({
+        category: 'categories',
+        actionType: 'update',
+        title: `تعديل قسم: ${name.trim()}`,
+        description: `تم تعديل القسم "${cat.name}" إلى "${name.trim()}" بالرمز ${emoji.trim() || '📦'}`,
+        targetId: cat.id,
+        targetName: name.trim(),
+        diff: {
+          before: { name: cat.name, emoji: cat.emoji },
+          after: { name: name.trim(), emoji: emoji.trim() }
+        }
+      });
     } catch (e: any) { notify('فشل: ' + e?.message, 'error'); }
   };
 
@@ -517,6 +571,12 @@ export default function CategoriesPage() {
       });
       await batch.commit();
       notify('تم إضافة الأقسام الافتراضية بنجاح');
+      await logAdminActivity({
+        category: 'categories',
+        actionType: 'create',
+        title: 'إضافة الأقسام الافتراضية للمتجر',
+        description: 'تم إنشاء الأقسام الافتراضية (منتجات رقمية، اشتراكات، شحن ألعاب)',
+      });
     } catch (e: any) { notify('فشل: ' + e?.message, 'error'); }
     finally { setSaving(false); }
   };

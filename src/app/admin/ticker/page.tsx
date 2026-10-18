@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useStoreSettings, saveStoreSettings, DEFAULT_TICKER_ITEMS, TickerItem } from '@/lib/store-settings';
+import { logAdminActivity } from '@/lib/admin-logger';
 
 const QUICK_EMOJIS = ['🎧', '⭐', '🚀', '✨', '🔥', '⚡', '🎁', '💎', '🔒', '🏷️', '📢', '🎮', '💡', '🏆'];
 
@@ -94,6 +95,13 @@ export default function AdminTickerPage() {
       });
 
       setMessage({ type: 'success', text: 'تم حفظ إعدادات الشريط الإعلاني بنجاح! التحديث يظهر الآن مباشرة للزوار 🚀' });
+      await logAdminActivity({
+        category: 'ticker',
+        actionType: 'update',
+        title: 'تعديل الشريط الإعلاني',
+        description: `تم تحديث عبارات الشريط الإعلاني (${tickerEnabled ? 'مفعّل' : 'معطّل'}) بنجاح`,
+        metadata: { tickerEnabled, itemsCount: cleanedItems.filter(i => i.text).length }
+      });
       setTimeout(() => setMessage(null), 4000);
     } catch (err: any) {
       console.error('Error saving ticker settings:', err);

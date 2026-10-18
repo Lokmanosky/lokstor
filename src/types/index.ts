@@ -120,3 +120,48 @@ export interface Review {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number | string;
 }
+
+export type AdminActionCategory =
+  | 'products'    // منتجات (إضافة، تعديل، حذف، نسخ، ترتيب، تغيير سعر، صور)
+  | 'orders'      // طلبات (تغيير حالة، إلغاء، حذف، تسليم، تذكير)
+  | 'inventory'   // مخزون (إضافة كميات، روابط)
+  | 'categories'  // أقسام (إضافة، حذف، تسمية، ترتيب)
+  | 'discounts'   // أكواد الخصم (إنشاء، تعديل، تفعيل، حذف)
+  | 'ticker'      // شريط إعلاني (تعديل نصوص)
+  | 'reviews'     // تقييمات (موافقة، رفض، حذف)
+  | 'settings';   // إعدادات (متجر، حساب)
+
+export type AdminActionType =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'price_change'
+  | 'image_change'
+  | 'reorder'
+  | 'status_change'
+  | 'order_cancel'
+  | 'order_fulfill'
+  | 'stock_update'
+  | 'reminder'
+  | 'bulk_action';
+
+export interface AdminLog {
+  id?: string;
+  category: AdminActionCategory;
+  actionType: AdminActionType;
+  title: string;
+  description: string;
+  targetId?: string;
+  targetName?: string;
+  adminEmail: string;
+  adminName?: string;
+  adminUid?: string;
+  diff?: {
+    before?: any;
+    after?: any;
+    changes?: Record<string, { from: any; to: any; label?: string }>;
+  };
+  metadata?: Record<string, any>;
+  createdAt: number;
+}
+

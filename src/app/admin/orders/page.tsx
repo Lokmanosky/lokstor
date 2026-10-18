@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { db, auth } from '@/lib/firebase';
 import { collection, onSnapshot, doc, getDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Order } from '@/types';
+import { logAdminActivity } from '@/lib/admin-logger';
 import { 
   Trash2, 
   CheckCircle, 
@@ -29,7 +30,9 @@ import {
   Loader2,
   Send,
   Bell,
-  BellRing
+  BellRing,
+  Mail,
+  BellOff
 } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -59,6 +62,25 @@ export default function OrdersPage() {
   // Red Warning Confirmation Modals for Setting to Pending
   const [pendingTargetOrder, setPendingTargetOrder] = useState<Order | null>(null);
   const [isBulkPendingConfirmOpen, setIsBulkPendingConfirmOpen] = useState(false);
+
+  // Cancellation Modal (Silent cancellation vs Customer Email notification toggle)
+  const [cancelModal, setCancelModal] = useState<{
+    isOpen: boolean;
+    orderIds: string[];
+    customerEmail?: string;
+    orderShortId?: string;
+    notifyCustomer: boolean;
+    reason: string;
+    isProcessing: boolean;
+  }>({
+    isOpen: false,
+    orderIds: [],
+    customerEmail: '',
+    orderShortId: '',
+    notifyCustomer: false,
+    reason: '',
+    isProcessing: false,
+  });
 
   // Generic Confirmation Modal
   const [genericConfirm, setGenericConfirm] = useState<{
@@ -127,6 +149,8 @@ export default function OrdersPage() {
   const confirmSetToPending = async () => {
     if (!pendingTargetOrder?.id) return;
     const orderId = pendingTargetOrder.id;
+    const shortId = (orderId || '').replace('ord_', '').slice(0, 8).toUpperCase();
+    const customerEmail = pendingTargetOrder.customerEmail || '';
     setPendingTargetOrder(null);
     try {
       await updateDoc(doc(db, 'orders', orderId), { 
@@ -136,6 +160,15 @@ export default function OrdersPage() {
         linkDeliveredAt: null,
       });
       setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار وتفريغ الرابط بنجاح (سيتم سحب اشتراك جديد عند إكماله)');
+      await logAdminActivity({
+        category: 'orders',
+        actionType: 'status_change',
+        title: `إعادة طلب لقيد الانتظار #${shortId}`,
+        description: `تمت إعادة الطلب #${shortId} للعميل (${customerEmail}) إلى حالة الانتظار وتفريغ رابط التسليم`,
+        targetId: orderId,
+        targetName: `طلب #${shortId}`,
+        metadata: { status: 'pending', customerEmail }
+      });
       setTimeout(() => setBulkFeedback(null), 5000);
     } catch(e: any) {
       console.error(e);
@@ -162,6 +195,13 @@ export default function OrdersPage() {
       const data = await res.json();
       if (data.success) {
         setBulkFeedback(data.message || `تم فحص الطلبات وإرسال التذكيرات بنجاح (${data.remindedCount} إيميل).`);
+        await logAdminActivity({
+          category: 'orders',
+          actionType: 'reminder',
+          title: 'فحص وإرسال تذكيرات الدفع (>24س)',
+          description: `تم فحص الطلبات المعلقة وإرسال ${data.remindedCount || 0} إيميل تذكير بالدفع للمشترين`,
+          metadata: { remindedCount: data.remindedCount }
+        });
       } else {
         alert('حدث خطأ: ' + (data.error || 'تعذر إرسال التذكيرات'));
       }
@@ -205,6 +245,15 @@ export default function OrdersPage() {
           const data = await res.json();
           if (data.success) {
             setBulkFeedback(`تم بنجاح إرسال تذكير الدفع القسري للعميل (${customerEmail}) ✉️`);
+            await logAdminActivity({
+              category: 'orders',
+              actionType: 'reminder',
+              title: `تذكير قسري بالدفع #${shortId}`,
+              description: `تم إرسال إيميل تذكير بالدفع فوراً للطلب #${shortId} للعميل (${customerEmail})`,
+              targetId: order.id,
+              targetName: `طلب #${shortId}`,
+              metadata: { customerEmail }
+            });
           } else {
             alert('فشل إرسال التذكير: ' + (data.error || 'حدث خطأ غير معروف'));
           }
@@ -244,6 +293,13 @@ export default function OrdersPage() {
           const data = await res.json();
           if (data.success) {
             setBulkFeedback(data.message || `تم بنجاح إرسال تذكير الدفع القسري لـ (${data.remindedCount || count}) طلب.`);
+            await logAdminActivity({
+              category: 'orders',
+              actionType: 'reminder',
+              title: `تذكير جماعي بالدفع (${count} طلب)`,
+              description: `تم إرسال تذكيرات دفع فورية لـ (${data.remindedCount || count}) طلب محدد`,
+              metadata: { count, orderIds: selectedOrderIds }
+            });
             setSelectedOrderIds([]);
           } else {
             alert('فشل إرسال التذكيرات: ' + (data.error || 'حدث خطأ غير معروف'));
@@ -259,45 +315,109 @@ export default function OrdersPage() {
     });
   };
 
+  // ── Cancel Order Execution (Silent vs With Email) ────────────────────────
+  const handleExecuteCancel = async () => {
+    if (cancelModal.orderIds.length === 0) return;
+    setCancelModal(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/admin/cancel-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orderIds: cancelModal.orderIds,
+          notifyCustomer: cancelModal.notifyCustomer,
+          reason: cancelModal.reason.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const isBulk = cancelModal.orderIds.length > 1;
+        const shortId = cancelModal.orderShortId;
+        const customerEmail = cancelModal.customerEmail;
+
+        if (cancelModal.notifyCustomer && data.emailsSentCount > 0) {
+          setBulkFeedback(
+            isBulk
+              ? `تم بنجاح إلغاء (${data.cancelledCount}) طلب، وإرسال إيميل إشعار لـ (${data.emailsSentCount}) عميل ✉️`
+              : `تم إلغاء الطلب #${shortId} بنجاح وإرسال إيميل إشعار للعميل ✉️`
+          );
+        } else {
+          setBulkFeedback(
+            isBulk
+              ? `تم بنجاح إلغاء (${data.cancelledCount}) طلب بصمت دون إرسال أي إيميلات 🔕`
+              : `تم إلغاء الطلب #${shortId} بنجاح بصمت (دون إبلاغ العميل) 🔕`
+          );
+        }
+
+        if (isBulk) {
+          await logAdminActivity({
+            category: 'orders',
+            actionType: 'bulk_action',
+            title: cancelModal.notifyCustomer
+              ? `إلغاء جماعي لـ (${data.cancelledCount}) طلب مع إشعار العملاء`
+              : `إلغاء جماعي لـ (${data.cancelledCount}) طلب بصمت (دون إيميل)`,
+            description: cancelModal.notifyCustomer
+              ? `تم إلغاء (${data.cancelledCount}) طلب وإرسال إيميلات لـ (${data.emailsSentCount}) عميل${cancelModal.reason ? ` - السبب: ${cancelModal.reason}` : ''}`
+              : `تم إلغاء (${data.cancelledCount}) طلب بصمت دون إشعار العملاء${cancelModal.reason ? ` - السبب: ${cancelModal.reason}` : ''}`,
+            metadata: { count: data.cancelledCount, emailsSent: data.emailsSentCount, orderIds: cancelModal.orderIds, notifyCustomer: cancelModal.notifyCustomer, reason: cancelModal.reason }
+          });
+          setSelectedOrderIds([]);
+        } else {
+          await logAdminActivity({
+            category: 'orders',
+            actionType: 'order_cancel',
+            title: cancelModal.notifyCustomer
+              ? `إلغاء الطلب #${shortId} مع إشعار العميل`
+              : `إلغاء الطلب #${shortId} بصمت (دون إيميل)`,
+            description: cancelModal.notifyCustomer
+              ? `تم إلغاء الطلب #${shortId} للعميل (${customerEmail || 'بدون إيميل'}) وإرسال إيميل رسمي${cancelModal.reason ? ` - السبب: ${cancelModal.reason}` : ''}`
+              : `تم إلغاء الطلب #${shortId} بصمت وتغيير الحالة إلى ملغي دون إرسال أي إيميل${cancelModal.reason ? ` - السبب: ${cancelModal.reason}` : ''}`,
+            targetId: cancelModal.orderIds[0],
+            targetName: `طلب #${shortId}`,
+            metadata: { status: 'failed', customerEmail, notifyCustomer: cancelModal.notifyCustomer, reason: cancelModal.reason }
+          });
+        }
+
+        setCancelModal({
+          isOpen: false,
+          orderIds: [],
+          customerEmail: '',
+          orderShortId: '',
+          notifyCustomer: false,
+          reason: '',
+          isProcessing: false,
+        });
+        setTimeout(() => setBulkFeedback(null), 5000);
+      } else {
+        alert('فشل إلغاء الطلب: ' + (data.error || 'حدث خطأ غير معروف'));
+        setCancelModal(prev => ({ ...prev, isProcessing: false }));
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('حدث خطأ أثناء إلغاء الطلب: ' + err.message);
+      setCancelModal(prev => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if(!id) return;
+    const targetOrder = orders.find(o => o.id === id);
+    const shortId = (id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+    const customerEmail = targetOrder?.customerEmail || '';
     try {
       if (newStatus === 'failed') {
-        const targetOrder = orders.find(o => o.id === id);
-        const customerNote = targetOrder?.customerEmail ? ` وإرسال إيميل إشعار للعميل (${targetOrder.customerEmail})` : '';
-        setGenericConfirm({
+        setCancelModal({
           isOpen: true,
-          title: 'إلغاء الطلب وإشعار العميل',
-          message: `هل أنت متأكد من إلغاء هذا الطلب؟ سيتم تحويل حالته إلى "ملغي"${customerNote}.`,
-          confirmText: 'نعم، إلغاء الطلب',
-          isDanger: true,
-          onConfirm: async () => {
-            try {
-              const token = await auth.currentUser?.getIdToken();
-              const res = await fetch('/api/admin/cancel-order', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ orderId: id })
-              });
-              const data = await res.json();
-              if (data.success) {
-                if (data.emailsSentCount > 0) {
-                  setBulkFeedback('تم إلغاء الطلب بنجاح وإرسال إيميل إشعار للعميل ✉️');
-                } else {
-                  setBulkFeedback('تم إلغاء الطلب بنجاح (لم يتم إرسال إيميل لعدم توفر بريد إلكتروني للعميل).');
-                }
-              } else {
-                alert('فشل إلغاء الطلب: ' + (data.error || 'حدث خطأ غير معروف'));
-              }
-              setTimeout(() => setBulkFeedback(null), 5000);
-            } catch (err: any) {
-              console.error(err);
-              alert('حدث خطأ أثناء إلغاء الطلب: ' + err.message);
-            }
-          }
+          orderIds: [id],
+          customerEmail,
+          orderShortId: shortId,
+          notifyCustomer: false,
+          reason: '',
+          isProcessing: false,
         });
         return;
       } else if (newStatus === 'paid') {
@@ -309,6 +429,15 @@ export default function OrdersPage() {
         } else {
           setBulkFeedback('تم تفعيل الطلب كمدفوع (تنبيه: مخزون هذا المنتج فارغ حالياً، لم يتم سحب أي رابط).');
         }
+        await logAdminActivity({
+          category: 'orders',
+          actionType: 'status_change',
+          title: `تفعيل ودفع الطلب #${shortId}`,
+          description: `تم تفعيل الطلب #${shortId} للعميل (${customerEmail}) كمدفوع واقتطاع المخزون`,
+          targetId: id,
+          targetName: `طلب #${shortId}`,
+          metadata: { status: 'paid', customerEmail }
+        });
       } else if (newStatus === 'pending') {
         // Clear downloadUrl and deliveryLink so it can be re-pulled from stock when marked as paid again
         await updateDoc(doc(db, 'orders', id), { 
@@ -318,9 +447,27 @@ export default function OrdersPage() {
           linkDeliveredAt: null,
         });
         setBulkFeedback('تمت إعادة الطلب إلى قيد الانتظار بنجاح وتجهيزه لإعادة سحب رابط جديد من المخزون عند إكماله');
+        await logAdminActivity({
+          category: 'orders',
+          actionType: 'status_change',
+          title: `إعادة طلب للانتظار #${shortId}`,
+          description: `تمت إعادة الطلب #${shortId} للعميل (${customerEmail}) لقيد الانتظار وتفريغ التسليم`,
+          targetId: id,
+          targetName: `طلب #${shortId}`,
+          metadata: { status: 'pending', customerEmail }
+        });
       } else {
         await updateDoc(doc(db, 'orders', id), { status: newStatus });
         setBulkFeedback(`تم تغيير حالة الطلب إلى ${newStatus === 'failed' ? 'ملغي' : newStatus}`);
+        await logAdminActivity({
+          category: 'orders',
+          actionType: 'status_change',
+          title: `تغيير حالة الطلب #${shortId}`,
+          description: `تم تغيير حالة الطلب #${shortId} للعميل (${customerEmail}) إلى "${newStatus}"`,
+          targetId: id,
+          targetName: `طلب #${shortId}`,
+          metadata: { status: newStatus, customerEmail }
+        });
       }
       setTimeout(() => setBulkFeedback(null), 5000);
     } catch(e: any) {
@@ -331,6 +478,9 @@ export default function OrdersPage() {
 
   const handleDelete = async (id: string) => {
     if(!id) return;
+    const targetOrder = orders.find(o => o.id === id);
+    const shortId = (id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+    const customerEmail = targetOrder?.customerEmail || '';
     setGenericConfirm({
       isOpen: true,
       title: 'حذف الطلب',
@@ -340,12 +490,21 @@ export default function OrdersPage() {
       onConfirm: async () => {
         await deleteDoc(doc(db, 'orders', id));
         setSelectedOrderIds(prev => prev.filter(item => item !== id));
+        await logAdminActivity({
+          category: 'orders',
+          actionType: 'delete',
+          title: `حذف طلب نهائياً #${shortId}`,
+          description: `تم حذف الطلب #${shortId} للعميل (${customerEmail || 'غير معروف'}) نهائياً من قاعدة البيانات`,
+          targetId: id,
+          targetName: `طلب #${shortId}`,
+        });
       }
     });
   };
 
   const handleDeleteCustomFieldsData = async (orderId: string) => {
     if(!orderId) return;
+    const shortId = (orderId || '').replace('ord_', '').slice(0, 8).toUpperCase();
     setGenericConfirm({
       isOpen: true,
       title: 'حذف بيانات العميل من السحابة',
@@ -358,6 +517,14 @@ export default function OrdersPage() {
             customFieldsData: {}
           });
           setBulkFeedback('تم حذف بيانات العميل من السحابة بنجاح.');
+          await logAdminActivity({
+            category: 'orders',
+            actionType: 'delete',
+            title: `حذف بيانات العميل الحساسة #${shortId}`,
+            description: `تم مسح بيانات الدخول/الحساب للطلب #${shortId} نهائياً من السحابة للحماية`,
+            targetId: orderId,
+            targetName: `طلب #${shortId}`,
+          });
           setTimeout(() => setBulkFeedback(null), 5000);
           setSelectedOrder(prev => prev ? { ...prev, customFieldsData: {} } : null);
         } catch(e: any) {
@@ -391,40 +558,14 @@ export default function OrdersPage() {
     if (selectedOrderIds.length === 0) return;
 
     if (newStatus === 'failed') {
-      const count = selectedOrderIds.length;
-      setGenericConfirm({
+      setCancelModal({
         isOpen: true,
-        title: 'إلغاء الطلبات المحددة وإشعار العملاء',
-        message: `هل أنت متأكد من إلغاء (${count}) طلب؟ سيتم تحويل حالتها إلى ملغية وإرسال إيميل إشعار رسمي لكل عميل عبر بريده المسجل.`,
-        confirmText: `نعم، إلغاء (${count}) طلب وإرسال الإيميلات`,
-        isDanger: true,
-        onConfirm: async () => {
-          setIsBulkProcessing(true);
-          try {
-            const token = await auth.currentUser?.getIdToken();
-            const res = await fetch('/api/admin/cancel-order', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ orderIds: selectedOrderIds })
-            });
-            const data = await res.json();
-            if (data.success) {
-              setBulkFeedback(`تم بنجاح إلغاء (${data.cancelledCount}) طلب، وإرسال إيميل إشعار لـ (${data.emailsSentCount}) عميل ✉️`);
-              setSelectedOrderIds([]);
-              setTimeout(() => setBulkFeedback(null), 5000);
-            } else {
-              alert('فشل الإلغاء الجماعي: ' + (data.error || 'حدث خطأ'));
-            }
-          } catch (err: any) {
-            console.error(err);
-            alert('حدث خطأ أثناء تنفيذ الإجراء الجماعي: ' + err.message);
-          } finally {
-            setIsBulkProcessing(false);
-          }
-        }
+        orderIds: [...selectedOrderIds],
+        customerEmail: '',
+        orderShortId: '',
+        notifyCustomer: false,
+        reason: '',
+        isProcessing: false,
       });
       return;
     }
@@ -454,6 +595,13 @@ export default function OrdersPage() {
       }
       const label = newStatus === 'paid' ? 'تفعيلها واقتطاعها من المخزون كمكتملة' : newStatus === 'pending' ? 'تحويلها لقيد الانتظار' : 'إلغاؤها';
       setBulkFeedback(`تم بنجاح ${label} لـ (${selectedOrderIds.length}) طلب.`);
+      await logAdminActivity({
+        category: 'orders',
+        actionType: 'bulk_action',
+        title: `تعديل جماعي لحالة (${selectedOrderIds.length}) طلب`,
+        description: `تم تغيير حالة (${selectedOrderIds.length}) طلب دفعة واحدة إلى "${newStatus}"`,
+        metadata: { status: newStatus, count: selectedOrderIds.length, orderIds: selectedOrderIds }
+      });
       setSelectedOrderIds([]);
       setTimeout(() => setBulkFeedback(null), 4500);
     } catch (err: any) {
@@ -487,6 +635,13 @@ export default function OrdersPage() {
             await batch.commit();
           }
           setBulkFeedback(`تم حذف (${count}) طلب نهائياً بنجاح.`);
+          await logAdminActivity({
+            category: 'orders',
+            actionType: 'bulk_action',
+            title: `حذف جماعي لـ (${count}) طلب`,
+            description: `تم حذف (${count}) طلب نهائياً من قاعدة البيانات بواسطة المدير`,
+            metadata: { count, orderIds: selectedOrderIds }
+          });
           setSelectedOrderIds([]);
           setTimeout(() => setBulkFeedback(null), 4500);
         } catch (err: any) {
@@ -1428,6 +1583,16 @@ export default function OrdersPage() {
                         const data = await res.json();
                         if (data.success) {
                           setBulkFeedback('تم تسليم الطلب وحفظ الرابط بنجاح');
+                          const shortId = (selectedOrder.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+                          await logAdminActivity({
+                            category: 'orders',
+                            actionType: 'order_fulfill',
+                            title: `تسليم يدوي للطلب #${shortId}`,
+                            description: `تم إرسال رابط/كود التسليم يدوياً للطلب #${shortId} للعميل (${selectedOrder.customerEmail}) وحفظه بالمخزن`,
+                            targetId: selectedOrder.id,
+                            targetName: `طلب #${shortId}`,
+                            metadata: { email: selectedOrder.customerEmail, keepLink: true }
+                          });
                           setSelectedOrder(null);
                           setDeliveryLinkInput('');
                         } else {
@@ -1464,6 +1629,16 @@ export default function OrdersPage() {
                         const data = await res.json();
                         if (data.success) {
                           setBulkFeedback('تم إرسال الرابط عبر الإيميل فقط بنجاح');
+                          const shortId = (selectedOrder.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+                          await logAdminActivity({
+                            category: 'orders',
+                            actionType: 'order_fulfill',
+                            title: `تسليم يدوي بالإيميل للطلب #${shortId}`,
+                            description: `تم إرسال رابط/كود التسليم يدوياً عبر الإيميل للطلب #${shortId} للعميل (${selectedOrder.customerEmail})`,
+                            targetId: selectedOrder.id,
+                            targetName: `طلب #${shortId}`,
+                            metadata: { email: selectedOrder.customerEmail, keepLink: false }
+                          });
                           setSelectedOrder(null);
                           setDeliveryLinkInput('');
                         } else {
@@ -1617,6 +1792,202 @@ export default function OrdersPage() {
                 className="py-3 px-4 rounded-xl border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text)] font-bold text-xs cursor-pointer transition-all text-center"
               >
                 إلغاء التراجع (إبقاء الطلب كما هو)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ORDER CANCELLATION MODAL (خيار الإلغاء الصامت أو مع إشعار إيميل) ── */}
+      {cancelModal.isOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" 
+          onClick={() => {
+            if (!cancelModal.isProcessing) {
+              setCancelModal(prev => ({ ...prev, isOpen: false }));
+            }
+          }}
+        >
+          <div 
+            className="bg-[var(--admin-card)] border-2 border-rose-500/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-right ring-4 ring-rose-500/20 animate-in zoom-in-95 duration-150" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-rose-500/30 pb-3 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border-2 border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0 shadow-inner">
+                  <AlertTriangle className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-rose-600 dark:text-rose-400">
+                    {cancelModal.orderIds.length > 1
+                      ? `إلغاء الطلبات المحددة (${cancelModal.orderIds.length})`
+                      : `إلغاء الطلب #${cancelModal.orderShortId}`}
+                  </h3>
+                  <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                    تحويل الحالة إلى ملغية مع خيار الإلغاء بصمت أو إبلاغ العميل
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                disabled={cancelModal.isProcessing}
+                onClick={() => setCancelModal(prev => ({ ...prev, isOpen: false }))} 
+                className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Target Info */}
+            {cancelModal.orderIds.length === 1 && cancelModal.customerEmail && (
+              <div className="p-3 rounded-xl bg-[var(--admin-surface)] border border-[var(--admin-border)] flex items-center justify-between text-xs">
+                <span className="text-[var(--admin-text-muted)]">البريد الإلكتروني للعميل:</span>
+                <span className="font-mono font-bold text-indigo-400">{cancelModal.customerEmail}</span>
+              </div>
+            )}
+
+            {cancelModal.orderIds.length > 1 && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>سيتم تطبيق الإلغاء على ({cancelModal.orderIds.length}) طلب محدد دفعة واحدة.</span>
+              </div>
+            )}
+
+            {/* Toggle / Mode Selection */}
+            <div className="space-y-2">
+              <div className="text-xs font-black text-[var(--admin-text)] flex items-center justify-between">
+                <span>طريقة الإلغاء وإشعار العميل:</span>
+                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                  cancelModal.notifyCustomer
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                }`}>
+                  {cancelModal.notifyCustomer ? 'إشعار عبر الإيميل ✉️' : 'إلغاء صامت 🔕'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Option 1: Silent Cancel */}
+                <button
+                  type="button"
+                  onClick={() => setCancelModal(prev => ({ ...prev, notifyCustomer: false }))}
+                  className={`p-3.5 rounded-xl border-2 text-right transition-all cursor-pointer flex items-start gap-3 relative ${
+                    !cancelModal.notifyCustomer
+                      ? 'border-amber-500 bg-amber-500/10 text-[var(--admin-text)] ring-2 ring-amber-500/20 shadow-md'
+                      : 'border-[var(--admin-border)] bg-[var(--admin-surface)]/40 text-[var(--admin-text-muted)] hover:border-slate-500/40'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                    !cancelModal.notifyCustomer 
+                      ? 'bg-amber-500 text-white border-amber-400 shadow-sm' 
+                      : 'bg-[var(--admin-card)] text-[var(--admin-text-muted)] border-[var(--admin-border)]'
+                  }`}>
+                    <BellOff className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-xs text-[var(--admin-text)] flex items-center gap-1.5">
+                      <span>إلغاء بصمت</span>
+                      {!cancelModal.notifyCustomer && (
+                        <Check className="w-3.5 h-3.5 text-amber-500" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
+                      تغيير الحالة لـ "ملغي" فقط دون إرسال أي إيميل للعميل.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 2: Email Notification */}
+                <button
+                  type="button"
+                  onClick={() => setCancelModal(prev => ({ ...prev, notifyCustomer: true }))}
+                  className={`p-3.5 rounded-xl border-2 text-right transition-all cursor-pointer flex items-start gap-3 relative ${
+                    cancelModal.notifyCustomer
+                      ? 'border-rose-500 bg-rose-500/10 text-[var(--admin-text)] ring-2 ring-rose-500/20 shadow-md'
+                      : 'border-[var(--admin-border)] bg-[var(--admin-surface)]/40 text-[var(--admin-text-muted)] hover:border-slate-500/40'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                    cancelModal.notifyCustomer 
+                      ? 'bg-rose-500 text-white border-rose-400 shadow-sm' 
+                      : 'bg-[var(--admin-card)] text-[var(--admin-text-muted)] border-[var(--admin-border)]'
+                  }`}>
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-xs text-[var(--admin-text)] flex items-center gap-1.5">
+                      <span>إرسال إيميل رسمي</span>
+                      {cancelModal.notifyCustomer && (
+                        <Check className="w-3.5 h-3.5 text-rose-500" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
+                      إرسال رسالة بريد إلكتروني رسمية للعميل لإبلاغه بالإلغاء.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Optional Reason Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[var(--admin-text-muted)] block">
+                سبب الإلغاء (اختياري - يظهر في السجل وللعميل إن تم تفعيل الإيميل):
+              </label>
+              <input
+                type="text"
+                value={cancelModal.reason}
+                onChange={e => setCancelModal(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder="مثال: نفاد المخزون، أو بطلب من العميل..."
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-[var(--admin-border)] bg-[var(--admin-surface)] text-[var(--admin-text)] placeholder-[var(--admin-text-muted)]/60 focus:outline-none focus:border-rose-500 transition-colors"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-3 border-t border-[var(--admin-border)]">
+              <button
+                type="button"
+                disabled={cancelModal.isProcessing}
+                onClick={handleExecuteCancel}
+                className={`flex-1 py-3 px-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                  cancelModal.notifyCustomer 
+                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30' 
+                    : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30'
+                }`}
+              >
+                {cancelModal.isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>جاري تنفيذ الإلغاء...</span>
+                  </>
+                ) : cancelModal.notifyCustomer ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    <span>
+                      {cancelModal.orderIds.length > 1
+                        ? `نعم، إلغاء (${cancelModal.orderIds.length}) طلب وإرسال الإيميلات`
+                        : 'نعم، إلغاء الطلب وإرسال الإيميل'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <BellOff className="w-4 h-4" />
+                    <span>
+                      {cancelModal.orderIds.length > 1
+                        ? `نعم، إلغاء (${cancelModal.orderIds.length}) طلب بصمت (بدون إيميل)`
+                        : 'نعم، إلغاء الطلب بصمت (بدون إيميل)'}
+                    </span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                disabled={cancelModal.isProcessing}
+                onClick={() => setCancelModal(prev => ({ ...prev, isOpen: false }))}
+                className="py-3 px-5 rounded-xl border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text)] font-bold text-xs cursor-pointer transition-all text-center disabled:opacity-50"
+              >
+                تراجع
               </button>
             </div>
           </div>

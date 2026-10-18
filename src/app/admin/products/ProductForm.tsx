@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { Product, ProductVariant, GameFieldRequirement } from '@/types';
 import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers, ImageIcon, KeyRound } from 'lucide-react';
+import { logAdminActivity } from '@/lib/admin-logger';
 
 interface ProductFormProps {
   productId?: string;
@@ -16,6 +17,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const isEdit = !!productId;
 
   const [loading, setLoading] = useState(isEdit);
+  const [initialProduct, setInitialProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
@@ -73,6 +75,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
           console.error("Failed to fetch productUnits", e);
         }
 
+        setInitialProduct(data);
         setForm({
           ...data,
           id: snap.id,
@@ -559,9 +562,64 @@ export default function ProductForm({ productId }: ProductFormProps) {
       if (isEdit && productId) {
         await setDoc(doc(db, 'products', productId), { ...cleanPayload, createdAt: form.createdAt || Date.now() });
         await setDoc(doc(db, 'productUnits', productId), unitsPayload, { merge: true });
+
+        // Calculate differences for activity logging
+        const oldPrice = Number(initialProduct?.price ?? 0);
+        const newPrice = Number(cleanPayload.price ?? 0);
+        const priceChanged = oldPrice !== newPrice;
+
+        const oldImages = initialProduct?.images || (initialProduct?.imageUrl ? [initialProduct.imageUrl] : []);
+        const imagesChanged = JSON.stringify(oldImages) !== JSON.stringify(cleanImages);
+
+        const changeDetails: string[] = [];
+        if (priceChanged) changeDetails.push(`تغيير السعر: ${oldPrice} د.ج ➔ ${newPrice} د.ج`);
+        if (imagesChanged) changeDetails.push(`تحديث الصور (${cleanImages.length} صور)`);
+        if (initialProduct?.name && initialProduct.name !== cleanPayload.name) {
+          changeDetails.push(`تغيير الاسم إلى "${cleanPayload.name}"`);
+        }
+        if (initialProduct?.category !== cleanPayload.category) {
+          changeDetails.push(`القسم: "${cleanPayload.category || 'عام'}"`);
+        }
+        if (initialProduct?.status !== cleanPayload.status) {
+          changeDetails.push(`الحالة: "${cleanPayload.status}"`);
+        }
+
+        let actionType: 'price_change' | 'image_change' | 'update' = 'update';
+        let logTitle = `تعديل منتج: ${cleanPayload.name}`;
+        if (priceChanged) {
+          actionType = 'price_change';
+          logTitle = `تغيير سعر: ${cleanPayload.name}`;
+        } else if (imagesChanged) {
+          actionType = 'image_change';
+          logTitle = `تعديل صور: ${cleanPayload.name}`;
+        }
+
+        await logAdminActivity({
+          category: 'products',
+          actionType,
+          title: logTitle,
+          description: changeDetails.length > 0 ? changeDetails.join(' | ') : `تم حفظ تعديلات المنتج "${cleanPayload.name}"`,
+          targetId: productId,
+          targetName: cleanPayload.name,
+          diff: {
+            before: { price: oldPrice, name: initialProduct?.name, status: initialProduct?.status, category: initialProduct?.category },
+            after: { price: newPrice, name: cleanPayload.name, status: cleanPayload.status, category: cleanPayload.category },
+          },
+          metadata: { priceChanged, imagesChanged, oldPrice, newPrice, stockType: cleanPayload.stockType }
+        });
       } else {
         const newDocRef = await addDoc(collection(db, 'products'), { ...cleanPayload, createdAt: Date.now() });
         await setDoc(doc(db, 'productUnits', newDocRef.id), unitsPayload);
+
+        await logAdminActivity({
+          category: 'products',
+          actionType: 'create',
+          title: `إضافة منتج جديد: ${cleanPayload.name}`,
+          description: `تمت إضافة منتج جديد باسم "${cleanPayload.name}" بسعر ${cleanPayload.price} د.ج في قسم "${cleanPayload.category || 'عام'}" مع ${cleanImages.length} صورة`,
+          targetId: newDocRef.id,
+          targetName: cleanPayload.name,
+          metadata: { price: cleanPayload.price, category: cleanPayload.category, imagesCount: cleanImages.length, stock: computedStock }
+        });
       }
       router.push('/admin/products');
     } catch (err: any) {

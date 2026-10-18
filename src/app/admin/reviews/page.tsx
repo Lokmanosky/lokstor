@@ -4,6 +4,7 @@ import { collection, query, getDocs, updateDoc, deleteDoc, doc, orderBy, onSnaps
 import { db } from '@/lib/firebase';
 import { Review } from '@/types';
 import { Check, X, Trash2, Star, Filter } from 'lucide-react';
+import { logAdminActivity } from '@/lib/admin-logger';
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -24,6 +25,15 @@ export default function AdminReviewsPage() {
   const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
     try {
       await updateDoc(doc(db, 'reviews', id), { status });
+      const rev = reviews.find(r => r.id === id);
+      await logAdminActivity({
+        category: 'reviews',
+        actionType: 'status_change',
+        title: status === 'approved' ? 'الموافقة على تقييم' : 'رفض تقييم',
+        description: `تمت ${status === 'approved' ? 'الموافقة على' : 'رفض'} تقييم العميل (${rev?.userName || rev?.customerName || 'عميل'}) وتقييمه (${rev?.rating || 5} نجوم)`,
+        targetId: id,
+        metadata: { status, rating: rev?.rating }
+      });
     } catch (error) {
       console.error(error);
       alert('حدث خطأ');
@@ -33,7 +43,15 @@ export default function AdminReviewsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('هل أنت متأكد من الحذف النهائي؟')) return;
     try {
+      const rev = reviews.find(r => r.id === id);
       await deleteDoc(doc(db, 'reviews', id));
+      await logAdminActivity({
+        category: 'reviews',
+        actionType: 'delete',
+        title: 'حذف تقييم نهائياً',
+        description: `تم حذف تقييم العميل (${rev?.userName || rev?.customerName || 'عميل'}) نهائياً`,
+        targetId: id,
+      });
     } catch (error) {
       console.error(error);
       alert('حدث خطأ');

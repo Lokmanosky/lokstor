@@ -317,13 +317,11 @@ function NavBar() {
           </button>
 
           <Link href="/" className="flex items-center gap-1 sm:gap-2.5 group min-w-0">
-            {s.logoImageUrl ? (
-              <img src={s.logoImageUrl} alt="logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-cover border border-[var(--store-border)] flex-shrink-0 shadow-2xs" />
-            ) : (
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white flex items-center justify-center text-black font-black text-lg sm:text-xl border border-[var(--store-border)] flex-shrink-0">
-                {s.logoLetter}
-              </div>
-            )}
+            <img 
+              src={s.logoImageUrl || '/logo-round.png'} 
+              alt={s.storeName || 'logo'} 
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-contain border border-[var(--store-border)] flex-shrink-0 shadow-2xs" 
+            />
             <span className="font-black text-xs sm:text-sm tracking-wide text-[var(--store-text)] uppercase truncate select-none max-w-[85px] xs:max-w-[130px] sm:max-w-none">
               {s.storeName}
             </span>
@@ -891,13 +889,11 @@ function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-12 border-b border-[var(--store-border)]">
           <div>
             <Link href="/" className="inline-flex items-center gap-2 mb-4 hover:opacity-85 transition-opacity cursor-pointer group">
-              {s.logoImageUrl ? (
-                <img src={s.logoImageUrl} alt="logo" className="w-8 h-8 rounded-lg object-cover border border-[var(--store-border)] group-hover:scale-105 transition-transform" />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black font-black text-lg border border-[var(--store-border)] group-hover:scale-105 transition-transform">
-                  {s.logoLetter}
-                </div>
-              )}
+              <img 
+                src={s.logoImageUrl || '/logo-round.png'} 
+                alt={s.storeName || 'logo'} 
+                className="w-8 h-8 rounded-lg object-contain border border-[var(--store-border)] group-hover:scale-105 transition-transform" 
+              />
               <span className="font-bold text-sm tracking-wide text-[var(--store-text)] uppercase group-hover:text-emerald-500 transition-colors">{s.storeName}</span>
             </Link>
             <p className="text-sm text-[var(--store-text-muted)] leading-relaxed mb-4">

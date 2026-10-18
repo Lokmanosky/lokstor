@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, deleteDoc, doc, addDoc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Product } from '@/types';
+import { logAdminActivity } from '@/lib/admin-logger';
 import { 
   Plus, 
   Edit2, 
@@ -96,6 +97,13 @@ export default function ProductsPage() {
       });
       await batch.commit();
       showNotification('تم حفظ الترتيب الجديد بنجاح');
+      await logAdminActivity({
+        category: 'products',
+        actionType: 'reorder',
+        title: 'إعادة ترتيب المنتجات',
+        description: `تم حفظ ترتيب جديد لـ (${updated.length}) منتج في المتجر عبر السحب والإفلات`,
+        metadata: { productsCount: updated.length }
+      });
     } catch (err: any) {
       showNotification('فشل حفظ الترتيب: ' + err?.message, 'error');
     } finally { setSavingOrder(false); }
@@ -109,6 +117,14 @@ export default function ProductsPage() {
       try {
         await deleteDoc(doc(db, 'products', id));
         showNotification('تم حذف المنتج بنجاح');
+        await logAdminActivity({
+          category: 'products',
+          actionType: 'delete',
+          title: `حذف منتج: ${name || id}`,
+          description: `تم حذف المنتج "${name || 'بدون اسم'}" (ID: ${id}) نهائياً من المتجر`,
+          targetId: id,
+          targetName: name,
+        });
       } catch (e: any) {
         console.error(e);
         showNotification('فشل الحذف، تحقق من الصلاحيات: ' + e?.message, 'error');
@@ -144,8 +160,17 @@ export default function ProductsPage() {
         updatedAt: Date.now(),
       };
 
-      await addDoc(collection(db, 'products'), copyPayload);
+      const newDoc = await addDoc(collection(db, 'products'), copyPayload);
       showNotification(`تم إنشاء نسخة جديدة من "${p.name}" كمسودة بنجاح`);
+      await logAdminActivity({
+        category: 'products',
+        actionType: 'create',
+        title: `نسخ منتج: ${p.name}`,
+        description: `تم إنشاء نسخة مكررة من المنتج "${p.name}" كمسودة جديدة باسم "${copyPayload.name}"`,
+        targetId: newDoc.id,
+        targetName: copyPayload.name,
+        metadata: { originalId: p.id }
+      });
     } catch (e: any) {
       console.error(e);
       showNotification('فشل إنشاء النسخة: ' + e?.message, 'error');

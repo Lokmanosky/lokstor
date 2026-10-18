@@ -32,7 +32,7 @@ const defaultSettings: StoreSettings = {
   storeSlug: 'lokstor',
   storeSubtitle: 'متجر المنتجات الرقمية الجزائري',
   logoLetter: 'L',
-  logoImageUrl: '',
+  logoImageUrl: '/logo-round.png',
   adminNotificationEmail: 'admin@lokstor.dz',
   tickerItems: DEFAULT_TICKER_ITEMS,
   tickerEnabled: true,

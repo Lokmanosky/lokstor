@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderId, orderIds, reason } = body;
+    const { orderId, orderIds, reason, notifyCustomer = true } = body;
 
     const targetIds: string[] = Array.isArray(orderIds) && orderIds.length > 0
       ? orderIds
@@ -53,9 +53,9 @@ export async function POST(req: NextRequest) {
         });
         cancelledCount++;
 
-        // Send email to the customer if an email is present
+        // Send email to the customer only if notifyCustomer is true
         const customerEmail = (orderData.customerEmail || '').trim();
-        if (customerEmail && customerEmail.includes('@')) {
+        if (notifyCustomer && customerEmail && customerEmail.includes('@')) {
           const emailData: OrderEmailData = {
             id,
             productId: orderData.productId,

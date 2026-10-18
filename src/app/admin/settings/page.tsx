@@ -8,6 +8,7 @@ import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCre
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { logAdminActivity } from '@/lib/admin-logger';
 
 export default function SettingsPage() {
   const currentSettings = useStoreSettings();
@@ -100,6 +101,13 @@ export default function SettingsPage() {
         adminNotificationEmail: adminNotificationEmail.trim(),
       });
       setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
+      await logAdminActivity({
+        category: 'settings',
+        actionType: 'update',
+        title: 'تعديل إعدادات المتجر',
+        description: `تم تحديث اسم المتجر (${storeName}) وإيميل الإشعارات (${adminNotificationEmail.trim()})${file ? ' وتحديث الشعار' : ''}`,
+        metadata: { storeName, adminNotificationEmail: adminNotificationEmail.trim(), logoChanged: Boolean(file) }
+      });
     } catch (err: any) {
       setStoreMsg({ type: 'error', text: 'حدث خطأ أثناء الحفظ.' });
     } finally {
@@ -114,10 +122,13 @@ export default function SettingsPage() {
     setAccountLoading(true);
     setAccountMsg(null);
     try {
+      let changedName = false;
+      let changedPass = false;
       // Update display name
       if (displayName.trim() && displayName !== user.displayName) {
         await updateProfile(user, { displayName: displayName.trim() });
         try { await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() }); } catch (_) {}
+        changedName = true;
       }
       // Update password
       if (newPassword) {
@@ -128,8 +139,16 @@ export default function SettingsPage() {
         await reauthenticateWithCredential(user, credential);
         await updatePassword(user, newPassword);
         setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+        changedPass = true;
       }
       setAccountMsg({ type: 'success', text: 'تم حفظ التعديلات وتزامنت مع السحابة بنجاح!' });
+      await logAdminActivity({
+        category: 'settings',
+        actionType: 'update',
+        title: 'تحديث بيانات حساب الأدمن',
+        description: `تم تحديث بيانات الحساب${changedName ? ` (تعديل الاسم إلى: ${displayName.trim()})` : ''}${changedPass ? ' (تغيير كلمة المرور)' : ''}`,
+        metadata: { changedName, changedPass }
+      });
     } catch (err: any) {
       const code = err?.code || '';
       let msg = 'حدث خطأ. حاول مجدداً.';

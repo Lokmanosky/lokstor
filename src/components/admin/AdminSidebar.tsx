@@ -9,7 +9,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   LayoutDashboard, ShoppingCart, Package,
   Settings, ChevronLeft, AlertTriangle, Boxes,
-  Sun, Moon, Store, FolderOpen, Star, Megaphone, Tag
+  Sun, Moon, Store, FolderOpen, Star, Megaphone, Tag, History
 } from 'lucide-react';
 
 interface Props { open: boolean; setOpen: (v: boolean) => void; isMobile?: boolean; }
@@ -72,6 +72,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
     { href: '/admin/ticker', label: 'الشريط الإعلاني', icon: Megaphone },
     { href: '/admin/inventory', label: t('nav.adminInventory'), icon: Boxes },
     { href: '/admin/reviews', label: 'التقييمات', icon: Star, badge: pendingReviewsCount },
+    { href: '/admin/logs', label: t('nav.adminLogs'), icon: History },
     { href: '/admin/settings', label: t('nav.adminSettings'), icon: Settings },
   ];
 
@@ -100,10 +101,15 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           </button>
         )}
 
-        {(!isMobile && !open) ? null : (
-          <span className="admin-sidebar-title font-bold text-base font-mono tracking-wider select-none">
-            Lokstor
-          </span>
+        {(!isMobile && !open) ? (
+          <img src="/logo-round.png" alt="Lokstor" className="w-6 h-6 rounded-md object-contain" />
+        ) : (
+          <div className="flex items-center gap-2">
+            <img src="/logo-round.png" alt="Lokstor" className="w-6 h-6 rounded-md object-contain" />
+            <span className="admin-sidebar-title font-bold text-base font-mono tracking-wider select-none">
+              Lokstor
+            </span>
+          </div>
         )}
       </div>
 

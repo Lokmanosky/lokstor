@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { Product } from '@/types';
+import { logAdminActivity } from '@/lib/admin-logger';
 import { 
   Boxes, 
   Search, 
@@ -182,6 +183,15 @@ export default function InventoryPage() {
       });
 
       showNotification(`تمت إضافة ${lines.length} وحدة مخزون بنجاح إلى "${selectedProduct.name}"`);
+      await logAdminActivity({
+        category: 'inventory',
+        actionType: 'stock_update',
+        title: `إضافة مخزون: ${selectedProduct.name}`,
+        description: `تمت إضافة (${lines.length}) وحدة مخزون جديدة للمنتج "${selectedProduct.name}" (المجموع الجديد: ${updated.length})`,
+        targetId: selectedProduct.id,
+        targetName: selectedProduct.name,
+        metadata: { addedCount: lines.length, totalStock: updated.length }
+      });
       setSelectedProduct(null);
       setNewStockUnitsText('');
     } catch (e: any) {

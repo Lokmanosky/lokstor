@@ -11,6 +11,7 @@ import {
   Percent, Hash, Globe, Package, AlertTriangle, CheckCircle, Search, Loader2
 } from 'lucide-react';
 import type { DiscountCode } from '@/types/discount';
+import { logAdminActivity } from '@/lib/admin-logger';
 
 export default function DiscountCodesPage() {
   const [codes, setCodes] = useState<DiscountCode[]>([]);
@@ -137,9 +138,27 @@ export default function DiscountCodesPage() {
       if (editingId) {
         await updateDoc(doc(db, 'discountCodes', editingId), payload as any);
         setFormMsg({ type: 'success', text: 'تم تحديث الكود بنجاح!' });
+        await logAdminActivity({
+          category: 'discounts',
+          actionType: 'update',
+          title: `تعديل كود خصم: ${payload.code}`,
+          description: `تم تعديل كود الخصم "${payload.code}" بقيمة ${payload.value}${payload.type === 'percentage' ? '%' : ' د.ج'}`,
+          targetId: editingId,
+          targetName: payload.code,
+          metadata: { type: payload.type, value: payload.value }
+        });
       } else {
-        await addDoc(collection(db, 'discountCodes'), payload);
+        const docRef = await addDoc(collection(db, 'discountCodes'), payload);
         setFormMsg({ type: 'success', text: 'تم إنشاء كود الخصم بنجاح!' });
+        await logAdminActivity({
+          category: 'discounts',
+          actionType: 'create',
+          title: `إنشاء كود خصم جديد: ${payload.code}`,
+          description: `تم إنشاء كود خصم جديد "${payload.code}" بقيمة ${payload.value}${payload.type === 'percentage' ? '%' : ' د.ج'}`,
+          targetId: docRef.id,
+          targetName: payload.code,
+          metadata: { type: payload.type, value: payload.value }
+        });
         resetForm();
       }
     } catch (e: any) {
@@ -149,7 +168,17 @@ export default function DiscountCodesPage() {
   };
 
   const handleToggleActive = async (c: DiscountCode) => {
-    await updateDoc(doc(db, 'discountCodes', c.id), { isActive: !c.isActive });
+    const newState = !c.isActive;
+    await updateDoc(doc(db, 'discountCodes', c.id), { isActive: newState });
+    await logAdminActivity({
+      category: 'discounts',
+      actionType: 'status_change',
+      title: `${newState ? 'تفعيل' : 'تعطيل'} كود خصم: ${c.code}`,
+      description: `تم ${newState ? 'تفعيل' : 'تعطيل'} كود الخصم "${c.code}"`,
+      targetId: c.id,
+      targetName: c.code,
+      metadata: { isActive: newState }
+    });
   };
 
   const handleDelete = (c: DiscountCode) => {
@@ -159,6 +188,14 @@ export default function DiscountCodesPage() {
       message: `هل أنت متأكد من حذف كود "${c.code}" نهائياً؟`,
       onConfirm: async () => {
         await deleteDoc(doc(db, 'discountCodes', c.id));
+        await logAdminActivity({
+          category: 'discounts',
+          actionType: 'delete',
+          title: `حذف كود خصم: ${c.code}`,
+          description: `تم حذف كود الخصم "${c.code}" نهائياً`,
+          targetId: c.id,
+          targetName: c.code,
+        });
       }
     });
   };
