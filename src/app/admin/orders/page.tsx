@@ -177,6 +177,7 @@ export default function OrdersPage() {
     const shortId = (orderId || '').replace('ord_', '').slice(0, 8).toUpperCase();
     const customerEmail = pendingTargetOrder.customerEmail || '';
     setPendingTargetOrder(null);
+    setSelectedOrderIds(prev => prev.filter(item => item !== orderId));
     try {
       await updateDoc(doc(db, 'orders', orderId), { 
         status: 'pending',
@@ -405,6 +406,7 @@ export default function OrdersPage() {
             targetName: `طلب #${shortId}`,
             metadata: { status: 'failed', customerEmail, notifyCustomer: cancelModal.notifyCustomer, reason: cancelModal.reason }
           });
+          setSelectedOrderIds(prev => prev.filter(id => !cancelModal.orderIds.includes(id)));
         }
 
         setCancelModal({
@@ -430,6 +432,7 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if(!id) return;
+    setSelectedOrderIds(prev => prev.filter(item => item !== id));
     const targetOrder = orders.find(o => o.id === id);
     const shortId = (id || '').replace('ord_', '').slice(0, 8).toUpperCase();
     const customerEmail = targetOrder?.customerEmail || '';
@@ -748,6 +751,16 @@ export default function OrdersPage() {
     return result;
   }, [orders, statusFilter, paymentFilter, searchQuery, sortBy]);
 
+  // Automatically prune selected IDs that are no longer in filteredOrders (e.g. cancelled/completed/filtered out)
+  useEffect(() => {
+    setSelectedOrderIds(prev => {
+      if (prev.length === 0) return prev;
+      const validIds = new Set(filteredOrders.map(o => o.id));
+      const next = prev.filter(id => validIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [filteredOrders]);
+
   const hasActiveFilters = statusFilter !== 'ALL' || paymentFilter !== 'ALL' || searchQuery.trim() !== '' || sortBy !== 'newest';
 
   const resetFilters = () => {
@@ -755,6 +768,7 @@ export default function OrdersPage() {
     setPaymentFilter('ALL');
     setSearchQuery('');
     setSortBy('newest');
+    setSelectedOrderIds([]);
   };
 
   // Filtered total paid amount
