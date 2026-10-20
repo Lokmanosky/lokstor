@@ -55,14 +55,11 @@ const DEFAULT_COD_FIELDS: GameFieldRequirement[] = [
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: productId } = use(params);
-  const { t, lang } = useTranslation();
+  const { t, lang, localizeCategory, formatCurrency } = useTranslation();
 
   const getCategoryName = (cat?: string) => {
     if (!cat) return '';
-    if (cat.includes('ألعاب') || cat.toLowerCase().includes('game')) return t('category.games');
-    if (cat.includes('رقمية') || cat.toLowerCase().includes('digital')) return t('category.digital');
-    if (cat.includes('اشتراك') || cat.toLowerCase().includes('sub')) return t('category.subs');
-    return cat;
+    return localizeCategory(cat);
   };
 
   const getFieldLabel = (field: GameFieldRequirement) => {
@@ -359,24 +356,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-7xl mx-auto px-4 py-20 text-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="inline-block w-8 h-8 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mb-4" />
-        <p className="text-[var(--store-text-muted)] text-sm font-semibold">جاري جلب تفاصيل المنتج...</p>
+        <p className="text-[var(--store-text-muted)] text-sm font-semibold">{t('common.loading')}</p>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-12 my-12 shadow-sm">
-        <h2 className="text-2xl font-bold text-[var(--store-text)] mb-4">المنتج غير موجود</h2>
-        <p className="text-[var(--store-text-muted)] text-sm mb-6">عذراً، لم نتمكن من العثور على المنتج المطلوب.</p>
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl p-12 my-12 shadow-sm" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <h2 className="text-2xl font-bold text-[var(--store-text)] mb-4">{t('product.notFound')}</h2>
+        <p className="text-[var(--store-text-muted)] text-sm mb-6">{t('product.notFoundDesc')}</p>
         <Link
           href="/"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-colors"
         >
-          <ArrowRight className="w-4 h-4" />
-          <span>العودة للرئيسية</span>
+          <ArrowRight className={`w-4 h-4 ${lang !== 'ar' ? 'rotate-180' : ''}`} />
+          <span>{t('common.backToStore')}</span>
         </Link>
       </div>
     );
@@ -437,8 +434,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   type="button"
                   onClick={prevImage}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm opacity-80 hover:opacity-100 hover:scale-110 cursor-pointer shadow-lg z-10"
-                  title="الصورة السابقة"
-                  aria-label="الصورة السابقة"
+                  title={lang === 'ar' ? 'الصورة السابقة' : lang === 'fr' ? 'Image précédente' : 'Previous Image'}
+                  aria-label={lang === 'ar' ? 'الصورة السابقة' : lang === 'fr' ? 'Image précédente' : 'Previous Image'}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -446,8 +443,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   type="button"
                   onClick={nextImage}
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all backdrop-blur-sm opacity-80 hover:opacity-100 hover:scale-110 cursor-pointer shadow-lg z-10"
-                  title="الصورة التالية"
-                  aria-label="الصورة التالية"
+                  title={lang === 'ar' ? 'الصورة التالية' : lang === 'fr' ? 'Image suivante' : 'Next Image'}
+                  aria-label={lang === 'ar' ? 'الصورة التالية' : lang === 'fr' ? 'Image suivante' : 'Next Image'}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -479,11 +476,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       ? 'border-emerald-500 scale-105 ring-2 ring-emerald-500/30 shadow-md'
                       : 'border-[var(--store-border)] hover:border-slate-400 opacity-70 hover:opacity-100'
                   }`}
-                  title={`عرض صورة ${idx + 1}`}
+                  title={`${lang === 'ar' ? 'عرض صورة' : lang === 'fr' ? 'Voir image' : 'View image'} ${idx + 1}`}
                 >
                   <img
                     src={imgUrl}
-                    alt={`مصغرة ${idx + 1}`}
+                    alt={`${lang === 'ar' ? 'مصغرة' : 'Thumbnail'} ${idx + 1}`}
                     className="w-full h-full object-contain p-1"
                   />
                   {activeImageIndex === idx && (
@@ -508,7 +505,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <Star key={i} className={`w-4 h-4 ${i <= (reviews.length > 0 ? Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) : 5) ? 'fill-current' : 'text-[var(--store-border)]'}`} />
               ))}
             </div>
-            <span className="text-sm font-bold text-[var(--store-text-muted)]">({reviews.length} تقييم)</span>
+            <span className="text-sm font-bold text-[var(--store-text-muted)]">({reviews.length} {t('product.reviewsCount')})</span>
           </div>
 
           {/* 2. Price Line with Share & Favorite Actions */}
@@ -527,20 +524,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 {(!selectedVariant || !selectedVariant.originalPrice) && product.originalPrice && product.originalPrice > product.price && (
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <span className="text-sm sm:text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
-                      {product.originalPrice} د.ج
+                      {product.originalPrice} {t('common.currency')}
                     </span>
                     <span className="bg-red-500/10 text-red-500 text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1 whitespace-nowrap">
-                      وفر {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% 🔥
+                      {t('store.save')} {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% 🔥
                     </span>
                   </div>
                 )}
                 {selectedVariant && selectedVariant.originalPrice && selectedVariant.originalPrice > selectedVariant.price && (
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <span className="text-sm sm:text-lg font-bold text-[var(--store-text-muted)] line-through decoration-red-500/60 decoration-2">
-                      {selectedVariant.originalPrice} د.ج
+                      {selectedVariant.originalPrice} {t('common.currency')}
                     </span>
                     <span className="bg-red-500/10 text-red-500 text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded border border-red-500/20 flex items-center gap-1 whitespace-nowrap">
-                      وفر {Math.round(((selectedVariant.originalPrice - selectedVariant.price) / selectedVariant.originalPrice) * 100)}% 🔥
+                      {t('store.save')} {Math.round(((selectedVariant.originalPrice - selectedVariant.price) / selectedVariant.originalPrice) * 100)}% 🔥
                     </span>
                   </div>
                 )}
@@ -593,11 +590,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0"></span>
               <span>
-                {lang === 'ar' ? 'الكمية محدودة: متبقي ' : 'Limited quantity: only '}
+                {t('product.limitedStockPrefix')}{' '}
                 <strong className="text-sm font-black text-red-600 dark:text-red-400 underline mx-1">
                   {product.stockType === 'numeric' ? (product.stock || 0) : (product.stockLinks ? product.stockLinks.length : (product.stock || 0))}
-                </strong>
-                {lang === 'ar' ? 'قطع فقط في المخزون ⚡' : 'items left in stock ⚡'}
+                </strong>{' '}
+                {t('product.limitedStockSuffix')}
               </span>
             </div>
           )}
@@ -734,7 +731,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="pt-3 border-t border-[var(--store-border)] space-y-2">
             <h3 className="text-xs font-black text-[var(--store-text)] flex items-center gap-2">
               <Tag className="w-4 h-4 text-indigo-500" />
-              <span>هل لديك كود خصم؟</span>
+              <span>{t('product.hasCoupon')}</span>
             </h3>
 
             {discountApplied && discountCode ? (
@@ -745,10 +742,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
                       {discountCode.code}
                     </span>
-                    <span className="text-xs text-[var(--store-text-muted)] mr-2">
-                      وفّرت {savingsAmount.toLocaleString('en-US')} د.ج
+                    <span className={`text-xs text-[var(--store-text-muted)] ${lang === 'ar' ? 'mr-2' : 'ml-2'}`}>
+                      {t('product.savedAmount')} {savingsAmount.toLocaleString('en-US')} {t('common.currency')}
                       {discountCode.type === 'percentage'
-                        ? ` (${discountCode.value}% خصم)`
+                        ? ` (${discountCode.value}% ${lang === 'ar' ? 'خصم' : lang === 'fr' ? 'de réduction' : 'off'})`
                         : ''}
                     </span>
                   </div>
@@ -757,7 +754,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   type="button"
                   onClick={removeDiscount}
                   className="p-1 rounded-md text-[var(--store-text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
-                  title="إزالة الكود"
+                  title={t('product.removeCoupon')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -772,7 +769,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     if (discountError) setDiscountError('');
                   }}
                   onKeyDown={e => e.key === 'Enter' && handleCheckDiscount()}
-                  placeholder="أدخل كود الخصم..."
+                  placeholder={t('product.enterCoupon')}
                   className="flex-1 px-3.5 py-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] text-xs font-mono font-bold text-[var(--store-text)] focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm tracking-widest uppercase"
                 />
                 <button
@@ -784,7 +781,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   {isCheckingDiscount
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     : <Tag className="w-3.5 h-3.5" />}
-                  تطبيق
+                  {t('product.applyCoupon')}
                 </button>
               </div>
             )}
@@ -881,7 +878,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 style={{ backgroundColor: '#24A1DE' }}
               >
                 <Send className="w-4 h-4 sm:w-5 sm:h-5 -rotate-45 shrink-0" />
-                <span>لمعلومات اكثر تواصل معنا عبر تيليجرام</span>
+                <span>{t('product.telegramContact')}</span>
               </a>
             )}
 
@@ -924,14 +921,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <button
                 onClick={() => setZoomLevel(prev => Math.min(prev + 0.25, 3))}
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all cursor-pointer"
-                title="تكبير"
+                title={lang === 'ar' ? 'تكبير' : lang === 'fr' ? 'Zoomer' : 'Zoom In'}
               >
                 <ZoomIn className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setZoomLevel(prev => Math.max(prev - 0.25, 0.5))}
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all cursor-pointer"
-                title="تصغير"
+                title={lang === 'ar' ? 'تصغير' : lang === 'fr' ? 'Dézoomer' : 'Zoom Out'}
               >
                 <ZoomOut className="w-5 h-5" />
               </button>
@@ -941,7 +938,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   setZoomLevel(1);
                 }}
                 className="w-10 h-10 rounded-full bg-rose-500/80 hover:bg-rose-600 text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all cursor-pointer"
-                title="إغلاق"
+                title={t('nav.close')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -965,7 +962,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   type="button"
                   onClick={(e) => { e.stopPropagation(); prevImage(e); setZoomLevel(1); }}
                   className="fixed right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all z-20 cursor-pointer shadow-2xl hover:scale-110"
-                  title="السابقة"
+                  title={lang === 'ar' ? 'السابقة' : lang === 'fr' ? 'Précédente' : 'Previous'}
                 >
                   <ChevronRight className="w-7 h-7" />
                 </button>
@@ -973,7 +970,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   type="button"
                   onClick={(e) => { e.stopPropagation(); nextImage(e); setZoomLevel(1); }}
                   className="fixed left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all z-20 cursor-pointer shadow-2xl hover:scale-110"
-                  title="التالية"
+                  title={lang === 'ar' ? 'التالية' : lang === 'fr' ? 'Suivante' : 'Next'}
                 >
                   <ChevronLeft className="w-7 h-7" />
                 </button>
@@ -1025,7 +1022,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-black text-[var(--store-text)] flex items-center gap-2">
             <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
-            تقييمات المنتج ({reviews.length})
+            {t('product.reviewsTitle')} ({reviews.length})
           </h2>
         </div>
 
@@ -1033,11 +1030,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         {reviewSubmitted ? (
           <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-3 font-bold">
             <Check className="w-5 h-5" />
-            شكراً لتقييمك! سيظهر تقييمك بعد مراجعته من قبل الإدارة.
+            {t('product.reviewSubmitted')}
           </div>
         ) : (
           <form onSubmit={submitReview} className="bg-[var(--store-bg)] border border-[var(--store-border)] p-5 rounded-2xl space-y-4">
-            <h3 className="font-bold text-[var(--store-text)]">أضف تقييمك</h3>
+            <h3 className="font-bold text-[var(--store-text)]">{t('product.addReview')}</h3>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -1053,7 +1050,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input 
                 type="text" 
-                placeholder="اسمك"
+                placeholder={t('product.yourName')}
                 required
                 value={newReview.name}
                 onChange={e => setNewReview({...newReview, name: e.target.value})}
@@ -1061,7 +1058,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               />
               <input 
                 type="text" 
-                placeholder="شاركنا رأيك بالمنتج..."
+                placeholder={t('product.reviewPlaceholder')}
                 required
                 value={newReview.comment}
                 onChange={e => setNewReview({...newReview, comment: e.target.value})}
@@ -1073,7 +1070,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               disabled={isSubmittingReview}
               className="px-6 py-2.5 bg-[var(--store-primary)] text-[var(--store-bg)] font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 text-sm"
             >
-              {isSubmittingReview ? 'جاري الإرسال...' : 'نشر التقييم'}
+              {isSubmittingReview ? t('product.submittingReview') : t('product.submitReview')}
             </button>
           </form>
         )}
@@ -1081,33 +1078,37 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         {/* Reviews List */}
         {reviews.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {reviews.map((r, i) => (
-              <div key={i} className="bg-[var(--store-bg)] border border-[var(--store-border)] p-5 rounded-2xl space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-emerald-500 overflow-hidden">
-                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(r.userName || r.customerName || 'مستخدم')}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm text-[var(--store-text)]">{r.userName || r.customerName || 'مستخدم'}</h4>
-                      <span className="text-[10px] text-[var(--store-text-muted)]">تم التحقق من الشراء ✓</span>
+            {reviews.map((r, i) => {
+              const customerFallback = lang === 'ar' ? 'مستخدم' : lang === 'fr' ? 'Client' : 'Customer';
+              const reviewerName = r.userName || r.customerName || customerFallback;
+              return (
+                <div key={i} className="bg-[var(--store-bg)] border border-[var(--store-border)] p-5 rounded-2xl space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-emerald-500 overflow-hidden">
+                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(reviewerName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-[var(--store-text)]">{reviewerName}</h4>
+                        <span className="text-[10px] text-[var(--store-text-muted)]">{t('store.verifiedPurchase')}</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1 text-amber-400">
+                    {[1,2,3,4,5].map(star => (
+                      <Star key={star} className={`w-3.5 h-3.5 ${star <= r.rating ? 'fill-current' : 'text-[var(--store-border)]'}`} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-[var(--store-text-muted)] font-medium leading-relaxed">
+                    "{r.comment}"
+                  </p>
                 </div>
-                <div className="flex items-center gap-1 text-amber-400">
-                  {[1,2,3,4,5].map(star => (
-                    <Star key={star} className={`w-3.5 h-3.5 ${star <= r.rating ? 'fill-current' : 'text-[var(--store-border)]'}`} />
-                  ))}
-                </div>
-                <p className="text-sm text-[var(--store-text-muted)] font-medium leading-relaxed">
-                  "{r.comment}"
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-10">
-            <p className="text-[var(--store-text-muted)] font-bold text-sm">لا توجد تقييمات حتى الآن. كن أول من يقيّم هذا المنتج!</p>
+            <p className="text-[var(--store-text-muted)] font-bold text-sm">{t('product.noReviewsYet')}</p>
           </div>
         )}
       </div>

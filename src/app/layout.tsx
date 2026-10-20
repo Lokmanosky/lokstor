@@ -67,6 +67,11 @@ export default function RootLayout({
                 } else {
                   document.documentElement.classList.remove('dark');
                 }
+                var savedLang = localStorage.getItem('lokstor_lang');
+                if (savedLang) {
+                  document.documentElement.lang = savedLang;
+                  document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+                }
               } catch (e) {}
             `,
           }}

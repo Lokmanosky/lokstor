@@ -42,6 +42,31 @@ export default function OrdersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   
+  // Reusable clipboard copy with mobile and legacy browser fallback
+  const copyToClipboard = async (text: string, keyId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!text) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedKey(keyId);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+  
   // Manual Delivery States
   const [deliveryLinkInput, setDeliveryLinkInput] = useState('');
   const [isDelivering, setIsDelivering] = useState(false);
@@ -1194,11 +1219,61 @@ export default function OrdersPage() {
 
                     {/* Customer */}
                     <td className="px-3 py-2">
-                      <div className="flex flex-col max-w-[150px]">
+                      <div className="flex flex-col min-w-[120px] max-w-[160px] sm:max-w-[190px]">
                         <span className="text-[var(--admin-text)] font-semibold text-xs truncate" title={o.customerName}>{o.customerName || '—'}</span>
-                        <span className="text-[var(--admin-text-muted)] text-[11px] font-mono truncate" title={o.customerEmail}>{o.customerEmail || '—'}</span>
+                        
+                        {o.customerEmail ? (
+                          <button
+                            type="button"
+                            onClick={(e) => copyToClipboard(o.customerEmail, `table-email-${o.id}`, e)}
+                            className={`group inline-flex items-center gap-1 text-[11px] font-mono transition-all rounded py-0.5 px-1 -mx-1 text-right cursor-pointer active:scale-95 text-start w-fit max-w-full ${
+                              copiedKey === `table-email-${o.id}`
+                                ? 'text-emerald-500 font-bold bg-emerald-500/10'
+                                : 'text-[var(--admin-text-muted)] hover:text-indigo-400 hover:bg-indigo-500/10'
+                            }`}
+                            title={copiedKey === `table-email-${o.id}` ? "تم نسخ الإيميل!" : `اضغط لنسخ: ${o.customerEmail}`}
+                          >
+                            {copiedKey === `table-email-${o.id}` ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-500 font-bold">
+                                <Check className="w-3 h-3 shrink-0" />
+                                <span>تم النسخ!</span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className="truncate select-all" dir="ltr">
+                                  {o.customerEmail}
+                                </span>
+                                <Copy className="w-2.5 h-2.5 opacity-40 shrink-0 group-hover:opacity-100 transition-opacity" />
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <span className="text-[var(--admin-text-muted)] text-[11px] font-mono">—</span>
+                        )}
+
                         {o.customerPhone && (
-                          <span className="text-[var(--admin-text-muted)] text-[10px] font-mono">{o.customerPhone}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => copyToClipboard(o.customerPhone!, `table-phone-${o.id}`, e)}
+                            className={`group inline-flex items-center gap-1 text-[10px] font-mono transition-all rounded py-0.5 px-1 -mx-1 text-right cursor-pointer active:scale-95 text-start w-fit max-w-full ${
+                              copiedKey === `table-phone-${o.id}`
+                                ? 'text-emerald-500 font-bold bg-emerald-500/10'
+                                : 'text-[var(--admin-text-muted)] hover:text-indigo-400 hover:bg-indigo-500/10'
+                            }`}
+                            title={copiedKey === `table-phone-${o.id}` ? "تم نسخ الهاتف!" : `اضغط لنسخ: ${o.customerPhone}`}
+                          >
+                            {copiedKey === `table-phone-${o.id}` ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-500 font-bold">
+                                <Check className="w-2.5 h-2.5 shrink-0" />
+                                <span>تم نسخ الهاتف!</span>
+                              </span>
+                            ) : (
+                              <>
+                                <span className="truncate select-all" dir="ltr">{o.customerPhone}</span>
+                                <Copy className="w-2 h-2 opacity-30 shrink-0 group-hover:opacity-100 transition-opacity" />
+                              </>
+                            )}
+                          </button>
                         )}
                       </div>
                     </td>
@@ -1398,7 +1473,32 @@ export default function OrdersPage() {
               </div>
               <div>
                 <span className="text-[var(--admin-text-muted)] block text-[11px]">الإيميل:</span>
-                <span className="font-mono text-[var(--admin-text)] text-[11px] truncate block">{selectedOrder.customerEmail}</span>
+                {selectedOrder.customerEmail ? (
+                  <button
+                    type="button"
+                    onClick={(e) => copyToClipboard(selectedOrder.customerEmail, `modal-${selectedOrder.id}`, e)}
+                    className={`inline-flex items-center gap-1.5 font-mono text-[11px] transition-all rounded px-1.5 py-0.5 mt-0.5 cursor-pointer active:scale-95 text-start ${
+                      copiedKey === `modal-${selectedOrder.id}`
+                        ? 'text-emerald-500 font-bold bg-emerald-500/10 border border-emerald-500/20'
+                        : 'text-[var(--admin-text)] hover:text-indigo-500 hover:bg-indigo-500/10'
+                    }`}
+                    title={copiedKey === `modal-${selectedOrder.id}` ? 'تم نسخ الإيميل!' : `اضغط لنسخ: ${selectedOrder.customerEmail}`}
+                  >
+                    <span className="truncate max-w-[160px] select-all" dir="ltr">
+                      {selectedOrder.customerEmail}
+                    </span>
+                    {copiedKey === `modal-${selectedOrder.id}` ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px] font-bold">
+                        <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>تم النسخ!</span>
+                      </span>
+                    ) : (
+                      <Copy className="w-3 h-3 opacity-50 shrink-0 hover:opacity-100" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="font-mono text-[var(--admin-text-muted)] text-[11px] block mt-0.5">—</span>
+                )}
               </div>
             </div>
 
@@ -1746,7 +1846,30 @@ export default function OrdersPage() {
               </div>
               <div>
                 <span className="text-[var(--admin-text-muted)] block text-[11px]">الإيميل:</span>
-                <span className="font-mono text-[var(--admin-text)] text-[11px] truncate block">{pendingTargetOrder.customerEmail}</span>
+                {pendingTargetOrder.customerEmail ? (
+                  <button
+                    type="button"
+                    onClick={(e) => copyToClipboard(pendingTargetOrder.customerEmail, `pending-${pendingTargetOrder.id}`, e)}
+                    className={`inline-flex items-center gap-1.5 font-mono text-[11px] transition-all rounded px-1.5 py-0.5 mt-0.5 cursor-pointer active:scale-95 text-start ${
+                      copiedKey === `pending-${pendingTargetOrder.id}`
+                        ? 'text-emerald-500 font-bold bg-emerald-500/10 border border-emerald-500/20'
+                        : 'text-[var(--admin-text)] hover:text-indigo-500 hover:bg-indigo-500/10'
+                    }`}
+                    title="اضغط لنسخ الإيميل"
+                  >
+                    <span className="truncate select-all" dir="ltr">{pendingTargetOrder.customerEmail}</span>
+                    {copiedKey === `pending-${pendingTargetOrder.id}` ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px] font-bold">
+                        <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>تم النسخ!</span>
+                      </span>
+                    ) : (
+                      <Copy className="w-3 h-3 opacity-50 shrink-0" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="font-mono text-[var(--admin-text-muted)] text-[11px] block mt-0.5">—</span>
+                )}
               </div>
             </div>
 
@@ -1841,9 +1964,28 @@ export default function OrdersPage() {
 
             {/* Target Info */}
             {cancelModal.orderIds.length === 1 && cancelModal.customerEmail && (
-              <div className="p-3 rounded-xl bg-[var(--admin-surface)] border border-[var(--admin-border)] flex items-center justify-between text-xs">
-                <span className="text-[var(--admin-text-muted)]">البريد الإلكتروني للعميل:</span>
-                <span className="font-mono font-bold text-indigo-400">{cancelModal.customerEmail}</span>
+              <div className="p-3 rounded-xl bg-[var(--admin-surface)] border border-[var(--admin-border)] flex items-center justify-between text-xs gap-2">
+                <span className="text-[var(--admin-text-muted)] shrink-0">البريد الإلكتروني للعميل:</span>
+                <button
+                  type="button"
+                  onClick={(e) => copyToClipboard(cancelModal.customerEmail!, 'cancel-email', e)}
+                  className={`inline-flex items-center gap-1.5 font-mono font-bold text-xs transition-all rounded px-2 py-1 cursor-pointer active:scale-95 ${
+                    copiedKey === 'cancel-email'
+                      ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                      : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10'
+                  }`}
+                  title="اضغط لنسخ الإيميل"
+                >
+                  <span className="select-all" dir="ltr">{cancelModal.customerEmail}</span>
+                  {copiedKey === 'cancel-email' ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-400 text-[10px]">
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span>تم النسخ!</span>
+                    </span>
+                  ) : (
+                    <Copy className="w-3 h-3 opacity-60" />
+                  )}
+                </button>
               </div>
             )}
 

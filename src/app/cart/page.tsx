@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/lib/i18n-context';
 import { Trash2, ShoppingBag, CreditCard, Clock, CheckCircle2, Package, XCircle , ShieldCheck } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
@@ -11,6 +12,7 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 export default function CartPage() {
   const { items, removeFromCart, totalItems, totalPrice } = useCart();
   const { user } = useAuth();
+  const { t, lang, formatCurrency } = useTranslation();
   
   const [orders, setOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -68,18 +70,20 @@ export default function CartPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed': return 'مكتمل';
-      case 'pending': return 'قيد الانتظار';
-      case 'failed': return 'فشل';
+      case 'completed': return t('cart.statusCompleted');
+      case 'pending': return t('cart.statusPending');
+      case 'failed': return t('cart.statusFailed');
       default: return status;
     }
   };
 
+  const dateLocale = lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-US';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <h1 className="text-3xl font-black text-[var(--store-text)] mb-8 flex items-center gap-3">
         <ShoppingBag className="w-8 h-8 text-[var(--store-primary)]" />
-        <span>سلة المشتريات</span>
+        <span>{t('cart.title')}</span>
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -89,16 +93,16 @@ export default function CartPage() {
           {items.length === 0 ? (
             <div className="store-card p-12 text-center rounded-xl border border-[var(--store-border)]">
               <ShoppingBag className="w-16 h-16 text-[var(--store-text-muted)] mx-auto mb-4 opacity-50" />
-              <h2 className="text-xl font-bold text-[var(--store-text)] mb-2">السلة فارغة</h2>
-              <p className="text-[var(--store-text-muted)] mb-6">لم تقم بإضافة أي منتجات للسلة بعد.</p>
+              <h2 className="text-xl font-bold text-[var(--store-text)] mb-2">{t('cart.empty')}</h2>
+              <p className="text-[var(--store-text-muted)] mb-6">{t('cart.emptyDesc')}</p>
               <Link href="/" className="inline-flex items-center gap-2 px-6 py-2.5 bg-[var(--store-text)] text-[var(--store-bg)] rounded-lg font-medium hover:opacity-80 transition-opacity">
-                تصفح المنتجات
+                {t('cart.browse')}
               </Link>
             </div>
           ) : (
             <div className="store-card rounded-xl border border-[var(--store-border)] overflow-hidden">
               <div className="p-4 border-b border-[var(--store-border)] bg-[var(--store-hover)]">
-                <h3 className="font-bold text-[var(--store-text)]">المنتجات الحالية ({totalItems})</h3>
+                <h3 className="font-bold text-[var(--store-text)]">{t('cart.currentItems')} ({totalItems})</h3>
               </div>
               <div className="divide-y divide-[var(--store-border)]">
                 {items.map(item => (
@@ -106,14 +110,14 @@ export default function CartPage() {
                     <img src={item.imageUrl} alt={item.name} className="w-20 h-20 rounded-md object-cover border border-[var(--store-border)] bg-[var(--store-bg)]" />
                     <div className="flex-1">
                       <h4 className="font-bold text-[var(--store-text)] text-sm mb-1">{item.name}</h4>
-                      <div className="text-[var(--store-primary)] font-bold">{item.price} د.ج</div>
+                      <div className="text-[var(--store-primary)] font-bold">{formatCurrency(item.price)}</div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-[var(--store-text-muted)] text-sm">الكمية: {item.quantity}</span>
+                      <span className="text-[var(--store-text-muted)] text-sm">{t('cart.quantity')} {item.quantity}</span>
                       <button 
                         onClick={() => removeFromCart(item.id)}
-                        className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                        title="إزالة"
+                        className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors cursor-pointer"
+                        title={t('cart.remove')}
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -128,20 +132,20 @@ export default function CartPage() {
           <div className="mt-12">
             <h2 className="text-xl font-bold text-[var(--store-text)] mb-6 flex items-center gap-2">
               <Clock className="w-5 h-5 text-[var(--store-text-muted)]" />
-              <span>طلباتي السابقة</span>
+              <span>{t('cart.previousOrders')}</span>
             </h2>
             
             {!user ? (
               <div className="store-card p-8 text-center rounded-xl border border-[var(--store-border)]">
-                <p className="text-[var(--store-text-muted)] text-sm">قم بتسجيل الدخول لرؤية طلباتك السابقة.</p>
+                <p className="text-[var(--store-text-muted)] text-sm">{t('cart.loginToViewOrders')}</p>
               </div>
             ) : loadingOrders ? (
               <div className="store-card p-8 text-center rounded-xl border border-[var(--store-border)]">
-                <p className="text-[var(--store-text-muted)] text-sm animate-pulse">جاري جلب الطلبات...</p>
+                <p className="text-[var(--store-text-muted)] text-sm animate-pulse">{t('cart.loadingOrders')}</p>
               </div>
             ) : orders.length === 0 ? (
               <div className="store-card p-8 text-center rounded-xl border border-[var(--store-border)]">
-                <p className="text-[var(--store-text-muted)] text-sm">لا توجد طلبات سابقة.</p>
+                <p className="text-[var(--store-text-muted)] text-sm">{t('cart.noPreviousOrders')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -149,18 +153,18 @@ export default function CartPage() {
                   <div key={order.id} className="store-card p-5 rounded-xl border border-[var(--store-border)] hover:border-[var(--store-text-muted)] transition-colors">
                     <div className="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-[var(--store-border)]">
                       <div>
-                        <div className="text-xs text-[var(--store-text-muted)] mb-1">رقم الطلب</div>
+                        <div className="text-xs text-[var(--store-text-muted)] mb-1">{t('cart.orderNumber')}</div>
                         <div className="font-mono text-sm font-medium text-[var(--store-text)]">#{order.id.slice(-8).toUpperCase()}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-[var(--store-text-muted)] mb-1">التاريخ والوقت</div>
+                        <div className="text-xs text-[var(--store-text-muted)] mb-1">{t('cart.dateTime')}</div>
                         <div className="text-sm font-medium text-[var(--store-text)]">
-                          {order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString('ar-DZ') : 'غير متوفر'}
+                          {order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString(dateLocale) : '—'}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-[var(--store-text-muted)] mb-1">المبلغ</div>
-                        <div className="text-sm font-bold text-[var(--store-text)]">{order.amount} د.ج</div>
+                        <div className="text-xs text-[var(--store-text-muted)] mb-1">{t('cart.amount')}</div>
+                        <div className="text-sm font-bold text-[var(--store-text)]">{formatCurrency(order.amount)}</div>
                       </div>
                       <div>
                         <span className={`px-2.5 py-1 text-xs font-bold border rounded-md ${getStatusColor(order.status)}`}>
@@ -171,17 +175,17 @@ export default function CartPage() {
                     
                     <div className="space-y-2">
                       <div className="text-xs text-[var(--store-text-muted)] font-medium mb-2 flex items-center gap-1.5">
-                        <Package className="w-4 h-4" /> المنتجات ({order.metadata?.items?.length || 1}):
+                        <Package className="w-4 h-4" /> {t('cart.products')} ({order.metadata?.items?.length || 1}):
                       </div>
                       {order.metadata?.items?.map((item: any, idx: number) => (
                         <div key={idx} className="flex justify-between items-center text-sm">
-                          <span className="text-[var(--store-text)]">{item.name || 'منتج'}</span>
-                          <span className="text-[var(--store-text-muted)]">{item.price} د.ج</span>
+                          <span className="text-[var(--store-text)]">{item.name || '—'}</span>
+                          <span className="text-[var(--store-text-muted)]">{formatCurrency(item.price)}</span>
                         </div>
                       )) || (
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-[var(--store-text)]">{order.metadata?.product_name || 'منتج غير محدد'}</span>
-                          <span className="text-[var(--store-text-muted)]">{order.amount} د.ج</span>
+                          <span className="text-[var(--store-text)]">{order.metadata?.product_name || '—'}</span>
+                          <span className="text-[var(--store-text-muted)]">{formatCurrency(order.amount)}</span>
                         </div>
                       )}
                     </div>
@@ -195,34 +199,34 @@ export default function CartPage() {
         {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="store-card p-6 rounded-xl border border-[var(--store-border)] sticky top-24">
-            <h3 className="font-bold text-[var(--store-text)] text-lg mb-6">ملخص الطلب</h3>
+            <h3 className="font-bold text-[var(--store-text)] text-lg mb-6">{t('cart.summary')}</h3>
             
             <div className="space-y-4 mb-6">
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--store-text-muted)]">عدد المنتجات</span>
+                <span className="text-[var(--store-text-muted)]">{t('cart.totalItems')}</span>
                 <span className="font-medium text-[var(--store-text)]">{totalItems}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--store-text-muted)]">المجموع الفرعي</span>
-                <span className="font-medium text-[var(--store-text)]">{totalPrice} د.ج</span>
+                <span className="text-[var(--store-text-muted)]">{t('cart.subtotal')}</span>
+                <span className="font-medium text-[var(--store-text)]">{formatCurrency(totalPrice)}</span>
               </div>
               <div className="pt-4 border-t border-[var(--store-border)] flex justify-between">
-                <span className="font-bold text-[var(--store-text)]">الإجمالي</span>
-                <span className="font-black text-xl text-[var(--store-primary)]">{totalPrice} د.ج</span>
+                <span className="font-bold text-[var(--store-text)]">{t('cart.total')}</span>
+                <span className="font-black text-xl text-[var(--store-primary)]">{formatCurrency(totalPrice)}</span>
               </div>
             </div>
 
             <button 
               disabled={items.length === 0}
-              className="w-full py-3.5 bg-[var(--store-primary)] text-white font-bold rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 disabled:opacity-50 disabled:shadow-none"
+              className="w-full py-3.5 bg-[var(--store-primary)] text-white font-bold rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg shadow-[var(--store-primary)]/20 disabled:opacity-50 disabled:shadow-none cursor-pointer"
             >
               <CreditCard className="w-5 h-5" />
-              <span>إتمام الشراء والانتقال للدفع</span>
+              <span>{t('cart.checkoutBtn')}</span>
             </button>
             
             <p className="text-center text-xs text-[var(--store-text-muted)] mt-4 flex items-center justify-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              دفع آمن ومحمي عبر Chargily
+              {t('feat.secure')}
             </p>
           </div>
         </div>

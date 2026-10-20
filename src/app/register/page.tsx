@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/lib/i18n-context';
 import { UserPlus, LogIn, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
@@ -52,6 +53,7 @@ function getTargetRedirect(): string {
 
 export default function RegisterPage() {
   const { user } = useAuth();
+  const { t, lang } = useTranslation();
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -79,25 +81,25 @@ export default function RegisterPage() {
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
-        setSuccess('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+        setSuccess(t('auth.loginSuccess'));
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: name });
-        setSuccess('تم إنشاء الحساب بنجاح! جاري التوجيه...');
+        setSuccess(t('auth.registerSuccess'));
       }
       
       const destination = getTargetRedirect();
       sessionStorage.removeItem('post_login_redirect');
       setTimeout(() => router.push(destination), 600);
     } catch (err: any) {
-      if (err.message.includes('auth/email-already-in-use')) {
-        setError('هذا البريد مستخدم بالفعل');
-      } else if (err.message.includes('auth/weak-password')) {
-        setError('كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)');
-      } else if (err.message.includes('auth/invalid-credential') || err.message.includes('auth/user-not-found') || err.message.includes('auth/wrong-password')) {
-        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      if (err.message?.includes('auth/email-already-in-use')) {
+        setError(lang === 'ar' ? 'هذا البريد مستخدم بالفعل' : lang === 'fr' ? 'Cette adresse e-mail est déjà utilisée' : 'This email is already in use');
+      } else if (err.message?.includes('auth/weak-password')) {
+        setError(t('account.passMinLength'));
+      } else if (err.message?.includes('auth/invalid-credential') || err.message?.includes('auth/user-not-found') || err.message?.includes('auth/wrong-password')) {
+        setError(lang === 'ar' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : lang === 'fr' ? 'E-mail ou mot de passe incorrect' : 'Invalid email or password');
       } else {
-        setError(isLogin ? 'حدث خطأ أثناء تسجيل الدخول، يرجى المحاولة لاحقاً' : 'حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة لاحقاً');
+        setError(lang === 'ar' ? 'حدث خطأ، يرجى المحاولة لاحقاً' : lang === 'fr' ? 'Une erreur est survenue, veuillez réessayer' : 'An error occurred, please try again');
       }
     } finally {
       setLoading(false);
@@ -125,10 +127,10 @@ export default function RegisterPage() {
           await signInWithRedirect(auth, provider);
           return;
         } catch {
-          setError('تم حظر النافذة المنبثقة من المتصفح، يرجى السماح بها');
+          setError(lang === 'ar' ? 'تم حظر النافذة المنبثقة من المتصفح، يرجى السماح بها' : lang === 'fr' ? 'Popup bloquée par le navigateur' : 'Popup was blocked by your browser');
         }
       } else {
-        setError('تعذّر التسجيل عبر Google، حاول مجدداً');
+        setError(lang === 'ar' ? 'تعذّر التسجيل عبر Google، حاول مجدداً' : lang === 'fr' ? 'Échec de la connexion via Google' : 'Google sign-in failed, please try again');
       }
     } finally {
       setGoogleLoading(false);
@@ -140,7 +142,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-[78vh] bg-[var(--store-bg)] flex items-center justify-center p-3 sm:p-5" dir="rtl">
+    <div className="min-h-[78vh] bg-[var(--store-bg)] flex items-center justify-center p-3 sm:p-5" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <div className="w-full max-w-sm sm:max-w-md bg-[var(--store-card)] border border-[var(--store-border)] rounded-2xl p-4 sm:p-6 space-y-3.5 shadow-sm transition-colors">
         
         {/* Header */}
@@ -153,12 +155,10 @@ export default function RegisterPage() {
             )}
           </div>
           <h1 className="text-lg sm:text-xl font-bold text-[var(--store-text)] tracking-tight">
-            {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
+            {isLogin ? t('auth.loginBtn') : t('auth.createAccountTitle')}
           </h1>
           <p className="text-xs text-[var(--store-text-muted)] font-medium">
-            {isLogin 
-              ? 'مرحباً بعودتك! سجل الدخول للوصول لطلباتك' 
-              : 'انضم إلينا للاستفادة من العروض والوصول لطلباتك الرقمية فوراً'}
+            {isLogin ? t('auth.welcomeBack') : t('auth.registerDesc')}
           </p>
         </div>
 
@@ -174,13 +174,13 @@ export default function RegisterPage() {
           ) : (
             <GoogleIcon />
           )}
-          <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة باستخدام Google'}</span>
+          <span>{googleLoading ? t('auth.openingGoogle') : t('auth.continueWithGoogle')}</span>
         </button>
 
         {/* 2. Divider */}
         <div className="flex items-center gap-2.5 my-1">
           <div className="flex-1 h-px bg-[var(--store-border)]"></div>
-          <span className="text-[11px] text-[var(--store-text-muted)] font-bold">أو عبر البريد الإلكتروني</span>
+          <span className="text-[11px] text-[var(--store-text-muted)] font-bold">{t('auth.orWithEmail')}</span>
           <div className="flex-1 h-px bg-[var(--store-border)]"></div>
         </div>
         
@@ -189,7 +189,7 @@ export default function RegisterPage() {
           {!isLogin && (
             <div className="space-y-1">
               <label className="block text-xs font-bold text-[var(--store-text)]">
-                الاسم الكامل <span className="text-red-500">*</span>
+                {t('auth.fullName')} <span className="text-red-500">*</span>
               </label>
               <input 
                 type="text" 
@@ -197,14 +197,14 @@ export default function RegisterPage() {
                 value={name} 
                 onChange={e => setName(e.target.value)}
                 className="w-full bg-[var(--store-bg)] border border-[var(--store-border)] text-[var(--store-text)] text-xs sm:text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-400 font-medium"
-                placeholder="مثال: محمد الأمين"
+                placeholder={lang === 'ar' ? 'مثال: محمد الأمين' : lang === 'fr' ? 'ex. Jean Dupont' : 'e.g. John Doe'}
               />
             </div>
           )}
 
           <div className="space-y-1">
             <label className="block text-xs font-bold text-[var(--store-text)]">
-              البريد الإلكتروني <span className="text-red-500">*</span>
+              {t('auth.email')} <span className="text-red-500">*</span>
             </label>
             <input 
               type="email" 
@@ -219,7 +219,7 @@ export default function RegisterPage() {
 
           <div className="space-y-1">
             <label className="block text-xs font-bold text-[var(--store-text)]">
-              كلمة المرور <span className="text-red-500">*</span>
+              {t('auth.password')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input 
@@ -228,20 +228,20 @@ export default function RegisterPage() {
                 minLength={6}
                 value={password} 
                 onChange={e => setPassword(e.target.value)}
-                className="w-full bg-[var(--store-bg)] border border-[var(--store-border)] text-[var(--store-text)] text-xs sm:text-sm rounded-lg pr-3 pl-9 py-2 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-400 font-medium"
+                className={`w-full bg-[var(--store-bg)] border border-[var(--store-border)] text-[var(--store-text)] text-xs sm:text-sm rounded-lg py-2 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-400 font-medium ${lang === 'ar' ? 'pr-3 pl-9' : 'pl-3 pr-9'}`}
                 placeholder="••••••••"
                 dir="ltr"
               />
               <button 
                 type="button" 
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors cursor-pointer"
-                title={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                className={`absolute top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors cursor-pointer ${lang === 'ar' ? 'left-2.5' : 'right-2.5'}`}
+                title={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <p className="text-[10px] text-[var(--store-text-muted)]">يجب أن تتكون من 6 خانات على الأقل.</p>
+            <p className="text-[10px] text-[var(--store-text-muted)]">{t('account.passMinLength')}</p>
           </div>
 
           {error && (
@@ -262,17 +262,17 @@ export default function RegisterPage() {
             disabled={loading}
             className="chargily-btn w-full py-2.5 sm:py-3 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-emerald-500/25 transition-all mt-1 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'جاري المعالجة...' : (isLogin ? 'تسجيل الدخول' : 'إنشاء الحساب')}
+            {loading ? t('auth.checking') : (isLogin ? t('auth.loginBtn') : t('auth.registerBtn'))}
           </button>
           
           <div className="text-center text-xs text-[var(--store-text-muted)] pt-1">
-            {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
+            {isLogin ? `${t('auth.noAccount')} ` : `${t('auth.alreadyHaveAccount')} `}
             <button 
               type="button"
               onClick={() => setIsLogin(!isLogin)} 
               className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
             >
-              {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+              {isLogin ? t('auth.createNewAccount') : t('auth.signInLink')}
             </button>
           </div>
         </form>
@@ -280,8 +280,8 @@ export default function RegisterPage() {
         {/* Footer link */}
         <div className="text-center text-[11px] text-[var(--store-text-muted)] pt-2 border-t border-[var(--store-border)]">
           <Link href="/" className="inline-flex items-center gap-1 text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors">
-            <ArrowRight className="w-3 h-3" />
-            <span>العودة لصفحة المتجر الرئيسية</span>
+            <ArrowRight className={`w-3 h-3 ${lang !== 'ar' ? 'rotate-180' : ''}`} />
+            <span>{t('success.backHome')}</span>
           </Link>
         </div>
       </div>

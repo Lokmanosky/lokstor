@@ -14,6 +14,7 @@ import { TopTicker } from './client-layout';
 import { Star as StarIcon, Quote } from 'lucide-react';
 
 function ReviewsCarousel() {
+  const { t, lang } = useTranslation();
   const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ function ReviewsCarousel() {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 mb-12">
       <div className="flex items-center gap-2 mb-6">
-        <h2 className="text-2xl font-black text-[var(--store-text)]">قالوا عن متجرنا</h2>
+        <h2 className="text-2xl font-black text-[var(--store-text)]">{t('store.testimonials')}</h2>
       </div>
       
       <style>{
@@ -59,23 +60,27 @@ function ReviewsCarousel() {
           className="flex gap-4 sm:gap-6 w-max animate-scroll-reviews"
         >
           {/* Triple the array to create seamless infinite scroll */}
-          {[...reviews, ...reviews, ...reviews].map((review, i) => (
-            <div key={`${review.id}-${i}`} className="w-72 sm:w-80 shrink-0 bg-[#161b22] border border-[#30363d] rounded-3xl p-6 relative flex flex-col">
-              <Quote className="absolute top-4 left-4 w-10 h-10 text-slate-700/50" />
-              <div className="flex flex-col items-center mb-4">
-                <div className="w-16 h-16 rounded-full bg-slate-800 border-[3px] border-emerald-500 overflow-hidden mb-3">
-                  <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.userName || review.customerName || 'مستخدم')}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
+          {[...reviews, ...reviews, ...reviews].map((review, i) => {
+            const customerFallback = lang === 'ar' ? 'مستخدم' : lang === 'fr' ? 'Client' : 'Customer';
+            const authorName = review.userName || review.customerName || customerFallback;
+            return (
+              <div key={`${review.id}-${i}`} className="w-72 sm:w-80 shrink-0 bg-[#161b22] border border-[#30363d] rounded-3xl p-6 relative flex flex-col">
+                <Quote className="absolute top-4 left-4 w-10 h-10 text-slate-700/50" />
+                <div className="flex flex-col items-center mb-4">
+                  <div className="w-16 h-16 rounded-full bg-slate-800 border-[3px] border-emerald-500 overflow-hidden mb-3">
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
+                  </div>
+                  <h3 className="font-bold text-white text-lg">{authorName}</h3>
+                  <div className="flex items-center gap-1 mt-1 text-amber-400">
+                    {[1,2,3,4,5].map(star => (
+                      <StarIcon key={star} className={`w-4 h-4 ${star <= review.rating ? 'fill-current' : 'text-slate-600'}`} />
+                    ))}
+                  </div>
                 </div>
-                <h3 className="font-bold text-white text-lg">{review.userName || review.customerName || 'مستخدم'}</h3>
-                <div className="flex items-center gap-1 mt-1 text-amber-400">
-                  {[1,2,3,4,5].map(star => (
-                    <StarIcon key={star} className={`w-4 h-4 ${star <= review.rating ? 'fill-current' : 'text-slate-600'}`} />
-                  ))}
-                </div>
+                <p className="text-slate-300 text-center text-sm leading-relaxed font-medium">"{review.comment}"</p>
               </div>
-              <p className="text-slate-300 text-center text-sm leading-relaxed font-medium">"{review.comment}"</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
@@ -169,7 +174,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
 
   const [loading, setLoading] = useState(initialProducts.length === 0);
   const [storeCategories, setStoreCategories] = useState<{id:string;name:string;slug:string;emoji?:string;sortOrder:number}[]>(initialCategories);
-  const { t } = useTranslation();
+  const { t, lang, localizeCategory, formatCurrency } = useTranslation();
   const { addToCart } = useCart();
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const [showLoginToast, setShowLoginToast] = useState(false);
@@ -353,15 +358,15 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
               <div className="flex items-center gap-2 text-[#fbbf24]">
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>تسليم تلقائي وفوري</span>
+                <span>{t('feat.instant')}</span>
               </div>
               <div className="flex items-center gap-2 text-[#00e676]">
                 <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>دفع عبر بوابة Chargily</span>
+                <span>{t('feat.secure')}</span>
               </div>
               <div className="flex items-center gap-2 text-[#818cf8]">
                 <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>دعم فني متواصل</span>
+                <span>{t('feat.support')}</span>
               </div>
             </div>
           </div>
@@ -398,15 +403,15 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
               <div className="flex items-center gap-2 text-[#f59e0b]">
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>تسليم تلقائي وفوري</span>
+                <span>{t('feat.instant')}</span>
               </div>
               <div className="flex items-center gap-2 text-[#00c853]">
                 <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>دفع عبر بوابة Chargily</span>
+                <span>{t('feat.secure')}</span>
               </div>
               <div className="flex items-center gap-2 text-[#6366f1]">
                 <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>دعم فني متواصل</span>
+                <span>{t('feat.support')}</span>
               </div>
             </div>
           </div>
@@ -438,13 +443,13 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                 onClick={() => selectTab(cat.slug)}
                 className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === cat.slug ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
               >
-                {cat.emoji && <span className="ml-1">{cat.emoji}</span>}{cat.name}
+                {cat.emoji && <span className={lang === 'ar' ? 'ml-1' : 'mr-1'}>{cat.emoji}</span>}{localizeCategory(cat.name)}
               </button>
             )) : (
               <>
                 <button onClick={() => selectTab('digital')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('nav.digital')}</button>
                 <button onClick={() => selectTab('subscription')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('nav.subs')}</button>
-                <button onClick={() => selectTab('games')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>🎮 شحن ألعاب</button>
+                <button onClick={() => selectTab('games')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('category.games')}</button>
               </>
             )}
           </div>
@@ -466,10 +471,10 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                 }
                 window.history.replaceState({}, '', url.toString());
               }}
-              placeholder="ابحث فوراً بالاسم أو الوصف..."
-              className="w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-xl px-4 py-2.5 pr-10 pl-8 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-[var(--store-text-muted)] shadow-xs"
+              placeholder={t('store.searchPlaceholder')}
+              className={`w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-xl px-4 py-2.5 ${lang === 'ar' ? 'pr-10 pl-8' : 'pl-10 pr-8'} focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-[var(--store-text-muted)] shadow-xs`}
             />
-            <Search className="w-4 h-4 text-[var(--store-text-muted)] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className={`w-4 h-4 text-[var(--store-text-muted)] absolute ${lang === 'ar' ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
             {searchQuery && (
               <button 
                 type="button"
@@ -480,8 +485,8 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                   url.searchParams.delete('q');
                   window.history.replaceState({}, '', url.toString());
                 }}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] p-1 rounded-full hover:bg-[var(--store-border)] transition-colors"
-                title="مسح البحث"
+                className={`absolute ${lang === 'ar' ? 'left-2.5' : 'right-2.5'} top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] p-1 rounded-full hover:bg-[var(--store-border)] transition-colors`}
+                title={t('store.clearSearch')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -492,7 +497,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
         {/* Live Search Result Indicator */}
         {searchQuery.trim() && (
           <div className="flex items-center justify-between text-xs text-[var(--store-text-muted)] bg-[var(--store-card)] border border-[var(--store-border)] px-4 py-2 rounded-xl">
-            <span>نتائج البحث عن: <strong className="text-[var(--store-text)]">"{searchQuery}"</strong> ({filteredProducts.length} منتج)</span>
+            <span>{t('store.searchResultsFor')} <strong className="text-[var(--store-text)]">"{searchQuery}"</strong> ({filteredProducts.length} {t('store.productsCount')})</span>
             <button 
               type="button"
               onClick={() => {
@@ -504,7 +509,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
               }}
               className="text-emerald-500 hover:underline font-bold"
             >
-              إلغاء التصفية
+              {t('store.clearFilter')}
             </button>
           </div>
         )}
@@ -535,9 +540,9 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
           <div className="text-center py-16 px-4 bg-[var(--store-card)] border border-[var(--store-border)] rounded-2xl space-y-4">
             <Search className="w-8 h-8 mx-auto text-emerald-500 opacity-60" />
             <div className="space-y-1">
-              <h3 className="font-bold text-base text-[var(--store-text)]">لم يتم العثور على أي نتائج</h3>
+              <h3 className="font-bold text-base text-[var(--store-text)]">{t('store.noProductsFound')}</h3>
               <p className="text-sm text-[var(--store-text-muted)]">
-                {searchQuery ? `لا توجد منتجات تطابق "${searchQuery}"` : 'لا توجد منتجات في هذا القسم حالياً'}
+                {searchQuery ? `${t('store.noResults')} "${searchQuery}"` : t('store.noProductsInCat')}
               </p>
             </div>
             {(searchQuery || activeTab !== 'all') && (
@@ -550,7 +555,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
               >
-                <span>عرض كل المنتجات</span>
+                <span>{t('store.viewAllProducts')}</span>
               </button>
             )}
           </div>
@@ -579,7 +584,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                     />
                     <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
                       <span className="bg-black/75 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                        {product.category === 'شحن ألعاب' || product.type === 'games' ? '🎮 ألعاب' : (product.type === 'digital' ? t('badge.digital') : t('badge.sub'))}
+                        {product.category === 'شحن ألعاب' || product.type === 'games' ? t('badge.games') : (product.type === 'digital' ? t('badge.digital') : t('badge.sub'))}
                       </span>
                     </div>
                   </div>
@@ -590,11 +595,11 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                   </Link>
                   <div className="flex items-center justify-between gap-1 sm:gap-2 pt-1 mt-auto">
                     {product.priceUnspecified ? (
-                      <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">سعر غير محدد</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-amber-500 text-xs sm:text-sm whitespace-nowrap bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{t('store.priceUnspecified')}</span>
                     ) : (
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-[var(--store-primary)] text-base sm:text-lg leading-none whitespace-nowrap">
-                          {product.price} <span className="text-[10px] font-normal">د.ج</span>
+                          {formatCurrency(product.price)}
                         </span>
                         {product.originalPrice && product.originalPrice > product.price && (
                           <div className="flex items-center gap-1.5">
@@ -602,7 +607,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                               {product.originalPrice}
                             </span>
                             <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1 py-0.5 rounded">
-                              <span className="hidden sm:inline">وفر </span>{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                              <span className="hidden sm:inline">{t('store.save')} </span>{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
                             </span>
                           </div>
                         )}
@@ -611,22 +616,22 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                     {outOfStock ? (
                       <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-md font-bold text-[10px] sm:text-xs bg-red-500/10 border border-red-500/30 text-red-500 cursor-not-allowed">
                         <PackageX className="w-3.5 h-3.5" />
-                        <span>نفذ<span className="hidden sm:inline"> المخزون</span></span>
+                        <span>{t('store.outOfStock')}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
                         {product.hasVariants || product.priceUnspecified ? (
                           <Link href={`/product/${product.id}`}
                             className="flex-1 flex items-center justify-center px-2 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
-                            title="عرض المنتج">
-                            <span>{product.priceUnspecified ? 'شحن' : 'الخيارات'}</span>
+                            title={t('store.viewProduct')}>
+                            <span>{product.priceUnspecified ? t('store.topUp') : t('store.options')}</span>
                           </Link>
                         ) : (
                           <>
                             <Link href={`/checkout/${product.id}`}
                               className="flex items-center justify-center px-2 py-1.5 rounded-md font-bold text-xs bg-[var(--store-primary)] text-[var(--store-bg)] hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap"
-                              title="الشراء المباشر">
-                              <span>الشراء</span>
+                              title={t('store.directBuy')}>
+                              <span>{t('store.buy')}</span>
                             </Link>
                             <button type="button"
                               onClick={() => {
@@ -636,8 +641,8 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                                 setTimeout(() => setAddedProductId(null), 1500);
                               }}
                               className={`p-1 sm:p-1.5 rounded-md border text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center shrink-0 ${addedProductId === product.id ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 scale-105' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-[var(--store-primary)] hover:text-[var(--store-primary)] hover:bg-[var(--store-card)]'}`}
-                              title="إضافة إلى السلة"
-                              aria-label={addedProductId === product.id ? "تمت الإضافة" : `إضافة ${product.name} إلى السلة`}
+                              title={t('store.addToCart')}
+                              aria-label={addedProductId === product.id ? t('store.addedToCart') : `${t('store.addToCart')} - ${product.name}`}
                             >
                               {addedProductId === product.id ? <Check className="w-4 h-4 text-emerald-400" /> : <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                             </button>
@@ -657,15 +662,15 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   {emoji && <span className="text-2xl leading-none flex-shrink-0">{emoji}</span>}
-                  <h2 className="text-xl font-black text-[var(--store-text)] tracking-tight">{title}</h2>
+                  <h2 className="text-xl font-black text-[var(--store-text)] tracking-tight">{localizeCategory(title)}</h2>
                   <span className="hidden sm:inline text-xs text-[var(--store-text-muted)] bg-[var(--store-card)] border border-[var(--store-border)] rounded-full px-2.5 py-0.5 font-medium flex-shrink-0">
-                    {prods.length} منتج
+                    {prods.length} {t('store.productsCount')}
                   </span>
                 </div>
                 {showViewAll && (
                   <button onClick={() => selectTab(slug)}
                     className="text-xs font-bold text-[var(--store-primary)] hover:underline flex-shrink-0 whitespace-nowrap transition-all">
-                    عرض القسم كاملاً ←
+                    {t('store.viewSection')} {lang === 'ar' ? '←' : '→'}
                   </button>
                 )}
               </div>
@@ -724,7 +729,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
                   renderSection(cat.emoji, cat.name, cat.slug, prods, true)
                 )}
                 {uncategorized.length > 0 &&
-                  renderSection('📦', 'منتجات أخرى', '__other__', uncategorized, false)}
+                  renderSection('📦', t('store.otherProducts'), '__other__', uncategorized, false)}
               </div>
             );
           }
@@ -758,8 +763,8 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
           <LogIn className="w-4 h-4 text-amber-400" />
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-amber-200 font-bold text-sm">يجب تسجيل الدخول أولاً</span>
-          <span className="text-amber-400/80 text-xs font-medium">سجّل دخولك لإضافة المنتجات إلى سلتك</span>
+          <span className="text-amber-200 font-bold text-sm">{t('store.loginRequired')}</span>
+          <span className="text-amber-400/80 text-xs font-medium">{t('store.loginRequiredDesc')}</span>
         </div>
       </div>
     )}

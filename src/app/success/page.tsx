@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Order } from '@/types';
 import { Check, RefreshCw, Download, Copy, CheckCheck, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/lib/i18n-context';
 
 function isUrl(str: string) {
   try {
@@ -17,6 +18,7 @@ function isUrl(str: string) {
 }
 
 function DeliveryBox({ content }: { content: string }) {
+  const { t, lang } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -38,10 +40,10 @@ function DeliveryBox({ content }: { content: string }) {
           className="chargily-btn inline-flex items-center justify-center gap-3 w-full py-4 px-8 rounded-2xl text-slate-950 font-black text-base shadow-xl"
         >
           <Download className="w-5 h-5" />
-          <span>تحميل الملف الرقمي الآن</span>
+          <span>{t('success.downloadNow')}</span>
         </a>
         <p className="text-[11px] text-slate-500">
-          رابط التحميل الخاص بك. إذا لم يعمل، انسخه وافتحه في المتصفح.
+          {t('success.downloadNotice')}
         </p>
       </div>
     );
@@ -49,25 +51,25 @@ function DeliveryBox({ content }: { content: string }) {
 
   // Plain text content: account credentials, code, instructions, etc.
   return (
-    <div className="space-y-3 pt-4 text-right">
-      <p className="text-xs text-emerald-400 font-bold">📦 محتوى الطلب الرقمي:</p>
+    <div className={`space-y-3 pt-4 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+      <p className="text-xs text-emerald-400 font-bold">{t('success.deliverableTitle')}</p>
       <div className="relative bg-[var(--store-bg)] border border-emerald-500/30 rounded-2xl p-5">
-        <pre className="text-sm text-[var(--store-text)] whitespace-pre-wrap break-words font-mono leading-relaxed">
+        <pre className="text-sm text-[var(--store-text)] whitespace-pre-wrap break-words font-mono leading-relaxed" dir="ltr">
           {content}
         </pre>
         <button
           onClick={handleCopy}
-          className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold text-white hover:bg-slate-700 transition-colors shadow-sm"
+          className={`absolute top-3 ${lang === 'ar' ? 'left-3' : 'right-3'} flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs font-bold text-white hover:bg-slate-700 transition-colors shadow-sm cursor-pointer`}
         >
           {copied ? (
-            <><CheckCheck className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">تم النسخ</span></>
+            <><CheckCheck className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">{t('common.copied')}</span></>
           ) : (
-            <><Copy className="w-3.5 h-3.5 text-white" /><span className="text-white">نسخ</span></>
+            <><Copy className="w-3.5 h-3.5 text-white" /><span className="text-white">{t('common.copy')}</span></>
           )}
         </button>
       </div>
       <p className="text-[11px] text-slate-500">
-        احتفظ بهذه المعلومات في مكان آمن. لن تتمكن من الوصول إليها مجدداً بعد مغادرة هذه الصفحة.
+        {t('success.deliverableNotice')}
       </p>
     </div>
   );
@@ -79,6 +81,7 @@ function SuccessContent() {
   const isMock = searchParams.get('mock') === 'true';
   const guestToken = searchParams.get('token');
 
+  const { t, lang, formatCurrency } = useTranslation();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [confirmingMock, setConfirmingMock] = useState<boolean>(false);
@@ -109,10 +112,10 @@ function SuccessContent() {
       if (res.ok && data.order) {
         setOrder(data.order);
       } else {
-        setErrorMsg(data.error || 'لم نتمكن من إيجاد بيانات الطلب');
+        setErrorMsg(data.error || t('success.orderNotFoundDesc'));
       }
     } catch (err: any) {
-      setErrorMsg('حدث خطأ أثناء الاستعلام عن حالة الطلب.');
+      setErrorMsg(t('success.orderNotFoundDesc'));
     } finally {
       setLoading(false);
       setConfirmingMock(false);
@@ -127,7 +130,7 @@ function SuccessContent() {
 
     fetchOrder(isMock);
 
-    // Auto-polling every 3 seconds if order is not yet marked paid (e.g. CIB / SATIM confirmation delay)
+    // Auto-polling every 3 seconds if order is not yet marked paid
     let polls = 0;
     const interval = setInterval(() => {
       if (order?.status === 'paid' || polls >= 12) {
@@ -143,24 +146,24 @@ function SuccessContent() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl rounded-3xl p-12 my-12">
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl rounded-3xl p-12 my-12" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="inline-block w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-[var(--store-text)] mb-2">جاري التحقق من حالة الدفع...</h2>
-        <p className="text-[var(--store-text-muted)] text-xs">يرجى الانتظار لحظات.</p>
+        <h2 className="text-xl font-bold text-[var(--store-text)] mb-2">{t('success.verifying')}</h2>
+        <p className="text-[var(--store-text-muted)] text-xs">{t('success.pleaseWait')}</p>
       </div>
     );
   }
 
   if (!orderId || (!loading && !order)) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl rounded-3xl p-12 my-12 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl rounded-3xl p-12 my-12 space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto text-2xl font-bold">!</div>
-        <h2 className="text-2xl font-bold text-[var(--store-text)]">لم يتم العثور على الطلب</h2>
+        <h2 className="text-2xl font-bold text-[var(--store-text)]">{t('success.orderNotFound')}</h2>
         <p className="text-[var(--store-text-muted)] text-xs leading-relaxed max-w-md mx-auto">
-          {errorMsg || 'يرجى التأكد من رابط الشراء أو الاستعلام باستخدام البريد الإلكتروني.'}
+          {errorMsg || t('success.orderNotFoundDesc')}
         </p>
         <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">
-          <ArrowRight className="w-4 h-4" /><span>العودة للرئيسية</span>
+          <ArrowRight className={`w-4 h-4 ${lang !== 'ar' ? 'rotate-180' : ''}`} /><span>{t('success.backHome')}</span>
         </Link>
       </div>
     );
@@ -170,8 +173,8 @@ function SuccessContent() {
   const deliveryContent = order?.downloadUrl;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
-      <div className="bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl p-8 sm:p-12 rounded-3xl text-center space-y-8 border border-[var(--store-border)] shadow-2xl relative overflow-hidden">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="bg-[var(--store-card)] border border-[var(--store-border)] shadow-xl p-8 sm:p-12 rounded-3xl text-center space-y-8 relative overflow-hidden">
         <div className="absolute top-0 right-1/2 translate-x-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Status Icon */}
@@ -190,32 +193,30 @@ function SuccessContent() {
         {/* Title */}
         <div className="space-y-2">
           <h1 className="text-3xl font-extrabold text-[var(--store-text)]">
-            {isPaid ? 'تم الدفع وتأكيد الطلب بنجاح! 🎉' : 'طلبك قيد المعالجة...'}
+            {isPaid ? t('success.title') : t('success.processing')}
           </h1>
           <p className="text-[var(--store-text-muted)] text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
-            {isPaid
-              ? 'شكراً لثقتك بـ Lokstor! محتوى طلبك الرقمي جاهز أدناه.'
-              : 'جاري استلام إشعار الدفع النهائي من بوابة Chargily.'}
+            {isPaid ? t('success.descPaid') : t('success.descProcessing')}
           </p>
         </div>
 
         {/* Order Info */}
-        <div className="bg-[var(--store-bg)] border border-[var(--store-border)] p-6 rounded-2xl text-right space-y-3 text-xs">
+        <div className="bg-[var(--store-bg)] border border-[var(--store-border)] p-6 rounded-2xl space-y-3 text-xs">
           <div className="flex justify-between items-center text-[var(--store-text-muted)] border-b border-[var(--store-border)] pb-3">
-            <span>رقم الطلب:</span>
-            <span className="font-mono font-bold text-[var(--store-text)]">{order?.id}</span>
+            <span>{t('success.orderId')}</span>
+            <span className="font-mono font-bold text-[var(--store-text)]" dir="ltr">{order?.id}</span>
           </div>
           <div className="flex justify-between items-center text-[var(--store-text-muted)] border-b border-[var(--store-border)] pb-3">
-            <span>المنتج:</span>
+            <span>{t('success.product')}</span>
             <span className="font-bold text-[var(--store-text)]">{order?.productName}</span>
           </div>
           <div className="flex justify-between items-center text-[var(--store-text-muted)] border-b border-[var(--store-border)] pb-3">
-            <span>البريد الإلكتروني:</span>
-            <span className="text-emerald-400 font-semibold">{order?.customerEmail}</span>
+            <span>{t('success.email')}</span>
+            <span className="text-emerald-400 font-semibold" dir="ltr">{order?.customerEmail}</span>
           </div>
           <div className="flex justify-between items-center text-[var(--store-text-muted)]">
-            <span>المبلغ المدفوع:</span>
-            <span className="font-black text-[var(--store-text)] text-sm">{order?.productPrice} د.ج</span>
+            <span>{t('success.amountPaid')}</span>
+            <span className="font-black text-[var(--store-text)] text-sm">{formatCurrency(order?.productPrice || order?.amount || 0)}</span>
           </div>
         </div>
 
@@ -225,41 +226,40 @@ function SuccessContent() {
             <DeliveryBox content={deliveryContent} />
           ) : (
             <div className="pt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-              <p className="font-bold">جاري تجهيز محتوى الطلب...</p>
-              <p className="text-[var(--store-text-muted)] mt-1">إذا لم يظهر المحتوى خلال دقيقة، يرجى التواصل معنا برقم طلبك.</p>
+              <p className="font-bold">{t('success.preparingDeliverable')}</p>
+              <p className="text-[var(--store-text-muted)] mt-1">{t('success.contactIfDelayed')}</p>
             </div>
           )
         ) : (
           <div className="space-y-4 pt-2">
             <button
               onClick={() => fetchOrder(false)}
-              className="w-full py-3 rounded-xl bg-[var(--store-bg)] text-[var(--store-text)] font-bold text-xs border border-[var(--store-border)] hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-[var(--store-bg)] text-[var(--store-text)] font-bold text-xs border border-[var(--store-border)] hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>إعادة الفحص والتحقق</span>
+              <span>{t('account.refreshPayment')}</span>
             </button>
 
             {/* Dev Mock Confirm */}
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 space-y-2">
-              <p className="font-bold">وضع التطوير / التجربة المحلية:</p>
-              <p className="text-[11px] text-[var(--store-text-muted)]">
-                لمحاكاة نجاح الدفع وعرض المحتوى الرقمي فوراً (بدون Webhook حقيقي):
-              </p>
-              <button
-                onClick={() => { setConfirmingMock(true); fetchOrder(true); }}
-                disabled={confirmingMock}
-                className="mt-2 px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-extrabold text-xs hover:bg-amber-400 transition-colors"
-              >
-                {confirmingMock ? 'جاري التأكيد...' : 'تأكيد كمدفوع ومحاكاة التسليم'}
-              </button>
-            </div>
+            {isMock && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 space-y-2">
+                <p className="font-bold">Test Mode:</p>
+                <button
+                  onClick={() => { setConfirmingMock(true); fetchOrder(true); }}
+                  disabled={confirmingMock}
+                  className="mt-2 px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-extrabold text-xs hover:bg-amber-400 transition-colors cursor-pointer"
+                >
+                  {confirmingMock ? 'Confirming...' : 'Mock Confirm Payment'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       <div className="text-center">
         <Link href="/" className="text-xs text-[var(--store-text-muted)] hover:text-[var(--store-text)] font-semibold">
-          العودة للصفحة الرئيسية
+          {t('success.backHome')}
         </Link>
       </div>
     </div>
@@ -268,7 +268,7 @@ function SuccessContent() {
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 text-[var(--store-text-muted)] text-sm">جاري التحميل...</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-[var(--store-text-muted)] text-sm">...</div>}>
       <SuccessContent />
     </Suspense>
   );

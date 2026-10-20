@@ -90,7 +90,7 @@ function NavBar() {
   const s = useStoreSettings();
   const { user, signOut, isAdmin } = useAuth();
   const { totalItems } = useCart();
-  const { t, lang, setLang } = useTranslation();
+  const { t, lang, setLang, formatCurrency } = useTranslation();
   const router = useRouter();
   const { requestPermission, permissionStatus } = usePushNotifications();
 
@@ -239,7 +239,7 @@ function NavBar() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      setSuccess('تم تسجيل الدخول بنجاح!');
+      setSuccess(t('auth.loginSuccess'));
       setTimeout(() => {
         setIsLoginModalOpen(false);
         setSuccess('');
@@ -247,22 +247,26 @@ function NavBar() {
       }, 800);
     } catch (err: any) {
       setLoading(false);
-      setError(err?.message?.includes('auth/invalid-credential') ? 'البريد أو كلمة المرور غير صحيحة' : 'حدث خطأ أثناء الدخول');
+      setError(
+        err?.message?.includes('auth/invalid-credential')
+          ? (lang === 'ar' ? 'البريد أو كلمة المرور غير صحيحة' : lang === 'fr' ? 'Email ou mot de passe incorrect' : 'Invalid email or password')
+          : (lang === 'ar' ? 'حدث خطأ أثناء الدخول' : lang === 'fr' ? 'Une erreur est survenue lors de la connexion' : 'Error occurred during login')
+      );
     }
   };
 
   const handleResetPassword = async () => {
     if (!email) {
-      setError('يرجى إدخال بريدك الإلكتروني أولاً لإرسال رابط الاستعادة');
+      setError(lang === 'ar' ? 'يرجى إدخال بريدك الإلكتروني أولاً لإرسال رابط الاستعادة' : lang === 'fr' ? 'Veuillez saisir votre adresse e-mail d\'abord' : 'Please enter your email first to send the reset link');
       return;
     }
     setError('');
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setSuccess('تم إرسال رابط استعادة كلمة المرور لبريدك');
+      setSuccess(t('auth.resetLinkSent'));
     } catch (err: any) {
-      setError('فشل إرسال رابط الاستعادة، تأكد من صحة البريد');
+      setError(t('auth.resetLinkFailed'));
     } finally {
       setLoading(false);
     }
@@ -309,9 +313,9 @@ function NavBar() {
           {/* Mobile Menu Toggle Button (في الزاوية قبل صورة اللوغو) */}
           <button 
             onClick={() => setMobileMenuOpen(true)}
-            aria-label="فتح القائمة الرئيسية"
+            aria-label={t('nav.menu')}
             className="md:hidden w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
-            title="القائمة"
+            title={t('nav.menu')}
           >
             <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--store-text)]" />
           </button>
@@ -332,7 +336,7 @@ function NavBar() {
             <Link href="/?tab=all" onClick={() => handleNavCategory('all')} className="hover:text-neutral-100 transition-colors">{t('nav.all')}</Link>
             <Link href="/?tab=digital" onClick={() => handleNavCategory('digital')} className="hover:text-neutral-100 transition-colors">{t('nav.digital')}</Link>
             <Link href="/?tab=subscription" onClick={() => handleNavCategory('subscription')} className="hover:text-neutral-100 transition-colors">{t('nav.subs')}</Link>
-            <Link href="/?tab=games" onClick={() => handleNavCategory('games')} className="hover:text-neutral-100 transition-colors">🎮 شحن ألعاب</Link>
+            <Link href="/?tab=games" onClick={() => handleNavCategory('games')} className="hover:text-neutral-100 transition-colors">{t('nav.games')}</Link>
           </nav>
         </div>
 
@@ -365,12 +369,12 @@ function NavBar() {
               <div className="fixed inset-0 z-40" onClick={() => setIsSearchFocused(false)} />
               <div className="absolute top-12 left-0 right-0 bg-[var(--store-card)] border border-[var(--store-border)] rounded-2xl shadow-2xl overflow-hidden z-50 p-2 space-y-1">
                 <div className="px-3 py-1.5 text-[11px] font-bold text-[var(--store-text-muted)] border-b border-[var(--store-border)] flex justify-between">
-                  <span>المنتجات المطابقة</span>
-                  <span>{matchingProducts.length} نتائج</span>
+                  <span>{t('nav.matchingProducts')}</span>
+                  <span>{matchingProducts.length} {t('nav.results')}</span>
                 </div>
                 {matchingProducts.length === 0 ? (
                   <div className="py-6 text-center text-xs text-[var(--store-text-muted)]">
-                    لا توجد منتجات مطابقة لـ "{searchQuery}"
+                    {t('nav.noResults')} "{searchQuery}"
                   </div>
                 ) : (
                   matchingProducts.map(p => (
@@ -390,7 +394,7 @@ function NavBar() {
                           {p.name}
                         </div>
                         <div className="text-[11px] text-[var(--store-primary)] font-bold">
-                          {p.price} د.ج
+                          {formatCurrency(p.price)}
                         </div>
                       </div>
                     </Link>
@@ -402,7 +406,7 @@ function NavBar() {
                     onClick={(e) => handleSearch(e)}
                     className="w-full text-center py-2 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors border-t border-[var(--store-border)] mt-1"
                   >
-                    عرض كل النتائج على الصفحة الرئيسية ←
+                    {t('nav.viewAllResults')}
                   </button>
                 )}
               </div>
@@ -418,7 +422,7 @@ function NavBar() {
             <button 
               onClick={handleToggleTheme}
               className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-amber-400 hover:border-amber-400/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
-              title="تغيير المظهر" aria-label="تبديل المظهر النهاري والليلي"
+              title={t('nav.toggleTheme')} aria-label={t('nav.toggleTheme')}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />}
             </button>
@@ -427,7 +431,7 @@ function NavBar() {
               <button 
                 onClick={requestPermission}
                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-rose-500 hover:border-rose-500/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95 relative"
-                title="تفعيل الإشعارات" aria-label="تفعيل الإشعارات"
+                title={t('nav.notifications')} aria-label={t('nav.notifications')}
               >
                 <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
@@ -438,7 +442,7 @@ function NavBar() {
               <button 
                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
                 className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-[var(--store-text-muted)] hover:text-blue-500 hover:border-blue-500/40 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
-                title="تغيير اللغة" aria-label="تغيير لغة الموقع"
+                title={t('nav.changeLang')} aria-label={t('nav.changeLang')}
               >
                 <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               </button>
@@ -462,7 +466,7 @@ function NavBar() {
                 <Link 
                   href="/account"
                   className="hidden sm:flex items-center gap-2 text-xs font-bold text-[var(--store-text)] hover:text-[var(--store-primary)] transition-colors px-2 py-1.5 rounded-xl hover:bg-[var(--store-card)]"
-                  title="حسابي وسجل طلباتي"
+                  title={t('nav.myAccount')}
                 >
                   <div className="w-8 h-8 rounded-full bg-[var(--store-primary)]/10 border border-[var(--store-primary)]/20 flex items-center justify-center text-[var(--store-primary)]">
                     <User className="w-4.5 h-4.5" />
@@ -474,7 +478,7 @@ function NavBar() {
                   <Link 
                     href="/admin"
                     className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
-                    title="لوحة تحكم المسؤول (Admin)"
+                    title={t('nav.admin')}
                   >
                     <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                   </Link>
@@ -483,7 +487,7 @@ function NavBar() {
                 <button 
                   onClick={handleSignOut}
                   className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border border-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
-                  title="تسجيل الخروج"
+                  title={t('nav.logout')}
                 >
                   <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
@@ -493,10 +497,10 @@ function NavBar() {
                 <button 
                   onClick={openLoginModal}
                   className="w-8 h-8 sm:w-auto sm:px-3 sm:py-2 flex items-center justify-center rounded-xl border border-[var(--store-border)] text-xs font-bold text-[var(--store-text)] hover:bg-[var(--store-card)] hover:border-emerald-500/40 transition-all flex-shrink-0 cursor-pointer shadow-2xs"
-                  title="تسجيل الدخول"
+                  title={t('nav.login')}
                 >
                   <User className="w-4 h-4 sm:hidden text-[var(--store-text-muted)]" />
-                  <span className="hidden sm:inline">تسجيل الدخول</span>
+                  <span className="hidden sm:inline">{t('nav.login')}</span>
                 </button>
                 <Link 
                   href="/register" 
@@ -521,12 +525,12 @@ function NavBar() {
               if (!user) {
                 e.preventDefault();
                 openLoginModal();
-                setError('سجّل أولاً لتستطيع وضع منتجاتك في السلة ومتابعة الشراء');
+                setError(t('product.loginToast'));
               }
             }}
-            aria-label="سلة المشتريات" 
+            aria-label={t('nav.cart')} 
             className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text-muted)] hover:text-amber-500 hover:border-amber-500/40 hover:bg-[var(--store-card)] transition-all relative flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
-            title="سلة المشتريات"
+            title={t('nav.cart')}
           >
             <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
             {totalItems > 0 && (
@@ -553,10 +557,10 @@ function NavBar() {
         >
           {/* Header */}
           <div className="h-16 flex items-center justify-between px-5 border-b border-[var(--store-border)]">
-            <span className="font-black text-base text-[var(--store-text)]">القائمة</span>
+            <span className="font-black text-base text-[var(--store-text)]">{t('nav.menu')}</span>
             <button 
               onClick={() => setMobileMenuOpen(false)} 
-              aria-label="إغلاق القائمة" 
+              aria-label={t('nav.close')} 
               className="p-2 rounded-lg text-[var(--store-text-muted)] hover:text-[var(--store-text)] hover:bg-[var(--store-card)] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -590,12 +594,12 @@ function NavBar() {
               {searchQuery.trim().length > 0 && (
                 <div className="mt-2 bg-[var(--store-card)] border border-[var(--store-border)] rounded-xl p-2 space-y-1 max-h-56 overflow-y-auto">
                   <div className="px-2 py-1 text-[10px] font-bold text-[var(--store-text-muted)] border-b border-[var(--store-border)] flex justify-between">
-                    <span>نتائج فورية</span>
-                    <span>{matchingProducts.length} نتائج</span>
+                    <span>{t('nav.matchingProducts')}</span>
+                    <span>{matchingProducts.length} {t('nav.results')}</span>
                   </div>
                   {matchingProducts.length === 0 ? (
                     <div className="py-4 text-center text-xs text-[var(--store-text-muted)]">
-                      لا توجد منتجات مطابقة
+                      {t('nav.noResults')} "{searchQuery}"
                     </div>
                   ) : (
                     matchingProducts.map(p => (
@@ -612,7 +616,7 @@ function NavBar() {
                         />
                         <div className="flex-1 min-w-0 text-right">
                           <div className="text-xs font-bold text-[var(--store-text)] truncate">{p.name}</div>
-                          <div className="text-[10px] text-emerald-500 font-bold">{p.price} د.ج</div>
+                          <div className="text-[10px] text-emerald-500 font-bold">{formatCurrency(p.price)}</div>
                         </div>
                       </Link>
                     ))
@@ -623,16 +627,16 @@ function NavBar() {
                       onClick={(e) => handleSearch(e)}
                       className="w-full text-center py-1.5 text-xs font-bold text-emerald-500 border-t border-[var(--store-border)] mt-1 cursor-pointer"
                     >
-                      عرض النتائج بالصفحة ←
+                      {t('nav.viewAllResults')}
                     </button>
                   )}
                 </div>
               )}
             </div>
             
-            {/* الأقسام الرئيسية (Larger, comfortable touch targets with real filtering) */}
+            {/* الأقسام الرئيسية */}
             <div className="space-y-2">
-              <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">الأقسام الرئيسية</span>
+              <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">{t('nav.mainSections')}</span>
               <nav className="flex flex-col gap-2">
                 <Link 
                   href="/?tab=all" 
@@ -677,17 +681,17 @@ function NavBar() {
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span>🎮 شحن ألعاب</span>
+                    <span>{t('nav.games')}</span>
                   </div>
                   <span className="text-xs text-[var(--store-text-muted)] opacity-60">←</span>
                 </Link>
               </nav>
             </div>
 
-            {/* الحساب الشخصي (Account & Admin Navigation) */}
+            {/* الحساب الشخصي */}
             {user ? (
               <div className="space-y-2 pt-1">
-                <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">الحساب الشخصي</span>
+                <span className="text-[11px] font-bold text-[var(--store-text-muted)] px-1">{t('nav.personalAccount')}</span>
                 <div className="flex flex-col gap-2">
                   <Link 
                     href="/account" 
@@ -697,7 +701,7 @@ function NavBar() {
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                       <User className="w-4 h-4" />
                     </div>
-                    <span>حسابي وطلباتي</span>
+                    <span>{t('nav.myAccount')}</span>
                   </Link>
 
                   {isAdmin && (
@@ -709,7 +713,7 @@ function NavBar() {
                       <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
                         <Settings className="w-4 h-4" />
                       </div>
-                      <span>لوحة التحكم (Admin)</span>
+                      <span>{t('nav.admin')}</span>
                     </Link>
                   )}
                 </div>
@@ -737,7 +741,7 @@ function NavBar() {
               </div>
             )}
 
-            {/* Bottom Section (أسفل شيء: تسجيل الخروج + المظهر واللغة) */}
+            {/* Bottom Section */}
             <div className="mt-auto pt-4 border-t border-[var(--store-border)] flex flex-col gap-3">
               {user && (
                 <button 
@@ -745,7 +749,7 @@ function NavBar() {
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-sm font-bold text-red-500 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
                 >
                   <LogOut className="w-4 h-4" /> 
-                  <span>تسجيل الخروج</span>
+                  <span>{t('nav.logout')}</span>
                 </button>
               )}
 
@@ -755,7 +759,7 @@ function NavBar() {
                   className="p-2.5 border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:bg-[var(--store-card)] transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
                 >
                   {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
-                  <span className="text-[11px] text-[var(--store-text-muted)]">{theme === 'dark' ? 'نهاري' : 'ليلي'}</span>
+                  <span className="text-[11px] text-[var(--store-text-muted)]">{theme === 'dark' ? t('nav.themeLight') : t('nav.themeDark')}</span>
                 </button>
                 
                 <div className="flex gap-1.5 text-xs">
@@ -777,7 +781,7 @@ function NavBar() {
         <div className="w-full max-w-md bg-[var(--store-bg)] border border-[var(--store-border)] rounded-xl shadow-2xl overflow-hidden relative">
           <button 
             onClick={() => setIsLoginModalOpen(false)}
-            aria-label="إغلاق نافذة تسجيل الدخول" className="absolute top-4 left-4 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+            aria-label={t('nav.close')} className="absolute top-4 left-4 text-[var(--store-text-muted)] hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -787,8 +791,8 @@ function NavBar() {
               <div className="w-10 h-10 rounded-xl bg-[var(--store-card)] border border-[var(--store-border)] flex items-center justify-center mx-auto mb-2">
                 <Lock className="w-4 h-4 text-[var(--store-text)]" />
               </div>
-              <h2 className="text-lg font-bold text-[var(--store-text)] mb-0.5">مرحباً بعودتك</h2>
-              <p className="text-xs text-[var(--store-text-muted)]">قم بتسجيل الدخول للمتابعة</p>
+              <h2 className="text-lg font-bold text-[var(--store-text)] mb-0.5">{t('auth.welcomeBack')}</h2>
+              <p className="text-xs text-[var(--store-text-muted)]">{t('auth.loginToContinue')}</p>
             </div>
 
             {/* Google Login on Top */}
@@ -803,18 +807,18 @@ function NavBar() {
               ) : (
                 <GoogleIcon />
               )}
-              <span>{googleLoading ? 'جاري الفتح...' : 'المتابعة باستخدام Google'}</span>
+              <span>{googleLoading ? t('auth.openingGoogle') : t('auth.continueWithGoogle')}</span>
             </button>
 
             <div className="my-2.5 flex items-center gap-2">
               <div className="flex-1 h-px bg-[var(--store-border)]"></div>
-              <span className="text-[11px] text-[var(--store-text-muted)] font-bold">أو عبر البريد الإلكتروني</span>
+              <span className="text-[11px] text-[var(--store-text-muted)] font-bold">{t('auth.orWithEmail')}</span>
               <div className="flex-1 h-px bg-[var(--store-border)]"></div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-2.5">
               <div>
-                <label className="block text-xs font-bold text-[var(--store-text)] mb-1">البريد الإلكتروني</label>
+                <label className="block text-xs font-bold text-[var(--store-text)] mb-1">{t('auth.email')}</label>
                 <input 
                   type="email" 
                   value={email}
@@ -827,8 +831,8 @@ function NavBar() {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-[var(--store-text)]">كلمة المرور</label>
-                  <button type="button" onClick={handleResetPassword} className="text-[11px] text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors">نسيت كلمة المرور؟</button>
+                  <label className="block text-xs font-bold text-[var(--store-text)]">{t('auth.password')}</label>
+                  <button type="button" onClick={handleResetPassword} className="text-[11px] text-[var(--store-text-muted)] hover:text-emerald-500 font-medium transition-colors">{t('auth.forgotPassword')}</button>
                 </div>
                 <div className="relative">
                   <input 
@@ -860,17 +864,17 @@ function NavBar() {
                 disabled={loading}
                 className="chargily-btn w-full py-2.5 sm:py-3 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-emerald-500/25 transition-all mt-1 disabled:opacity-50 cursor-pointer"
               >
-                {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
+                {loading ? t('auth.checking') : t('auth.loginBtn')}
               </button>
             </form>
             
             <div className="mt-3.5 text-center text-xs text-[var(--store-text-muted)]">
-              ليس لديك حساب؟ <Link href="/register" onClick={() => {
+              {t('auth.noAccount')} <Link href="/register" onClick={() => {
                 setIsLoginModalOpen(false);
                 if (typeof window !== 'undefined') {
                   sessionStorage.setItem('post_login_redirect', window.location.pathname + window.location.search);
                 }
-              }} className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">إنشاء حساب جديد</Link>
+              }} className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">{t('auth.createNewAccount')}</Link>
             </div>
           </div>
         </div>
@@ -946,6 +950,7 @@ function Footer() {
 }
 
 function TelegramFloat() {
+  const { t } = useTranslation();
   return (
     <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 flex items-center justify-center">
       <div className="absolute inset-0 bg-[#229ED9] rounded-full animate-ping opacity-75"></div>
@@ -953,8 +958,8 @@ function TelegramFloat() {
         href="https://t.me/Loktech"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="تواصل معنا عبر تلغرام"
-        title="تواصل معنا عبر تلغرام (LokTech)"
+        aria-label={t('footer.telegram')}
+        title={t('footer.telegram')}
         className="relative flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#229ED9] hover:bg-[#1b8bc2] text-white shadow-lg shadow-sky-500/30 hover:scale-105 active:scale-95 transition-all duration-200 group"
       >
         <svg

@@ -67,11 +67,11 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
     { href: '/admin/orders', label: t('nav.adminOrders'), icon: ShoppingCart, badge: pendingCount },
     { href: '/admin/abandoned', label: t('nav.adminAbandoned'), icon: AlertTriangle },
     { href: '/admin/products', label: t('nav.adminProducts'), icon: Package },
-    { href: '/admin/categories', label: 'أقسام المتجر', icon: FolderOpen },
-    { href: '/admin/discounts', label: 'أكواد الخصم', icon: Tag },
-    { href: '/admin/ticker', label: 'الشريط الإعلاني', icon: Megaphone },
+    { href: '/admin/categories', label: t('nav.adminCategories'), icon: FolderOpen },
+    { href: '/admin/discounts', label: t('nav.adminDiscounts'), icon: Tag },
+    { href: '/admin/ticker', label: t('nav.adminTicker'), icon: Megaphone },
     { href: '/admin/inventory', label: t('nav.adminInventory'), icon: Boxes },
-    { href: '/admin/reviews', label: 'التقييمات', icon: Star, badge: pendingReviewsCount },
+    { href: '/admin/reviews', label: t('nav.adminReviews'), icon: Star, badge: pendingReviewsCount },
     { href: '/admin/logs', label: t('nav.adminLogs'), icon: History },
     { href: '/admin/settings', label: t('nav.adminSettings'), icon: Settings },
   ];
@@ -165,11 +165,11 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
         <Link
           href="/"
           className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-md border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-all group"
-          title="العودة للمتجر"
+          title={t('nav.backToStore')}
           onClick={() => { if(isMobile) setOpen(false); }}
         >
           <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
-          {(open || isMobile) && <span className="flex-1">العودة للمتجر</span>}
+          {(open || isMobile) && <span className="flex-1">{t('nav.backToStore')}</span>}
         </Link>
       </div>
 
@@ -179,7 +179,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           type="button"
           onClick={toggleTheme}
           className="admin-sidebar-theme-btn w-full flex items-center justify-between p-2 rounded-lg text-xs font-semibold border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
-          title={theme === 'dark' ? 'التبديل إلى الوضع النهاري' : 'التبديل إلى الوضع الليلي'}
+          title={theme === 'dark' ? t('admin.lightMode') : t('admin.darkMode')}
         >
           <div className="flex items-center gap-2.5">
             {theme === 'dark' ? (
@@ -189,13 +189,13 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
             )}
             {(open || isMobile) && (
               <span className="text-current font-medium">
-                {theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
+                {theme === 'dark' ? t('admin.lightMode') : t('admin.darkMode')}
               </span>
             )}
           </div>
           {(open || isMobile) && (
             <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-[var(--admin-hover)] text-current">
-              {theme === 'dark' ? '☀️ فاتح' : '🌙 داكن'}
+              {theme === 'dark' ? `☀️ ${t('admin.lightMode')}` : `🌙 ${t('admin.darkMode')}`}
             </span>
           )}
         </button>
