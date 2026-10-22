@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell } from 'lucide-react';
+import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign } from 'lucide-react';
 import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [storeName, setStoreName] = useState(currentSettings.storeName || 'Lokstor');
   const [logoUrl, setLogoUrl] = useState(currentSettings.logoImageUrl || '');
   const [adminNotificationEmail, setAdminNotificationEmail] = useState(currentSettings.adminNotificationEmail || 'admin@lokstor.dz');
+  const [dollarRate, setDollarRate] = useState<number>(currentSettings.dollarRate || 250);
   const [file, setFile] = useState<File | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -71,6 +72,9 @@ export default function SettingsPage() {
     if (currentSettings.adminNotificationEmail) {
       setAdminNotificationEmail(currentSettings.adminNotificationEmail);
     }
+    if (currentSettings.dollarRate !== undefined) {
+      setDollarRate(currentSettings.dollarRate);
+    }
   }, [currentSettings]);
 
   useEffect(() => {
@@ -99,14 +103,15 @@ export default function SettingsPage() {
         storeName,
         logoImageUrl: finalLogoUrl,
         adminNotificationEmail: adminNotificationEmail.trim(),
+        dollarRate: Number(dollarRate || 250),
       });
       setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
       await logAdminActivity({
         category: 'settings',
         actionType: 'update',
         title: 'تعديل إعدادات المتجر',
-        description: `تم تحديث اسم المتجر (${storeName}) وإيميل الإشعارات (${adminNotificationEmail.trim()})${file ? ' وتحديث الشعار' : ''}`,
-        metadata: { storeName, adminNotificationEmail: adminNotificationEmail.trim(), logoChanged: Boolean(file) }
+        description: `تم تحديث اسم المتجر (${storeName})، سعر صرف الدولار (1$ = ${dollarRate} د.ج) وإيميل الإشعارات (${adminNotificationEmail.trim()})${file ? ' وتحديث الشعار' : ''}`,
+        metadata: { storeName, dollarRate, adminNotificationEmail: adminNotificationEmail.trim(), logoChanged: Boolean(file) }
       });
     } catch (err: any) {
       setStoreMsg({ type: 'error', text: 'حدث خطأ أثناء الحفظ.' });
@@ -226,6 +231,60 @@ export default function SettingsPage() {
               <p className="text-xs text-[var(--admin-text-muted)]">
                 البريد الذي ستصلك عليه إشعارات الدفع الناجح (شارجيلي) وطلبات التحقق اليدوي (بايننس وريدوت باي).
               </p>
+            </div>
+
+            {/* Dollar Exchange Rate Setting */}
+            <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-[var(--admin-text)] block">
+                      سعر صرف الدولار الافتراضي للمتجر (USD Rate)
+                    </label>
+                    <p className="text-xs text-[var(--admin-text-muted)]">
+                      سعر الصرف الافتراضي لحساب الأسعار وطلبات بايننس (Binance USDT) وريدوت باي (1$ = ... د.ج).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <div className="relative w-40">
+                  <input
+                    type="number"
+                    min={1}
+                    step="any"
+                    value={dollarRate}
+                    onChange={(e) => setDollarRate(Number(e.target.value))}
+                    className={inputCls + ' pl-10 font-mono font-bold text-emerald-600 dark:text-emerald-400'}
+                    placeholder="250"
+                    required
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
+                    د.ج
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {[240, 245, 250, 255, 260].map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setDollarRate(r)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                        dollarRate === r
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]'
+                      }`}
+                    >
+                      {r} د.ج
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4">

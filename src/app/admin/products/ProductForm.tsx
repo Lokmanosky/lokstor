@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { Product, ProductVariant, GameFieldRequirement } from '@/types';
-import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers, ImageIcon, KeyRound } from 'lucide-react';
+import { Save, ArrowRight, Upload, Loader2, X, Plus, Trash2, Sparkles, Gamepad2, Layers, ImageIcon, KeyRound, DollarSign, RefreshCw, Coins } from 'lucide-react';
 import { logAdminActivity } from '@/lib/admin-logger';
+import { useStoreSettings } from '@/lib/store-settings';
 
 interface ProductFormProps {
   productId?: string;
@@ -15,6 +16,7 @@ interface ProductFormProps {
 export default function ProductForm({ productId }: ProductFormProps) {
   const router = useRouter();
   const isEdit = !!productId;
+  const settings = useStoreSettings();
 
   const [loading, setLoading] = useState(isEdit);
   const [initialProduct, setInitialProduct] = useState<Product | null>(null);
@@ -28,7 +30,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
     name: '',
     description: '',
     price: 0,
+    priceUsd: 0,
+    dollarRate: 250,
     originalPrice: undefined,
+    originalPriceUsd: undefined,
     currency: 'dzd',
     imageUrl: '',
     image: '',
@@ -75,12 +80,29 @@ export default function ProductForm({ productId }: ProductFormProps) {
           console.error("Failed to fetch productUnits", e);
         }
 
-        setInitialProduct(data);
+        const loadedDollarRate = Number(data.dollarRate || settings.dollarRate || 250);
+        const loadedPriceUsd = data.priceUsd !== undefined 
+          ? Number(data.priceUsd) 
+          : (data.price ? Math.round((data.price / loadedDollarRate) * 100) / 100 : 0);
+        const loadedOrigUsd = data.originalPriceUsd !== undefined 
+          ? Number(data.originalPriceUsd) 
+          : (data.originalPrice ? Math.round((data.originalPrice / loadedDollarRate) * 100) / 100 : undefined);
+
+        setInitialProduct({
+          ...data,
+          dollarRate: loadedDollarRate,
+          priceUsd: loadedPriceUsd,
+          originalPriceUsd: loadedOrigUsd,
+        });
+
         setForm({
           ...data,
           id: snap.id,
           imageUrl: cleanImage,
           image: cleanImage,
+          dollarRate: loadedDollarRate,
+          priceUsd: loadedPriceUsd,
+          originalPriceUsd: loadedOrigUsd,
         });
 
         const loadedImages: string[] = (data.images && Array.isArray(data.images) && data.images.length > 0)
@@ -92,7 +114,16 @@ export default function ProductForm({ productId }: ProductFormProps) {
         setFeaturesText((data.features || []).join('\n'));
         if (data.hasVariants || (data.variants && data.variants.length > 0)) {
           setHasVariants(true);
-          setVariants(data.variants || []);
+          const mappedVariants = (data.variants || []).map(v => ({
+            ...v,
+            priceUsd: v.priceUsd !== undefined 
+              ? Number(v.priceUsd) 
+              : (v.price ? Math.round((v.price / loadedDollarRate) * 100) / 100 : 0),
+            originalPriceUsd: v.originalPriceUsd !== undefined 
+              ? Number(v.originalPriceUsd) 
+              : (v.originalPrice ? Math.round((v.originalPrice / loadedDollarRate) * 100) / 100 : undefined),
+          }));
+          setVariants(mappedVariants);
         }
         if (data.requiresCustomerInfo !== undefined) {
           setRequiresCustomerInfo(Boolean(data.requiresCustomerInfo));
@@ -137,6 +168,125 @@ export default function ProductForm({ productId }: ProductFormProps) {
       setLoading(false);
     });
   }, [productId, isEdit]);
+
+  // Synchronize default dollar rate from store settings when creating a new product
+  useEffect(() => {
+    if (!isEdit && settings.dollarRate && (!form.dollarRate || form.dollarRate === 250)) {
+      setForm(prev => ({ ...prev, dollarRate: settings.dollarRate }));
+    }
+  }, [settings.dollarRate, isEdit]);
+
+  const currentDollarRate = Number(form.dollarRate || settings.dollarRate || 250);
+
+  // When admin edits the Dollar Exchange Rate (سعر صرف الدولار: مثلا 250 د.ج)
+  const handleDollarRateChange = (newRate: number) => {
+    const safeRate = newRate > 0 ? newRate : 1;
+    setForm(prev => {
+      const currentUsd = prev.priceUsd || (prev.price ? Math.round((prev.price / safeRate) * 100) / 100 : 0);
+      const newDzd = currentUsd > 0 ? Math.round(currentUsd * safeRate) : (prev.price || 0);
+      const newOrigDzd = prev.originalPriceUsd ? Math.round(prev.originalPriceUsd * safeRate) : prev.originalPrice;
+      return {
+        ...prev,
+        dollarRate: safeRate,
+        price: newDzd,
+        priceUsd: currentUsd,
+        originalPrice: newOrigDzd,
+      };
+    });
+  };
+
+  // When admin edits price in DZD (د.ج)
+  const handleDzdPriceChange = (dzd: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const usd = dzd > 0 ? Math.round((dzd / rate) * 100) / 100 : 0;
+    setForm(prev => ({
+      ...prev,
+      price: dzd,
+      priceUsd: usd,
+    }));
+  };
+
+  // When admin edits price in USD ($)
+  const handleUsdPriceChange = (usd: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const dzd = usd > 0 ? Math.round(usd * rate) : 0;
+    setForm(prev => ({
+      ...prev,
+      price: dzd,
+      priceUsd: usd,
+    }));
+  };
+
+  // When admin edits original price in DZD
+  const handleOriginalDzdChange = (origDzd?: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const origUsd = origDzd && origDzd > 0 ? Math.round((origDzd / rate) * 100) / 100 : undefined;
+    setForm(prev => ({
+      ...prev,
+      originalPrice: origDzd,
+      originalPriceUsd: origUsd,
+    }));
+  };
+
+  // When admin edits original price in USD
+  const handleOriginalUsdChange = (origUsd?: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const origDzd = origUsd && origUsd > 0 ? Math.round(origUsd * rate) : undefined;
+    setForm(prev => ({
+      ...prev,
+      originalPrice: origDzd,
+      originalPriceUsd: origUsd,
+    }));
+  };
+
+  // Variant price conversions
+  const handleVariantPriceDzdChange = (index: number, dzd: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const usd = dzd > 0 ? Math.round((dzd / rate) * 100) / 100 : 0;
+    setVariants(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], price: dzd, priceUsd: usd };
+      return copy;
+    });
+  };
+
+  const handleVariantPriceUsdChange = (index: number, usd: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const dzd = usd > 0 ? Math.round(usd * rate) : 0;
+    setVariants(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], price: dzd, priceUsd: usd };
+      return copy;
+    });
+  };
+
+  const handleVariantOriginalPriceDzdChange = (index: number, origDzd?: number) => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    const origUsd = origDzd && origDzd > 0 ? Math.round((origDzd / rate) * 100) / 100 : undefined;
+    setVariants(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], originalPrice: origDzd, originalPriceUsd: origUsd };
+      return copy;
+    });
+  };
+
+  // Bulk recalculate all variants to match current dollar rate
+  const recalculateVariantsByDollarRate = () => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
+    setVariants(prev => prev.map(v => {
+      const usd = v.priceUsd && v.priceUsd > 0 ? v.priceUsd : (v.price ? Math.round((v.price / rate) * 100) / 100 : 0);
+      const newDzd = Math.round(usd * rate);
+      const origUsd = v.originalPriceUsd || (v.originalPrice ? Math.round((v.originalPrice / rate) * 100) / 100 : undefined);
+      const newOrigDzd = origUsd ? Math.round(origUsd * rate) : undefined;
+      return {
+        ...v,
+        price: newDzd,
+        priceUsd: usd,
+        originalPrice: newOrigDzd,
+        originalPriceUsd: origUsd,
+      };
+    }));
+  };
 
   const set = (field: keyof Product, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }));
@@ -301,6 +451,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         id: 'var_' + Date.now() + Math.random().toString(36).substr(2, 4),
         name: '',
         price: 0,
+        priceUsd: 0,
         image: '/images/game-coin.jpg',
       }
     ]);
@@ -381,6 +532,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
   // Quick Preset Templates
   const applyPresetTemplate = (type: 'cod' | 'pubg' | 'freefire' | 'chatgpt') => {
+    const rate = currentDollarRate > 0 ? currentDollarRate : 250;
     if (type === 'chatgpt') {
       setRequiresCustomerInfo(true);
       setHasVariants(true);
@@ -389,9 +541,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
       setStockMode('numeric');
       setIsUnlimitedStock(true);
       setVariants([
-        { id: 'sub_1m', name: 'اشتراك شهر واحد (1 Month)', price: 3500 },
-        { id: 'sub_3m', name: 'اشتراك 3 أشهر (3 Months)', price: 9900 },
-        { id: 'sub_1y', name: 'اشتراك سنة كاملة (1 Year)', price: 29000 },
+        { id: 'sub_1m', name: 'اشتراك شهر واحد (1 Month)', price: 3500, priceUsd: Math.round((3500 / rate) * 100) / 100 },
+        { id: 'sub_3m', name: 'اشتراك 3 أشهر (3 Months)', price: 9900, priceUsd: Math.round((9900 / rate) * 100) / 100 },
+        { id: 'sub_1y', name: 'اشتراك سنة كاملة (1 Year)', price: 29000, priceUsd: Math.round((29000 / rate) * 100) / 100 },
       ]);
       setRequiredFields([
         { id: 'game_email', label: 'البريد الإلكتروني للحساب (Email)', placeholder: 'أدخل بريد حسابك المراد تفعيله', required: true, type: 'text' },
@@ -405,14 +557,14 @@ export default function ProductForm({ productId }: ProductFormProps) {
       set('name', form.name || 'شحن نقاط Call of Duty عبر الحساب - COD Mobile CP');
       set('category', 'شحن ألعاب');
       setVariants([
-        { id: 'cod_80', name: '80 CP', price: 290, image: '/images/game-coin.jpg' },
-        { id: 'cod_420', name: '420 CP', price: 1390, image: '/images/game-coin.jpg' },
-        { id: 'cod_880', name: '880 CP', price: 2690, image: '/images/game-coin.jpg' },
-        { id: 'cod_2400', name: '2400 CP', price: 6790, image: '/images/game-coin.jpg' },
-        { id: 'cod_5000', name: '5000 CP', price: 13990, image: '/images/game-coin.jpg' },
-        { id: 'cod_10800', name: '10800 CP', price: 29500, image: '/images/game-coin.jpg' },
-        { id: 'cod_pass_w', name: 'تذكرة الإمداد الأسبوعية', price: 290, image: '/images/game-coin.jpg' },
-        { id: 'cod_pass_m', name: 'تذكرة الإمداد الشهرية', price: 990, image: '/images/game-coin.jpg' },
+        { id: 'cod_80', name: '80 CP', price: 290, priceUsd: Math.round((290 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_420', name: '420 CP', price: 1390, priceUsd: Math.round((1390 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_880', name: '880 CP', price: 2690, priceUsd: Math.round((2690 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_2400', name: '2400 CP', price: 6790, priceUsd: Math.round((6790 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_5000', name: '5000 CP', price: 13990, priceUsd: Math.round((13990 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_10800', name: '10800 CP', price: 29500, priceUsd: Math.round((29500 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_pass_w', name: 'تذكرة الإمداد الأسبوعية', price: 290, priceUsd: Math.round((290 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'cod_pass_m', name: 'تذكرة الإمداد الشهرية', price: 990, priceUsd: Math.round((990 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
       ]);
       setRequiredFields([
         { id: 'game_email', label: 'البريد الإلكتروني للعبة (Call Of Duty / Activision)', placeholder: 'أدخل بريد الحساب', required: true, type: 'text' },
@@ -423,12 +575,12 @@ export default function ProductForm({ productId }: ProductFormProps) {
       set('name', form.name || 'شحن شدات ببجي موبايل - PUBG Mobile UC');
       set('category', 'شحن ألعاب');
       setVariants([
-        { id: 'pubg_60', name: '60 UC', price: 250, image: '/images/game-coin.jpg' },
-        { id: 'pubg_325', name: '325 UC', price: 1190, image: '/images/game-coin.jpg' },
-        { id: 'pubg_660', name: '660 UC', price: 2350, image: '/images/game-coin.jpg' },
-        { id: 'pubg_1800', name: '1800 UC', price: 6100, image: '/images/game-coin.jpg' },
-        { id: 'pubg_3850', name: '3850 UC', price: 12500, image: '/images/game-coin.jpg' },
-        { id: 'pubg_8100', name: '8100 UC', price: 25900, image: '/images/game-coin.jpg' },
+        { id: 'pubg_60', name: '60 UC', price: 250, priceUsd: Math.round((250 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'pubg_325', name: '325 UC', price: 1190, priceUsd: Math.round((1190 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'pubg_660', name: '660 UC', price: 2350, priceUsd: Math.round((2350 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'pubg_1800', name: '1800 UC', price: 6100, priceUsd: Math.round((6100 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'pubg_3850', name: '3850 UC', price: 12500, priceUsd: Math.round((12500 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
+        { id: 'pubg_8100', name: '8100 UC', price: 25900, priceUsd: Math.round((25900 / rate) * 100) / 100, image: '/images/game-coin.jpg' },
       ]);
       setRequiredFields([
         { id: 'player_id', label: 'معرف اللاعب (Player ID)', placeholder: 'مثال: 5123456789', required: true, type: 'text' },
@@ -438,11 +590,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
       set('name', form.name || 'شحن جواهر فري فاير - Free Fire Diamonds');
       set('category', 'شحن ألعاب');
       setVariants([
-        { id: 'ff_100', name: '100 جوهرة 💎', price: 220, image: '/images/game-gem.jpg' },
-        { id: 'ff_310', name: '310 جوهرة 💎', price: 650, image: '/images/game-gem.jpg' },
-        { id: 'ff_520', name: '520 جوهرة 💎', price: 1080, image: '/images/game-gem.jpg' },
-        { id: 'ff_1060', name: '1060 جوهرة 💎', price: 2150, image: '/images/game-gem.jpg' },
-        { id: 'ff_2180', name: '2180 جوهرة 💎', price: 4290, image: '/images/game-gem.jpg' },
+        { id: 'ff_100', name: '100 جوهرة 💎', price: 220, priceUsd: Math.round((220 / rate) * 100) / 100, image: '/images/game-gem.jpg' },
+        { id: 'ff_310', name: '310 جوهرة 💎', price: 650, priceUsd: Math.round((650 / rate) * 100) / 100, image: '/images/game-gem.jpg' },
+        { id: 'ff_520', name: '520 جوهرة 💎', price: 1080, priceUsd: Math.round((1080 / rate) * 100) / 100, image: '/images/game-gem.jpg' },
+        { id: 'ff_1060', name: '1060 جوهرة 💎', price: 2150, priceUsd: Math.round((2150 / rate) * 100) / 100, image: '/images/game-gem.jpg' },
+        { id: 'ff_2180', name: '2180 جوهرة 💎', price: 4290, priceUsd: Math.round((4290 / rate) * 100) / 100, image: '/images/game-gem.jpg' },
       ]);
       setRequiredFields([
         { id: 'player_id', label: 'معرف اللاعب (Player ID)', placeholder: 'مثال: 1234567890', required: true, type: 'text' },
@@ -501,14 +653,28 @@ export default function ProductForm({ productId }: ProductFormProps) {
       ? [] 
       : stockItems.map(s => s.trim()).filter(Boolean);
 
+    const activeRate = Number(form.dollarRate || settings.dollarRate || 250);
+    const computedPrice = hasVariants && variants.length > 0 ? Number(variants[0].price || 0) : Number(form.price || 0);
+    const computedPriceUsd = hasVariants && variants.length > 0
+      ? Number(variants[0].priceUsd !== undefined ? variants[0].priceUsd : (variants[0].price ? Math.round((variants[0].price / activeRate) * 100) / 100 : 0))
+      : Number(form.priceUsd !== undefined ? form.priceUsd : (form.price ? Math.round((form.price / activeRate) * 100) / 100 : 0));
+
     const payload: Record<string, any> = {
       ...form,
       name: form.name.trim(),
       description: form.description || '',
-      price: hasVariants && variants.length > 0 ? Number(variants[0].price || 0) : Number(form.price || 0),
+      price: computedPrice,
+      priceUsd: computedPriceUsd,
+      dollarRate: activeRate,
       priceUnspecified: Boolean(form.priceUnspecified),
       hasVariants: Boolean(hasVariants && variants.length > 0),
-      variants: hasVariants ? variants.filter(v => v.name.trim()) : [],
+      variants: hasVariants ? variants.filter(v => v.name.trim()).map(v => ({
+        ...v,
+        price: Number(v.price || 0),
+        priceUsd: Number(v.priceUsd !== undefined ? v.priceUsd : (v.price ? Math.round((v.price / activeRate) * 100) / 100 : 0)),
+        originalPrice: v.originalPrice ? Number(v.originalPrice) : undefined,
+        originalPriceUsd: v.originalPriceUsd !== undefined ? Number(v.originalPriceUsd) : (v.originalPrice ? Math.round((Number(v.originalPrice) / activeRate) * 100) / 100 : undefined),
+      })) : [],
       requiresCustomerInfo: Boolean(requiresCustomerInfo),
       requiredFields: requiresCustomerInfo ? requiredFields.filter(f => f.label.trim()) : [],
       currency: 'dzd',
@@ -526,8 +692,12 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
     if (form.originalPrice) {
       payload.originalPrice = Number(form.originalPrice);
+      payload.originalPriceUsd = form.originalPriceUsd 
+        ? Number(form.originalPriceUsd) 
+        : Math.round((Number(form.originalPrice) / activeRate) * 100) / 100;
     } else {
       delete payload.originalPrice;
+      delete payload.originalPriceUsd;
     }
 
     // Recursively remove any undefined values so Firestore never throws 'Unsupported field value: undefined'
@@ -568,11 +738,17 @@ export default function ProductForm({ productId }: ProductFormProps) {
         const newPrice = Number(cleanPayload.price ?? 0);
         const priceChanged = oldPrice !== newPrice;
 
+        const oldDollarRate = Number((initialProduct as any)?.dollarRate ?? 250);
+        const newDollarRate = Number(cleanPayload.dollarRate ?? 250);
+        const dollarRateChanged = oldDollarRate !== newDollarRate;
+
         const oldImages = initialProduct?.images || (initialProduct?.imageUrl ? [initialProduct.imageUrl] : []);
         const imagesChanged = JSON.stringify(oldImages) !== JSON.stringify(cleanImages);
 
         const changeDetails: string[] = [];
         if (priceChanged) changeDetails.push(`تغيير السعر: ${oldPrice} د.ج ➔ ${newPrice} د.ج`);
+        if (dollarRateChanged) changeDetails.push(`تعديل سعر صرف الدولار: 1$ = ${oldDollarRate} د.ج ➔ 1$ = ${newDollarRate} د.ج`);
+        if (cleanPayload.priceUsd) changeDetails.push(`السعر بالدولار: ${cleanPayload.priceUsd}$`);
         if (imagesChanged) changeDetails.push(`تحديث الصور (${cleanImages.length} صور)`);
         if (initialProduct?.name && initialProduct.name !== cleanPayload.name) {
           changeDetails.push(`تغيير الاسم إلى "${cleanPayload.name}"`);
@@ -586,7 +762,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
         let actionType: 'price_change' | 'image_change' | 'update' = 'update';
         let logTitle = `تعديل منتج: ${cleanPayload.name}`;
-        if (priceChanged) {
+        if (priceChanged || dollarRateChanged) {
           actionType = 'price_change';
           logTitle = `تغيير سعر: ${cleanPayload.name}`;
         } else if (imagesChanged) {
@@ -602,10 +778,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
           targetId: productId,
           targetName: cleanPayload.name,
           diff: {
-            before: { price: oldPrice, name: initialProduct?.name, status: initialProduct?.status, category: initialProduct?.category },
-            after: { price: newPrice, name: cleanPayload.name, status: cleanPayload.status, category: cleanPayload.category },
+            before: { price: oldPrice, dollarRate: oldDollarRate, name: initialProduct?.name, status: initialProduct?.status, category: initialProduct?.category },
+            after: { price: newPrice, dollarRate: newDollarRate, name: cleanPayload.name, status: cleanPayload.status, category: cleanPayload.category },
           },
-          metadata: { priceChanged, imagesChanged, oldPrice, newPrice, stockType: cleanPayload.stockType }
+          metadata: { priceChanged, dollarRateChanged, imagesChanged, oldPrice, newPrice, oldDollarRate, newDollarRate, stockType: cleanPayload.stockType }
         });
       } else {
         const newDocRef = await addDoc(collection(db, 'products'), { ...cleanPayload, createdAt: Date.now() });
@@ -615,10 +791,10 @@ export default function ProductForm({ productId }: ProductFormProps) {
           category: 'products',
           actionType: 'create',
           title: `إضافة منتج جديد: ${cleanPayload.name}`,
-          description: `تمت إضافة منتج جديد باسم "${cleanPayload.name}" بسعر ${cleanPayload.price} د.ج في قسم "${cleanPayload.category || 'عام'}" مع ${cleanImages.length} صورة`,
+          description: `تمت إضافة منتج جديد باسم "${cleanPayload.name}" بسعر ${cleanPayload.price} د.ج (~${cleanPayload.priceUsd || 0}$) بسعر صرف (1$ = ${cleanPayload.dollarRate} د.ج) في قسم "${cleanPayload.category || 'عام'}" مع ${cleanImages.length} صورة`,
           targetId: newDocRef.id,
           targetName: cleanPayload.name,
-          metadata: { price: cleanPayload.price, category: cleanPayload.category, imagesCount: cleanImages.length, stock: computedStock }
+          metadata: { price: cleanPayload.price, priceUsd: cleanPayload.priceUsd, dollarRate: cleanPayload.dollarRate, category: cleanPayload.category, imagesCount: cleanImages.length, stock: computedStock }
         });
       }
       router.push('/admin/products');
@@ -680,42 +856,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
               <textarea className={inputCls + ' h-28 resize-none'} value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="وصف تفصيلي للمنتج..." />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={labelCls + ' mb-0'}>السعر (د.ج) *</label>
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(form.priceUnspecified)}
-                      onChange={e => set('priceUnspecified', e.target.checked)}
-                      className="rounded border-[var(--admin-border)] text-amber-500 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer"
-                    />
-                    <span className="font-bold text-[11px] text-amber-500">سعر غير محدد</span>
-                  </label>
-                </div>
-                <input
-                  className={inputCls + (form.priceUnspecified ? ' opacity-60 bg-amber-500/5 border-amber-500/30' : '')}
-                  type="number"
-                  min={0}
-                  disabled={Boolean(form.priceUnspecified)}
-                  value={form.priceUnspecified ? 0 : (form.price || 0)}
-                  onChange={e => set('price', Number(e.target.value))}
-                  placeholder={form.priceUnspecified ? 'السعر غير محدد (حسب الطلب)' : '0'}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>السعر الأصلي (اختياري)</label>
-                <input
-                  className={inputCls}
-                  type="number"
-                  min={0}
-                  disabled={Boolean(form.priceUnspecified)}
-                  value={form.priceUnspecified ? '' : (form.originalPrice || '')}
-                  onChange={e => set('originalPrice', e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="سيظهر مشطوباً"
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className={labelCls}>التصنيف</label>
                 <select className={inputCls} value={form.category || ''} onChange={e => set('category', e.target.value)}>
@@ -728,9 +869,6 @@ export default function ProductForm({ productId }: ProductFormProps) {
                   <option value="دورات">دورات</option>
                 </select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>الحالة</label>
                 <select className={inputCls} value={form.status || 'published'} onChange={e => set('status', e.target.value)}>
@@ -742,6 +880,178 @@ export default function ProductForm({ productId }: ProductFormProps) {
               <div>
                 <label className={labelCls}>نوع الملف</label>
                 <input className={inputCls} value={form.fileType || ''} onChange={e => set('fileType', e.target.value)} placeholder="PDF, ZIP, MP4..." />
+              </div>
+            </div>
+
+            {/* ── قسم التسعير وسعر صرف الدولار (Pricing & Dollar Exchange) ── */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 space-y-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/20 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                    $
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--admin-text)] flex items-center gap-2">
+                      <span>تسعير المنتج وسعر الدولار</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-mono">
+                        DZD ⇄ USD
+                      </span>
+                    </h3>
+                    <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                      يمكنك تحديد وتعديل سعر الدولار، والتحويل تلقائي بين الدينار والدولار
+                    </p>
+                  </div>
+                </div>
+
+                {/* Price unspecified toggle */}
+                <label className="inline-flex items-center gap-2 text-xs cursor-pointer select-none bg-[var(--admin-card)] px-3 py-1.5 rounded-xl border border-[var(--admin-border)] hover:border-amber-500/50 transition-colors shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.priceUnspecified)}
+                    onChange={e => set('priceUnspecified', e.target.checked)}
+                    className="rounded border-[var(--admin-border)] text-amber-500 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span className="font-bold text-amber-600 dark:text-amber-400">سعر غير محدد (حسب الطلب)</span>
+                </label>
+              </div>
+
+              {/* سعر صرف الدولار المعتمد للمنتج (Dollar Exchange Rate) */}
+              <div className="p-3.5 rounded-xl bg-[var(--admin-card)] border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--admin-text)]">
+                    <DollarSign className="w-4 h-4 text-emerald-500" />
+                    <span>سعر صرف الدولار للمنتج (1$ = د.ج):</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--admin-text-muted)]">
+                    التحويل الفوري بين الدفع بالدينار (الذهبية/CIB) وبالدولار (Binance USDT / RedotPay)
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-36">
+                    <input
+                      type="number"
+                      min={1}
+                      step="any"
+                      value={form.dollarRate || 250}
+                      onChange={e => handleDollarRateChange(Number(e.target.value))}
+                      className={inputCls + ' text-center font-bold font-mono text-emerald-600 dark:text-emerald-400 pl-8 text-sm'}
+                      title="سعر صرف الدولار بالدينار"
+                    />
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
+                      د.ج
+                    </span>
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="flex items-center gap-1">
+                    {[240, 245, 250, 255, 260].map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => handleDollarRateChange(r)}
+                        className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                          Number(form.dollarRate || 250) === r
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:border-emerald-500/40'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Price inputs: DZD and USD side-by-side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* DZD Price */}
+                <div>
+                  <label className={labelCls}>
+                    السعر بالدينار الجزائري (د.ج) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      className={inputCls + (form.priceUnspecified ? ' opacity-60 bg-amber-500/5 border-amber-500/30' : '') + ' pl-10 font-mono font-bold text-base'}
+                      type="number"
+                      min={0}
+                      disabled={Boolean(form.priceUnspecified)}
+                      value={form.priceUnspecified ? 0 : (form.price || 0)}
+                      onChange={e => handleDzdPriceChange(Number(e.target.value))}
+                      placeholder={form.priceUnspecified ? 'السعر غير محدد' : '0'}
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
+                      د.ج
+                    </span>
+                  </div>
+                </div>
+
+                {/* USD Price */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className={labelCls + ' mb-0'}>
+                      السعر بالدولار ($ USD)
+                    </label>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                      (1$ = {currentDollarRate} د.ج)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      className={inputCls + (form.priceUnspecified ? ' opacity-60 bg-amber-500/5 border-amber-500/30' : '') + ' pr-8 font-mono font-bold text-base text-emerald-600 dark:text-emerald-400'}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      disabled={Boolean(form.priceUnspecified)}
+                      value={form.priceUnspecified ? 0 : (form.priceUsd !== undefined ? form.priceUsd : 0)}
+                      onChange={e => handleUsdPriceChange(Number(e.target.value))}
+                      placeholder="0.00"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
+                      $
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Original Price (Before discount) in DZD and USD */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-emerald-500/10">
+                <div>
+                  <label className={labelCls}>السعر الأصلي بالدينار (اختياري - يظهر مشطوباً)</label>
+                  <div className="relative">
+                    <input
+                      className={inputCls + ' pl-10 font-mono'}
+                      type="number"
+                      min={0}
+                      disabled={Boolean(form.priceUnspecified)}
+                      value={form.priceUnspecified ? '' : (form.originalPrice || '')}
+                      onChange={e => handleOriginalDzdChange(e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="مثال: 3000"
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
+                      د.ج
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>السعر الأصلي بالدولار ($ USD)</label>
+                  <div className="relative">
+                    <input
+                      className={inputCls + ' pr-8 font-mono text-emerald-600 dark:text-emerald-400'}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      disabled={Boolean(form.priceUnspecified)}
+                      value={form.priceUnspecified ? '' : (form.originalPriceUsd !== undefined ? form.originalPriceUsd : '')}
+                      onChange={e => handleOriginalUsdChange(e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="مثال: 12.00"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
+                      $
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -813,16 +1123,27 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
                 {/* Variants List */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs text-[var(--admin-text-muted)] font-medium px-1">
-                    <span>قائمة الباقات المتاحة للمشتري: ({variants.length} باقة)</span>
-                    <button
-                      type="button"
-                      onClick={addVariant}
-                      className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>إضافة باقة جديدة</span>
-                    </button>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[var(--admin-text-muted)] font-medium px-1">
+                    <span className="font-bold">قائمة الباقات المتاحة ({variants.length} باقة):</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={recalculateVariantsByDollarRate}
+                        className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1 transition-all"
+                        title="إعادة حساب أسعار الباقات بالدينار حسب سعر صرف الدولار الحالي"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>تحويل الأسعار بسعر الدولار ({currentDollarRate} د.ج)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addVariant}
+                        className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>إضافة باقة جديدة</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
@@ -882,28 +1203,49 @@ export default function ProductForm({ productId }: ProductFormProps) {
                           />
                         </div>
 
-                        {/* Variant Price */}
-                        <div className="w-full sm:w-64 flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
-                          <div className="flex w-full items-center gap-1.5">
+                        {/* Variant Price (DZD + USD + Original) */}
+                        <div className="w-full sm:w-80 grid grid-cols-2 sm:grid-cols-3 gap-1.5 shrink-0 items-center">
+                          {/* DZD Price */}
+                          <div className="relative">
                             <input
                               type="number"
                               min={0}
-                              value={v.price}
-                              onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
-                              placeholder="السعر"
-                              className={inputCls + ' text-xs font-mono font-bold w-full'}
+                              value={v.price || ''}
+                              onChange={e => handleVariantPriceDzdChange(idx, Number(e.target.value))}
+                              placeholder="السعر (د.ج)"
+                              className={inputCls + ' text-xs font-mono font-bold w-full pl-7'}
+                              title="السعر بالدينار الجزائري"
                             />
-                            <span className="text-xs text-[var(--admin-text-muted)] font-bold shrink-0">د.ج</span>
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--admin-text-muted)] font-bold pointer-events-none">د.ج</span>
                           </div>
-                          <div className="flex w-full items-center gap-1.5">
+
+                          {/* USD Price */}
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={v.priceUsd !== undefined ? v.priceUsd : ''}
+                              onChange={e => handleVariantPriceUsdChange(idx, Number(e.target.value))}
+                              placeholder="السعر ($)"
+                              className={inputCls + ' text-xs font-mono font-bold w-full pr-5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'}
+                              title="السعر بالدولار ($ USD) - يتغير تلقائياً مع الدينار"
+                            />
+                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-emerald-500 font-bold pointer-events-none">$</span>
+                          </div>
+
+                          {/* Original DZD (Optional) */}
+                          <div className="relative col-span-2 sm:col-span-1">
                             <input
                               type="number"
                               min={0}
                               value={v.originalPrice || ''}
-                              onChange={e => updateVariant(idx, 'originalPrice', e.target.value ? Number(e.target.value) : undefined)}
-                              placeholder="أصلي مشطوب"
-                              className={inputCls + ' text-xs font-mono font-bold w-full border-amber-500/30'}
+                              onChange={e => handleVariantOriginalPriceDzdChange(idx, e.target.value ? Number(e.target.value) : undefined)}
+                              placeholder="مشطوب"
+                              className={inputCls + ' text-xs font-mono font-bold w-full pl-7 border-amber-500/30 text-[var(--admin-text-muted)]'}
+                              title="السعر الأصلي قبل الخصم (اختياري)"
                             />
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--admin-text-muted)] pointer-events-none">د.ج</span>
                           </div>
                         </div>
 

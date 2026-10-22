@@ -2,7 +2,9 @@ export interface ProductVariant {
   id: string;
   name: string;        // e.g. "80 CP", "420 CP", "تذكرة أسبوعية"
   price: number;       // e.g. 290
+  priceUsd?: number;   // e.g. 1.16
   originalPrice?: number;
+  originalPriceUsd?: number;
   image?: string;      // icon or image URL
   badge?: string;      // e.g. "الأكثر طلباً", "توفير"
   inStock?: boolean;
@@ -21,7 +23,10 @@ export interface Product {
   name: string;
   description: string;
   price: number; // Price in DZD (د.ج)
+  priceUsd?: number; // Price in USD ($)
+  dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
   originalPrice?: number;
+  originalPriceUsd?: number;
   currency: string; // 'dzd'
   fileUrl?: string; // Storage path or URL (For single file)
   stockLinks?: string[]; // Array of unique single-use links for stock-based products

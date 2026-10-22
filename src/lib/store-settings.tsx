@@ -18,6 +18,7 @@ export interface StoreSettings {
   adminNotificationEmail?: string;
   tickerItems?: TickerItem[];
   tickerEnabled?: boolean;
+  dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
@@ -36,6 +37,7 @@ const defaultSettings: StoreSettings = {
   adminNotificationEmail: 'admin@lokstor.dz',
   tickerItems: DEFAULT_TICKER_ITEMS,
   tickerEnabled: true,
+  dollarRate: 250,
 };
 
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);

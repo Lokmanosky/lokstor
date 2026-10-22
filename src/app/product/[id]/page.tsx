@@ -512,12 +512,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col">
               <div className="flex flex-col gap-1">
-                <div className="flex items-baseline gap-1.5 sm:gap-2">
+                <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
                   <span className="text-2xl sm:text-4xl font-black text-emerald-500 tracking-tight">
                     {displayPrice.toLocaleString('en-US')}
                   </span>
                   <span className="text-base sm:text-xl font-black text-emerald-500">
                     {t('common.currency')}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-slate-400 dark:text-slate-500 font-mono">
+                    (~{selectedVariant && (selectedVariant as any).priceUsd ? (selectedVariant as any).priceUsd : (product as any)?.priceUsd && !selectedVariant ? (product as any).priceUsd : Math.round((displayPrice / ((product as any)?.dollarRate || 250)) * 100) / 100}$ USD)
                   </span>
                 </div>
                 {/* Discount Badge */}
@@ -631,8 +634,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     >
                       {/* Left: Price in DA */}
                       <div className="flex flex-col items-start">
-                        <span className={`text-sm font-black ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--store-text)]'}`}>
-                          {v.price.toLocaleString('en-US')} <span className="text-xs font-bold">{t('common.currency')}</span>
+                        <span className={`text-sm font-black flex items-center gap-1 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--store-text)]'}`}>
+                          <span>{v.price.toLocaleString('en-US')} <span className="text-xs font-bold">{t('common.currency')}</span></span>
+                          <span className="text-[10px] text-slate-400 font-mono font-normal">
+                            (~{(v as any).priceUsd ? (v as any).priceUsd : Math.round((v.price / ((product as any)?.dollarRate || 250)) * 100) / 100}$)
+                          </span>
                         </span>
                         {v.originalPrice && v.originalPrice > v.price && (
                           <span className="text-[10px] text-[var(--store-text-muted)] line-through">

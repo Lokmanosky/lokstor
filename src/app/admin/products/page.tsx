@@ -484,9 +484,15 @@ export default function ProductsPage() {
                         </span>
                       </td>
 
-                      {/* Price */}
-                      <td className="px-4 py-3 text-[var(--admin-text)] font-semibold whitespace-nowrap">
-                        {Number(p.price || 0).toLocaleString()} د.ج
+                      {/* Price & Dollar Rate */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-semibold text-[var(--admin-text)]">
+                          {Number(p.price || 0).toLocaleString()} د.ج
+                        </div>
+                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-medium flex items-center gap-1">
+                          <span>~{p.priceUsd ? p.priceUsd : Math.round((Number(p.price || 0) / (p.dollarRate || 250)) * 100) / 100}$</span>
+                          <span className="text-[10px] text-[var(--admin-text-muted)]">({p.dollarRate || 250}د.ج/$)</span>
+                        </div>
                       </td>
 
                       {/* Status */}

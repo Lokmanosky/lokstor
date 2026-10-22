@@ -181,11 +181,21 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     return base;
   }, [selectedVariant, product, customAmount, appliedDiscount]);
 
-  // Dynamic USDT equivalent (approx 250 DZD = 1 USDT)
+  // Dynamic USDT equivalent based on product dollar rate / priceUsd
   const cryptoUsdtEquivalent = useMemo(() => {
-    const approx = Math.max(1, Math.round((effectivePrice / 250) * 100) / 100);
+    // If selected variant has a specific priceUsd defined and no discount applied
+    if (!appliedDiscount && selectedVariant && (selectedVariant as any).priceUsd && (selectedVariant as any).priceUsd > 0) {
+      return `~${(selectedVariant as any).priceUsd}$ USDT`;
+    }
+    // If product has specific priceUsd defined (and not custom amount or discount)
+    if (!appliedDiscount && !selectedVariant && (product as any)?.priceUsd && (product as any).priceUsd > 0 && (!customAmount || customAmount === product?.price)) {
+      return `~${(product as any).priceUsd}$ USDT`;
+    }
+
+    const rate = (product as any)?.dollarRate && (product as any).dollarRate > 0 ? Number((product as any).dollarRate) : 250;
+    const approx = Math.max(0.5, Math.round((effectivePrice / rate) * 100) / 100);
     return `~${approx}$ USDT`;
-  }, [effectivePrice]);
+  }, [effectivePrice, product, selectedVariant, customAmount, appliedDiscount]);
 
   const isGameProduct = Boolean(
     (product?.category && (product.category.includes('لعب') || product.category.includes('شحن'))) ||
