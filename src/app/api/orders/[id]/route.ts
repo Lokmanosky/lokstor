@@ -75,16 +75,27 @@ export async function GET(
     }
 
     // Auto-verify with Chargily API if pending and chargilyInvoiceId exists
-    if (order.status !== 'paid' && order.chargilyInvoiceId && isChargilyConfigured) {
+    if (order.status !== 'paid' && order.chargilyInvoiceId) {
       try {
-        const chargily = getChargilyClient();
-        const chargilyCheckout = await chargily.getCheckout(order.chargilyInvoiceId);
+        let customChargilyKey = '';
+        if (adminDb) {
+          try {
+            const privateSnap = await adminDb.collection('settings').doc('private').get();
+            if (privateSnap.exists) {
+              customChargilyKey = privateSnap.data()?.chargilyApiKey || '';
+            }
+          } catch (e) {}
+        }
+        if (isChargilyConfigured(customChargilyKey)) {
+          const chargily = getChargilyClient(customChargilyKey);
+          const chargilyCheckout = await chargily.getCheckout(order.chargilyInvoiceId);
 
-        if (chargilyCheckout && (chargilyCheckout.status === 'paid')) {
-          const paidAmount = Number(order.productPrice || (order as any).amount || 0);
-          const deliveryResult = await processOrderDelivery(orderId, paidAmount, 'chargily');
-          if (deliveryResult.success && deliveryResult.orderData) {
-            order = { ...order, ...deliveryResult.orderData } as Order;
+          if (chargilyCheckout && (chargilyCheckout.status === 'paid')) {
+            const paidAmount = Number(order.productPrice || (order as any).amount || 0);
+            const deliveryResult = await processOrderDelivery(orderId, paidAmount, 'chargily');
+            if (deliveryResult.success && deliveryResult.orderData) {
+              order = { ...order, ...deliveryResult.orderData } as Order;
+            }
           }
         }
       } catch (chErr) {

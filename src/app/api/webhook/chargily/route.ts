@@ -17,7 +17,15 @@ export async function POST(req: NextRequest) {
     }
 
     const rawBody = await req.text();
-    const secret = (process.env.CHARGILY_API_SECRET || '').trim();
+    let secret = (process.env.CHARGILY_API_SECRET || '').trim();
+    if (adminDb) {
+      try {
+        const privateSnap = await adminDb.collection('settings').doc('private').get();
+        if (privateSnap.exists && privateSnap.data()?.chargilyApiKey) {
+          secret = privateSnap.data().chargilyApiKey.trim();
+        }
+      } catch (e) {}
+    }
     if (!secret) {
       console.error('CHARGILY_API_SECRET is not configured');
       return NextResponse.json({ success: false, message: 'Webhook not configured' }, { status: 500 });

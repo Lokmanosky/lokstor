@@ -519,8 +519,16 @@ export async function POST(req: NextRequest) {
     await notifyAdminsOfNewOrder(orderData, baseUrl);
 
     // 7. Create Chargily Checkout
-    if (isChargilyConfigured) {
-      const chargily = getChargilyClient();
+    let customChargilyKey = '';
+    try {
+      const privateSnap = await adminDb.collection('settings').doc('private').get();
+      if (privateSnap.exists) {
+        customChargilyKey = privateSnap.data()?.chargilyApiKey || '';
+      }
+    } catch (err) {}
+
+    if (isChargilyConfigured(customChargilyKey)) {
+      const chargily = getChargilyClient(customChargilyKey);
       let customerId: string | undefined = undefined;
 
       try {

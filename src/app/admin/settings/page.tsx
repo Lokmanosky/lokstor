@@ -27,6 +27,7 @@ export default function SettingsPage() {
     redotpayEnabled: currentSettings.paymentGateways?.redotpayEnabled ?? true,
   });
   const [oneclickApiKey, setOneclickApiKey] = useState(currentSettings.oneclickApiKey || '');
+  const [chargilyApiKey, setChargilyApiKey] = useState(currentSettings.chargilyApiKey || '');
   const [file, setFile] = useState<File | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -93,6 +94,9 @@ export default function SettingsPage() {
     if (currentSettings.oneclickApiKey !== undefined) {
       setOneclickApiKey(currentSettings.oneclickApiKey);
     }
+    if (currentSettings.chargilyApiKey !== undefined) {
+      setChargilyApiKey(currentSettings.chargilyApiKey);
+    }
   }, [currentSettings]);
 
   useEffect(() => {
@@ -124,6 +128,7 @@ export default function SettingsPage() {
         dollarRate: Number(dollarRate || 250),
         paymentGateways,
         oneclickApiKey: oneclickApiKey.trim(),
+        chargilyApiKey: chargilyApiKey.trim(),
       });
       setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
       await logAdminActivity({
@@ -424,6 +429,22 @@ export default function SettingsPage() {
                         paymentGateways.chargilyEnabled ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
+                  </div>
+
+                  {/* Chargily Secret API Key Custom Override */}
+                  <div className="mt-3 pt-2.5 border-t border-[var(--admin-border)]/60">
+                    <label className="text-[11px] font-medium text-[var(--admin-text-muted)] flex items-center justify-between mb-1">
+                      <span>مفتاح API الخاص بـ Chargily (Secret Key)</span>
+                      <span className="text-[10px] text-emerald-400">اختياري (مضبوط تلقائياً من .env)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={chargilyApiKey}
+                      onChange={(e) => setChargilyApiKey(e.target.value)}
+                      placeholder="live_sk_... أو test_sk_... (اتركه فارغاً للاعتماد على .env)"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-hidden focus:border-emerald-500 font-mono"
+                      dir="ltr"
+                    />
                   </div>
                 </div>
 

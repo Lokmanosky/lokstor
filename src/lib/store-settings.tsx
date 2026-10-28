@@ -28,6 +28,7 @@ export interface StoreSettings {
   dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
   paymentGateways?: PaymentGatewaysConfig;
   oneclickApiKey?: string;
+  chargilyApiKey?: string;
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
@@ -54,6 +55,7 @@ const defaultSettings: StoreSettings = {
     redotpayEnabled: true,
   },
   oneclickApiKey: '',
+  chargilyApiKey: '',
 };
 
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);
@@ -88,6 +90,7 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
             redotpayEnabled: combined.paymentGateways?.redotpayEnabled ?? true,
           },
           oneclickApiKey: combined.oneclickApiKey || '',
+          chargilyApiKey: combined.chargilyApiKey || '',
         } as StoreSettings));
       }
     }, () => {});
@@ -118,6 +121,11 @@ export async function saveStoreSettings(settings: Partial<StoreSettings>) {
   if ('oneclickApiKey' in publicSettings) {
     privateSettings.oneclickApiKey = publicSettings.oneclickApiKey;
     delete publicSettings.oneclickApiKey;
+  }
+
+  if ('chargilyApiKey' in publicSettings) {
+    privateSettings.chargilyApiKey = publicSettings.chargilyApiKey;
+    delete publicSettings.chargilyApiKey;
   }
   
   await setDoc(doc(db, 'settings', 'store'), publicSettings, { merge: true });
