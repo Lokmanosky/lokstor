@@ -345,12 +345,22 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    let dbBinanceUid = '427636242';
+    let dbBinanceAddress = '0xf0782cc454c9f0b273a11aba636fac62f18b24dd';
+    let dbRedotpayId = '1622725404';
+    let dbRedotpayName = 'Lokmanosky';
+
     // Verify payment gateway is enabled in store settings
     if (adminDb) {
       try {
         const storeSnap = await adminDb.collection('settings').doc('store').get();
         if (storeSnap.exists) {
-          const storeGateways = storeSnap.data()?.paymentGateways;
+          const storeData = storeSnap.data();
+          if (storeData?.binanceUid) dbBinanceUid = storeData.binanceUid;
+          if (storeData?.binanceAddress) dbBinanceAddress = storeData.binanceAddress;
+          if (storeData?.redotpayId) dbRedotpayId = storeData.redotpayId;
+          if (storeData?.redotpayAccountName) dbRedotpayName = storeData.redotpayAccountName;
+          const storeGateways = storeData?.paymentGateways;
           if (storeGateways) {
             if (paymentMethod === 'chargily' && storeGateways.chargilyEnabled === false) {
               return NextResponse.json({ success: false, error: 'بوابة دفع شارجيلي متوقفة حالياً' }, { status: 400 });
@@ -374,7 +384,8 @@ export async function POST(req: NextRequest) {
     // 6.5. Handle Binance Checkout
     if (paymentMethod === 'binance') {
       orderData.paymentMethod = 'binance';
-      orderData.binanceUid = '427636242';
+      orderData.binanceUid = dbBinanceUid;
+      (orderData as any).binanceAddress = dbBinanceAddress;
       orderData.status = 'pending';
 
       if (!adminDb) throw new Error('adminDb not initialized');
@@ -411,8 +422,8 @@ export async function POST(req: NextRequest) {
     // 6.6. Handle RedotPay Checkout
     if (paymentMethod === 'redotpay') {
       orderData.paymentMethod = 'redotpay';
-      orderData.redotpayId = '1622725404';
-      orderData.redotpayName = 'Lokmanosky';
+      orderData.redotpayId = dbRedotpayId;
+      orderData.redotpayName = dbRedotpayName;
       orderData.status = 'pending';
 
       if (!adminDb) throw new Error('adminDb not initialized');

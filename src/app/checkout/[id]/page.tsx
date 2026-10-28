@@ -84,7 +84,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     }
   }, []);
 
-  const { paymentGateways } = useStoreSettings();
+  const { paymentGateways, redotpayId, redotpayAccountName, binanceUid, binanceAddress } = useStoreSettings();
+
+  const activeRedotpayId = redotpayId || '1622725404';
+  const activeRedotpayName = redotpayAccountName || 'Lokmanosky';
+  const activeBinanceUid = binanceUid || '427636242';
+  const activeBinanceAddress = binanceAddress || '0xf0782cc454c9f0b273a11aba636fac62f18b24dd';
 
   const enabledGateways = useMemo(() => {
     return {
@@ -278,19 +283,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   // Pre-fill logic removed because login is strictly enforced
 
   const handleCopyRedotId = () => {
-    navigator.clipboard.writeText('1622725404');
+    navigator.clipboard.writeText(activeRedotpayId);
     setCopiedRedotId(true);
     setTimeout(() => setCopiedRedotId(false), 2500);
   };
 
   const handleCopyBinanceUid = () => {
-    navigator.clipboard.writeText('427636242');
+    navigator.clipboard.writeText(activeBinanceUid);
     setCopiedBinanceUid(true);
     setTimeout(() => setCopiedBinanceUid(false), 2500);
   };
 
   const handleCopyBscAddress = () => {
-    navigator.clipboard.writeText('0xf0782cc454c9f0b273a11aba636fac62f18b24dd');
+    navigator.clipboard.writeText(activeBinanceAddress);
     setCopiedBscAddress(true);
     setTimeout(() => setCopiedBscAddress(false), 2500);
   };
@@ -583,17 +588,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                   <>
                     <div className="flex justify-between font-bold">
                       <span className="text-slate-600 dark:text-slate-400">Binance Pay UID:</span>
-                      <span className="font-mono text-black dark:text-white font-black">427636242</span>
+                      <span className="font-mono text-black dark:text-white font-black">{activeBinanceUid}</span>
                     </div>
                     <div className="flex justify-between font-bold">
                       <span className="text-slate-600 dark:text-slate-400">USDT (BEP20 BSC):</span>
-                      <span className="font-mono text-slate-800 dark:text-slate-200 text-[11px] truncate max-w-[200px]">0xf0782cc454c9f0b273a11aba636fac62f18b24dd</span>
+                      <span className="font-mono text-slate-800 dark:text-slate-200 text-[11px] truncate max-w-[200px]">{activeBinanceAddress}</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex justify-between font-bold">
                     <span className="text-slate-600 dark:text-slate-400">{t('checkout.recipientAccount')}</span>
-                    <span className="font-mono text-black dark:text-white font-black">1622725404 (Lokmanosky)</span>
+                    <span className="font-mono text-black dark:text-white font-black">{activeRedotpayId} ({activeRedotpayName})</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold">
@@ -1045,12 +1050,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-white dark:bg-[#16181C] p-3.5 rounded-xl border-2 border-rose-200 dark:border-rose-900/40 space-y-2">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
                         <span>{lang === 'ar' ? 'معرّف الحساب (RedotPay ID):' : 'RedotPay ID:'}</span>
-                        <span className="text-black dark:text-white font-semibold">{lang === 'ar' ? 'الاسم: Lokmanosky' : 'Name: Lokmanosky'}</span>
+                        <span className="text-black dark:text-white font-semibold">{lang === 'ar' ? `الاسم: ${activeRedotpayName}` : `Name: ${activeRedotpayName}`}</span>
                       </div>
                       
                       <div className="flex items-center justify-between gap-2 pt-1">
                         <span className="font-mono text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-wider">
-                          1622725404
+                          {activeRedotpayId}
                         </span>
                         
                         <button
@@ -1083,7 +1088,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
-                          <span>{lang === 'ar' ? <>الصق المعرّف <strong className="font-mono text-rose-600 dark:text-rose-400">1622725404</strong> وحوّل المبلغ المطلوب ({cryptoUsdtEquivalent}).</> : lang === 'fr' ? <>Collez l'ID <strong className="font-mono text-rose-600 dark:text-rose-400">1622725404</strong> et transférez le montant ({cryptoUsdtEquivalent}).</> : <>Paste ID <strong className="font-mono text-rose-600 dark:text-rose-400">1622725404</strong> and transfer ({cryptoUsdtEquivalent}).</>}</span>
+                          <span>{lang === 'ar' ? <>الصق المعرّف <strong className="font-mono text-rose-600 dark:text-rose-400">{activeRedotpayId}</strong> وحوّل المبلغ المطلوب ({cryptoUsdtEquivalent}).</> : lang === 'fr' ? <>Collez l'ID <strong className="font-mono text-rose-600 dark:text-rose-400">{activeRedotpayId}</strong> et transférez le montant ({cryptoUsdtEquivalent}).</> : <>Paste ID <strong className="font-mono text-rose-600 dark:text-rose-400">{activeRedotpayId}</strong> and transfer ({cryptoUsdtEquivalent}).</>}</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
@@ -1155,7 +1160,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         <div>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">{lang === 'ar' ? 'Binance UID (المعرّف):' : 'Binance UID:'}</span>
                           <span className="font-mono text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-400 tracking-wider">
-                            427636242
+                            {activeBinanceUid}
                           </span>
                         </div>
 
@@ -1195,7 +1200,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                         <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">{lang === 'ar' ? 'عنوان الإيداع (Deposit Address):' : 'Deposit Address:'}</span>
                         <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#1D1F24] border border-slate-300 dark:border-[#2C2E33] flex items-center justify-between gap-2">
                           <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 break-all text-left dir-ltr select-all">
-                            0xf0782cc454c9f0b273a11aba636fac62f18b24dd
+                            {activeBinanceAddress}
                           </span>
                           <button
                             type="button"

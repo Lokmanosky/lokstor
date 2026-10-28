@@ -29,6 +29,10 @@ export interface StoreSettings {
   paymentGateways?: PaymentGatewaysConfig;
   oneclickApiKey?: string;
   chargilyApiKey?: string;
+  redotpayId?: string;
+  redotpayAccountName?: string;
+  binanceUid?: string;
+  binanceAddress?: string;
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
@@ -56,6 +60,10 @@ const defaultSettings: StoreSettings = {
   },
   oneclickApiKey: '',
   chargilyApiKey: '',
+  redotpayId: '1622725404',
+  redotpayAccountName: 'Lokmanosky',
+  binanceUid: '427636242',
+  binanceAddress: '0xf0782cc454c9f0b273a11aba636fac62f18b24dd',
 };
 
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);
@@ -91,6 +99,10 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
           },
           oneclickApiKey: combined.oneclickApiKey || '',
           chargilyApiKey: combined.chargilyApiKey || '',
+          redotpayId: combined.redotpayId || '1622725404',
+          redotpayAccountName: combined.redotpayAccountName || 'Lokmanosky',
+          binanceUid: combined.binanceUid || '427636242',
+          binanceAddress: combined.binanceAddress || '0xf0782cc454c9f0b273a11aba636fac62f18b24dd',
         } as StoreSettings));
       }
     }, () => {});

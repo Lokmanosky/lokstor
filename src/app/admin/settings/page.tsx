@@ -28,6 +28,10 @@ export default function SettingsPage() {
   });
   const [oneclickApiKey, setOneclickApiKey] = useState(currentSettings.oneclickApiKey || '');
   const [chargilyApiKey, setChargilyApiKey] = useState(currentSettings.chargilyApiKey || '');
+  const [redotpayId, setRedotpayId] = useState(currentSettings.redotpayId || '1622725404');
+  const [redotpayAccountName, setRedotpayAccountName] = useState(currentSettings.redotpayAccountName || 'Lokmanosky');
+  const [binanceUid, setBinanceUid] = useState(currentSettings.binanceUid || '427636242');
+  const [binanceAddress, setBinanceAddress] = useState(currentSettings.binanceAddress || '0xf0782cc454c9f0b273a11aba636fac62f18b24dd');
   const [file, setFile] = useState<File | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -97,6 +101,18 @@ export default function SettingsPage() {
     if (currentSettings.chargilyApiKey !== undefined) {
       setChargilyApiKey(currentSettings.chargilyApiKey);
     }
+    if (currentSettings.redotpayId !== undefined) {
+      setRedotpayId(currentSettings.redotpayId);
+    }
+    if (currentSettings.redotpayAccountName !== undefined) {
+      setRedotpayAccountName(currentSettings.redotpayAccountName);
+    }
+    if (currentSettings.binanceUid !== undefined) {
+      setBinanceUid(currentSettings.binanceUid);
+    }
+    if (currentSettings.binanceAddress !== undefined) {
+      setBinanceAddress(currentSettings.binanceAddress);
+    }
   }, [currentSettings]);
 
   useEffect(() => {
@@ -129,6 +145,10 @@ export default function SettingsPage() {
         paymentGateways,
         oneclickApiKey: oneclickApiKey.trim(),
         chargilyApiKey: chargilyApiKey.trim(),
+        redotpayId: redotpayId.trim(),
+        redotpayAccountName: redotpayAccountName.trim(),
+        binanceUid: binanceUid.trim(),
+        binanceAddress: binanceAddress.trim(),
       });
       setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
       await logAdminActivity({
@@ -522,8 +542,8 @@ export default function SettingsPage() {
                           <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                             🤝 يدوي
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            UID & BEP20
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                            UID: {binanceUid || '427636242'}
                           </span>
                         </div>
                         <p className="text-[11px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
@@ -544,6 +564,38 @@ export default function SettingsPage() {
                       }`} />
                     </button>
                   </div>
+
+                  {/* Binance UID & Address Configuration */}
+                  <div className="mt-3 pt-2.5 border-t border-[var(--admin-border)]/60 space-y-2">
+                    <div>
+                      <label className="text-[11px] font-medium text-[var(--admin-text-muted)] flex items-center justify-between mb-1">
+                        <span>معرّف بايننس (Binance UID)</span>
+                        <span className="text-[10px] text-amber-400">تحويل داخلي مجاني بالـ ID</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={binanceUid}
+                        onChange={(e) => setBinanceUid(e.target.value)}
+                        placeholder="427636242"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-hidden focus:border-amber-500 font-mono font-bold"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-[var(--admin-text-muted)] flex items-center justify-between mb-1">
+                        <span>عنوان المحفظة USDT (شبكة BSC - BEP20)</span>
+                        <span className="text-[10px] text-[var(--admin-text-muted)]">إيداع مباشر</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={binanceAddress}
+                        onChange={(e) => setBinanceAddress(e.target.value)}
+                        placeholder="0xf0782cc454c9f0b273a11aba636fac62f18b24dd"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-hidden focus:border-amber-500 font-mono text-[11px]"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* 4. RedotPay */}
@@ -563,8 +615,8 @@ export default function SettingsPage() {
                           <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                             🤝 يدوي
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-500/10 text-[var(--admin-text-muted)] border border-[var(--admin-border)]">
-                            ID: 1622725404
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-500/10 text-[var(--admin-text-muted)] border border-[var(--admin-border)] font-mono">
+                            ID: {redotpayId || '1622725404'}
                           </span>
                         </div>
                         <p className="text-[11px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
@@ -584,6 +636,38 @@ export default function SettingsPage() {
                         paymentGateways.redotpayEnabled ? 'translate-x-5' : 'translate-x-0'
                       }`} />
                     </button>
+                  </div>
+
+                  {/* RedotPay ID & Name Configuration */}
+                  <div className="mt-3 pt-2.5 border-t border-[var(--admin-border)]/60 space-y-2">
+                    <div>
+                      <label className="text-[11px] font-medium text-[var(--admin-text-muted)] flex items-center justify-between mb-1">
+                        <span>معرّف حساب ريدوت باي (RedotPay ID)</span>
+                        <span className="text-[10px] text-rose-400">تحويل فوري بدون عمولة بالـ ID</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={redotpayId}
+                        onChange={(e) => setRedotpayId(e.target.value)}
+                        placeholder="1622725404"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-hidden focus:border-rose-500 font-mono font-bold"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-[var(--admin-text-muted)] flex items-center justify-between mb-1">
+                        <span>اسم المستلم في ريدوت باي (Account Name)</span>
+                        <span className="text-[10px] text-[var(--admin-text-muted)]">لتأكيد الهوية للعميل</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={redotpayAccountName}
+                        onChange={(e) => setRedotpayAccountName(e.target.value)}
+                        placeholder="Lokmanosky"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)] focus:outline-hidden focus:border-rose-500 font-mono text-[11px]"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
