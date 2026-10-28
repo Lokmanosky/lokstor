@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Order } from '@/types';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
 import { processOrderDelivery } from '@/lib/delivery';
+import { checkOneClickPayment, isOneClickConfigured } from '@/lib/oneclick';
 
 export async function GET(
   req: NextRequest,
@@ -88,6 +89,32 @@ export async function GET(
         }
       } catch (chErr) {
         console.error('Chargily verify status check error:', chErr);
+      }
+    }
+
+    // Auto-verify with OneClickDz API if pending and oneclickPaymentRef exists
+    if (order.status !== 'paid' && (order as any).oneclickPaymentRef && isOneClickConfigured()) {
+      try {
+        let customOneClickKey = '';
+        if (adminDb) {
+          try {
+            const privateSnap = await adminDb.collection('settings').doc('private').get();
+            if (privateSnap.exists) {
+              customOneClickKey = privateSnap.data()?.oneclickApiKey || '';
+            }
+          } catch (err) {}
+        }
+
+        const onecheck = await checkOneClickPayment((order as any).oneclickPaymentRef, customOneClickKey);
+        if (onecheck.success && onecheck.isPaid) {
+          const paidAmount = Number(order.productPrice || (order as any).amount || 0);
+          const deliveryResult = await processOrderDelivery(orderId, paidAmount, 'oneclick');
+          if (deliveryResult.success && deliveryResult.orderData) {
+            order = { ...order, ...deliveryResult.orderData } as Order;
+          }
+        }
+      } catch (ocErr) {
+        console.error('OneClickDz verify status check error:', ocErr);
       }
     }
 

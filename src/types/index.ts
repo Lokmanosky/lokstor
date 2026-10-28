@@ -66,7 +66,9 @@ export interface Order {
   customAmount?: number;
   chargilyInvoiceId?: string;
   chargilyCheckoutUrl?: string;
-  paymentMethod?: 'chargily' | 'redotpay' | 'binance';
+  oneclickPaymentRef?: string;
+  oneclickPaymentUrl?: string;
+  paymentMethod?: 'chargily' | 'oneclick' | 'redotpay' | 'binance';
   selectedVariant?: {
     id: string;
     name: string;

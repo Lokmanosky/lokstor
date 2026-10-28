@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign } from 'lucide-react';
+import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign, CreditCard, Wallet, Zap, ShieldCheck } from 'lucide-react';
 import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
@@ -20,6 +20,13 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState(currentSettings.logoImageUrl || '');
   const [adminNotificationEmail, setAdminNotificationEmail] = useState(currentSettings.adminNotificationEmail || 'admin@lokstor.dz');
   const [dollarRate, setDollarRate] = useState<number>(currentSettings.dollarRate || 250);
+  const [paymentGateways, setPaymentGateways] = useState({
+    chargilyEnabled: currentSettings.paymentGateways?.chargilyEnabled ?? true,
+    oneclickEnabled: currentSettings.paymentGateways?.oneclickEnabled ?? true,
+    binanceEnabled: currentSettings.paymentGateways?.binanceEnabled ?? true,
+    redotpayEnabled: currentSettings.paymentGateways?.redotpayEnabled ?? true,
+  });
+  const [oneclickApiKey, setOneclickApiKey] = useState(currentSettings.oneclickApiKey || '');
   const [file, setFile] = useState<File | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -75,6 +82,17 @@ export default function SettingsPage() {
     if (currentSettings.dollarRate !== undefined) {
       setDollarRate(currentSettings.dollarRate);
     }
+    if (currentSettings.paymentGateways) {
+      setPaymentGateways({
+        chargilyEnabled: currentSettings.paymentGateways.chargilyEnabled ?? true,
+        oneclickEnabled: currentSettings.paymentGateways.oneclickEnabled ?? true,
+        binanceEnabled: currentSettings.paymentGateways.binanceEnabled ?? true,
+        redotpayEnabled: currentSettings.paymentGateways.redotpayEnabled ?? true,
+      });
+    }
+    if (currentSettings.oneclickApiKey !== undefined) {
+      setOneclickApiKey(currentSettings.oneclickApiKey);
+    }
   }, [currentSettings]);
 
   useEffect(() => {
@@ -104,6 +122,8 @@ export default function SettingsPage() {
         logoImageUrl: finalLogoUrl,
         adminNotificationEmail: adminNotificationEmail.trim(),
         dollarRate: Number(dollarRate || 250),
+        paymentGateways,
+        oneclickApiKey: oneclickApiKey.trim(),
       });
       setStoreMsg({ type: 'success', text: 'تم حفظ إعدادات المتجر بنجاح!' });
       await logAdminActivity({
@@ -305,10 +325,255 @@ export default function SettingsPage() {
                     <span className="text-xs text-[var(--admin-text-muted)]">أو</span>
                     <div className="h-px bg-[var(--admin-border)] flex-1" />
                   </div>
-                  <input type="url" value={file ? '' : logoUrl} onChange={(e) => { setLogoUrl(e.target.value); setFile(null); }}
+                  <input type="text" value={file ? '' : logoUrl} onChange={(e) => { setLogoUrl(e.target.value); setFile(null); }}
                     disabled={file !== null} className={`${inputCls} disabled:opacity-50`} placeholder="رابط الصورة (URL)" dir="ltr" />
                 </div>
               </div>
+            </div>
+
+            {/* Payment Gateways Switch Section */}
+            <div className="p-4 sm:p-5 rounded-xl bg-[var(--admin-bg)] border border-[var(--admin-border)] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--admin-border)] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--admin-text)] flex items-center gap-2">
+                      <span>إدارة بوابات الدفع (تفعيل وإيقاف)</span>
+                      <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        التحكم المباشر
+                      </span>
+                    </h3>
+                    <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                      حدد البوابات التي ستظهر للعملاء في صفحة الشراء (Checkout). يمكنك تفعيل واحدة فقط أو عدة بوابات معاً.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bulk Action Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentGateways({ chargilyEnabled: true, oneclickEnabled: true, binanceEnabled: true, redotpayEnabled: true })}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--admin-card)] border border-[var(--admin-border)] text-[var(--admin-text)] hover:border-emerald-500/50 hover:text-emerald-400 transition"
+                  >
+                    تفعيل الكل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentGateways({ chargilyEnabled: true, oneclickEnabled: true, binanceEnabled: false, redotpayEnabled: false })}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--admin-card)] border border-[var(--admin-border)] text-[var(--admin-text)] hover:border-blue-500/50 hover:text-blue-400 transition"
+                  >
+                    الآلية فقط ⚡
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentGateways({ chargilyEnabled: false, oneclickEnabled: false, binanceEnabled: true, redotpayEnabled: true })}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--admin-card)] border border-[var(--admin-border)] text-[var(--admin-text)] hover:border-amber-500/50 hover:text-amber-400 transition"
+                  >
+                    اليدوية فقط 🤝
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentGateways({ chargilyEnabled: false, oneclickEnabled: false, binanceEnabled: false, redotpayEnabled: false })}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-[var(--admin-card)] border border-[var(--admin-border)] text-red-400 hover:bg-red-500/10 transition"
+                  >
+                    تعطيل الكل
+                  </button>
+                </div>
+              </div>
+
+              {/* Gateway Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. Chargily Pay */}
+                <div className={`p-3.5 rounded-xl border transition-all ${
+                  paymentGateways.chargilyEnabled
+                    ? 'bg-emerald-500/5 border-emerald-500/30 shadow-xs'
+                    : 'bg-[var(--admin-card)] border-[var(--admin-border)] opacity-60'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-[var(--admin-text)]">شارجيلي (Chargily Pay)</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            ⚡ دفع آلي
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-500/10 text-[var(--admin-text-muted)] border border-[var(--admin-border)]">
+                            الذهبية / CIB
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
+                          دفع تلقائي عبر بريد الجزائر مع تسليم فوري وتلقائي للكود فور نجاح العملية.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentGateways(prev => ({ ...prev, chargilyEnabled: !prev.chargilyEnabled }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        paymentGateways.chargilyEnabled ? 'bg-emerald-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        paymentGateways.chargilyEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. OneClickDz (Navio) */}
+                <div className={`p-3.5 rounded-xl border transition-all ${
+                  paymentGateways.oneclickEnabled
+                    ? 'bg-blue-500/5 border-blue-500/30 shadow-xs'
+                    : 'bg-[var(--admin-card)] border-[var(--admin-border)] opacity-60'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center shrink-0 mt-0.5">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-[var(--admin-text)]">ون كليك (OneClickDz Navio)</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            ⚡ دفع آلي
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            الذهبية / CIB
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
+                          بوابة الدفع بالبطاقة الذهبية و CIB مع التحقق والتسليم التلقائي عبر OneClickDz.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentGateways(prev => ({ ...prev, oneclickEnabled: !prev.oneclickEnabled }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        paymentGateways.oneclickEnabled ? 'bg-blue-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        paymentGateways.oneclickEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* OneClick API Key Custom Override */}
+                  <div className="mt-3 pt-2.5 border-t border-[var(--admin-border)]/60">
+                    <label className="text-[11px] font-medium text-[var(--admin-text-muted)] flex items-center justify-between mb-1">
+                      <span>مفتاح API الخاص بـ OneClickDz (X-Access-Token)</span>
+                      <span className="text-[10px] text-blue-400">اختياري (مضبوط تلقائياً من .env)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={oneclickApiKey}
+                      onChange={(e) => setOneclickApiKey(e.target.value)}
+                      placeholder="اتركه فارغاً لاستخدام المفتاح من .env.local أو أدخل مفتاحك هنا"
+                      className="w-full text-xs font-mono px-3 py-1.5 rounded-lg bg-[var(--admin-card)] border border-[var(--admin-border)] text-[var(--admin-text)] placeholder:text-[var(--admin-text-muted)]/50 focus:border-blue-500 focus:outline-hidden"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Binance Pay */}
+                <div className={`p-3.5 rounded-xl border transition-all ${
+                  paymentGateways.binanceEnabled
+                    ? 'bg-amber-500/5 border-amber-500/30 shadow-xs'
+                    : 'bg-[var(--admin-card)] border-[var(--admin-border)] opacity-60'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                        <Wallet className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-[var(--admin-text)]">بايننس (Binance USDT)</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            🤝 يدوي
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            UID & BEP20
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
+                          تحويل بالـ UID أو عنوان BEP20، مع تأكيد الدفع وإرسال الإثبات يدوياً عبر تيليغرام.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentGateways(prev => ({ ...prev, binanceEnabled: !prev.binanceEnabled }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        paymentGateways.binanceEnabled ? 'bg-amber-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        paymentGateways.binanceEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. RedotPay */}
+                <div className={`p-3.5 rounded-xl border transition-all ${
+                  paymentGateways.redotpayEnabled
+                    ? 'bg-rose-500/5 border-rose-500/30 shadow-xs'
+                    : 'bg-[var(--admin-card)] border-[var(--admin-border)] opacity-60'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0 mt-0.5">
+                        <Wallet className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-[var(--admin-text)]">ريدوت باي (RedotPay)</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                            🤝 يدوي
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-500/10 text-[var(--admin-text-muted)] border border-[var(--admin-border)]">
+                            ID: 1622725404
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--admin-text-muted)] mt-1 leading-relaxed">
+                          تحويل مباشر بالـ ID عبر تطبيق RedotPay مع مراجعة يدوية للطلب وإرسال السكرين شوت.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentGateways(prev => ({ ...prev, redotpayEnabled: !prev.redotpayEnabled }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        paymentGateways.redotpayEnabled ? 'bg-rose-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        paymentGateways.redotpayEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Notice */}
+              {(!paymentGateways.chargilyEnabled && !paymentGateways.oneclickEnabled && !paymentGateways.binanceEnabled && !paymentGateways.redotpayEnabled) && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+                  <XCircle className="w-4 h-4 shrink-0" />
+                  <span>تنبيه: جميع بوابات الدفع معطلة حالياً! لن يتمكن الزبائن من اختيار أي طريقة دفع في صفحة الشراء.</span>
+                </div>
+              )}
             </div>
 
             <MsgBox msg={storeMsg} />

@@ -46,7 +46,7 @@ export const checkoutSchema = z.object({
   customerPhone: z.string().max(20).optional(),
   productId: z.string().min(1),
   quantity: z.number().min(1).max(10).optional().default(1),
-  paymentMethod: z.enum(['chargily', 'redotpay', 'binance']).optional().default('chargily'),
+  paymentMethod: z.enum(['chargily', 'oneclick', 'redotpay', 'binance']).optional().default('chargily'),
   customAmount: z.number().min(10).optional(),
   variantId: z.string().optional(),
   customFieldsData: z.record(z.string(), z.string()).optional(),

@@ -74,7 +74,7 @@ export default function OrdersPage() {
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'paid' | 'pending' | 'pending_manual_review' | 'failed'>('ALL');
-  const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'chargily' | 'redotpay' | 'binance'>('ALL');
+  const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'chargily' | 'oneclick' | 'redotpay' | 'binance'>('ALL');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
 
   // Bulk Selection States
@@ -692,8 +692,9 @@ export default function OrdersPage() {
     const chargily = orders.filter(o => !o.paymentMethod || o.paymentMethod === 'chargily').length;
     const redotpay = orders.filter(o => o.paymentMethod === 'redotpay').length;
     const binance = orders.filter(o => o.paymentMethod === 'binance').length;
+    const oneclick = orders.filter(o => o.paymentMethod === 'oneclick').length;
 
-    return { total, paid, pending, manualReview, failed, chargily, redotpay, binance };
+    return { total, paid, pending, manualReview, failed, chargily, oneclick, redotpay, binance };
   }, [orders]);
 
   // Filtered & Sorted orders
@@ -966,6 +967,7 @@ export default function OrdersPage() {
             >
               <option value="ALL">جميع وسائل الدفع</option>
               <option value="chargily">شارجيلي (Chargily)</option>
+              <option value="oneclick">ون كليك (OneClickDz)</option>
               <option value="redotpay">ريدوت باي (RedotPay)</option>
               <option value="binance">بايننس (Binance)</option>
             </select>
@@ -1301,6 +1303,10 @@ export default function OrdersPage() {
                       ) : o.paymentMethod === 'redotpay' ? (
                         <span className="font-bold text-xs text-rose-500">
                           🔴 RedotPay
+                        </span>
+                      ) : o.paymentMethod === 'oneclick' ? (
+                        <span className="font-bold text-xs text-blue-500">
+                          ⚡ ون كليك (OneClick)
                         </span>
                       ) : (
                         <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">

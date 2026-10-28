@@ -9,6 +9,13 @@ export interface TickerItem {
   icon?: string;
 }
 
+export interface PaymentGatewaysConfig {
+  chargilyEnabled?: boolean;
+  oneclickEnabled?: boolean;
+  binanceEnabled?: boolean;
+  redotpayEnabled?: boolean;
+}
+
 export interface StoreSettings {
   storeName: string;
   storeSlug: string;
@@ -19,6 +26,8 @@ export interface StoreSettings {
   tickerItems?: TickerItem[];
   tickerEnabled?: boolean;
   dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
+  paymentGateways?: PaymentGatewaysConfig;
+  oneclickApiKey?: string;
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
@@ -38,6 +47,13 @@ const defaultSettings: StoreSettings = {
   tickerItems: DEFAULT_TICKER_ITEMS,
   tickerEnabled: true,
   dollarRate: 250,
+  paymentGateways: {
+    chargilyEnabled: true,
+    oneclickEnabled: true,
+    binanceEnabled: true,
+    redotpayEnabled: true,
+  },
+  oneclickApiKey: '',
 };
 
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);
@@ -65,6 +81,13 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
             ? combined.tickerItems
             : DEFAULT_TICKER_ITEMS,
           tickerEnabled: combined.tickerEnabled !== undefined ? combined.tickerEnabled : true,
+          paymentGateways: {
+            chargilyEnabled: combined.paymentGateways?.chargilyEnabled ?? true,
+            oneclickEnabled: combined.paymentGateways?.oneclickEnabled ?? true,
+            binanceEnabled: combined.paymentGateways?.binanceEnabled ?? true,
+            redotpayEnabled: combined.paymentGateways?.redotpayEnabled ?? true,
+          },
+          oneclickApiKey: combined.oneclickApiKey || '',
         } as StoreSettings));
       }
     }, () => {});
@@ -90,6 +113,11 @@ export async function saveStoreSettings(settings: Partial<StoreSettings>) {
   if ('adminNotificationEmail' in publicSettings) {
     privateSettings.adminNotificationEmail = publicSettings.adminNotificationEmail;
     delete publicSettings.adminNotificationEmail;
+  }
+
+  if ('oneclickApiKey' in publicSettings) {
+    privateSettings.oneclickApiKey = publicSettings.oneclickApiKey;
+    delete publicSettings.oneclickApiKey;
   }
   
   await setDoc(doc(db, 'settings', 'store'), publicSettings, { merge: true });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getChargilyClient, isChargilyConfigured } from '@/lib/chargily';
+import { createOneClickPaymentLink } from '@/lib/oneclick';
 import { adminDb, adminMessaging } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '@/lib/firebase';
@@ -344,6 +345,32 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Verify payment gateway is enabled in store settings
+    if (adminDb) {
+      try {
+        const storeSnap = await adminDb.collection('settings').doc('store').get();
+        if (storeSnap.exists) {
+          const storeGateways = storeSnap.data()?.paymentGateways;
+          if (storeGateways) {
+            if (paymentMethod === 'chargily' && storeGateways.chargilyEnabled === false) {
+              return NextResponse.json({ success: false, error: 'بوابة دفع شارجيلي متوقفة حالياً' }, { status: 400 });
+            }
+            if (paymentMethod === 'oneclick' && storeGateways.oneclickEnabled === false) {
+              return NextResponse.json({ success: false, error: 'بوابة دفع OneClickDz متوقفة حالياً' }, { status: 400 });
+            }
+            if (paymentMethod === 'binance' && storeGateways.binanceEnabled === false) {
+              return NextResponse.json({ success: false, error: 'طريقة دفع بايننس متوقفة حالياً' }, { status: 400 });
+            }
+            if (paymentMethod === 'redotpay' && storeGateways.redotpayEnabled === false) {
+              return NextResponse.json({ success: false, error: 'طريقة دفع ريدوت باي متوقفة حالياً' }, { status: 400 });
+            }
+          }
+        }
+      } catch (gtErr) {
+        console.warn('Error reading gateway settings:', gtErr);
+      }
+    }
+
     // 6.5. Handle Binance Checkout
     if (paymentMethod === 'binance') {
       orderData.paymentMethod = 'binance';
@@ -416,6 +443,64 @@ export async function POST(req: NextRequest) {
         orderId,
         guestAccessToken,
         paymentMethod: 'redotpay',
+      });
+    }
+
+    // 6.7. Handle OneClickDz (Navio OCPay) Checkout
+    if (paymentMethod === 'oneclick') {
+      orderData.paymentMethod = 'oneclick';
+      orderData.status = 'pending';
+
+      if (!adminDb) throw new Error('adminDb not initialized');
+
+      // Fetch custom OneClick API Key from private settings if available
+      let customOneClickKey = '';
+      try {
+        const privateSnap = await adminDb.collection('settings').doc('private').get();
+        if (privateSnap.exists) {
+          customOneClickKey = privateSnap.data()?.oneclickApiKey || '';
+        }
+      } catch (err) {}
+
+      const oneclickResult = await createOneClickPaymentLink({
+        amount: finalOrderPrice * quantity,
+        productName: product.name,
+        orderId,
+        guestAccessToken,
+        baseUrl,
+        customerEmail: cleanEmail,
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        customKey: customOneClickKey,
+      });
+
+      if (!oneclickResult.success || !oneclickResult.paymentUrl) {
+        return NextResponse.json(
+          { success: false, error: oneclickResult.error || 'فشل إنشاء رابط الدفع عبر OneClickDz' },
+          { status: 500 }
+        );
+      }
+
+      orderData.oneclickPaymentRef = oneclickResult.paymentRef;
+      orderData.oneclickPaymentUrl = oneclickResult.paymentUrl;
+
+      const batch = adminDb.batch();
+      batch.set(adminDb.collection('orders').doc(orderId), orderData);
+      if (appliedDiscount && discountUsageKey && discountDocId) {
+        batch.set(adminDb.collection('discountUsages').doc(discountUsageKey), { usedAt: Date.now(), orderId, email: cleanEmail });
+        batch.update(adminDb.collection('discountCodes').doc(discountDocId), { usageCount: FieldValue.increment(1) } as any);
+      }
+      await batch.commit();
+
+      // Notify admins via push notification
+      await notifyAdminsOfNewOrder(orderData, baseUrl);
+
+      return NextResponse.json({
+        success: true,
+        checkoutUrl: oneclickResult.paymentUrl,
+        orderId,
+        guestAccessToken,
+        paymentMethod: 'oneclick',
       });
     }
 

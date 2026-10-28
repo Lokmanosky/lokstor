@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Product, ProductVariant } from '@/types';
 import { useAuth } from '@/lib/auth-context';
 import { useTranslation } from '@/lib/i18n-context';
+import { useStoreSettings } from '@/lib/store-settings';
 import { 
   Lock,
   Ban, 
@@ -23,7 +24,8 @@ import {
   Sparkles,
   CheckCircle2,
   QrCode,
-  Gamepad2
+  Gamepad2,
+  Zap
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -82,7 +84,41 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
     }
   }, []);
 
-  const [paymentMethod, setPaymentMethod] = useState<'chargily' | 'redotpay' | 'binance'>('chargily');
+  const { paymentGateways } = useStoreSettings();
+
+  const enabledGateways = useMemo(() => {
+    return {
+      chargily: paymentGateways?.chargilyEnabled ?? true,
+      oneclick: paymentGateways?.oneclickEnabled ?? true,
+      binance: paymentGateways?.binanceEnabled ?? true,
+      redotpay: paymentGateways?.redotpayEnabled ?? true,
+    };
+  }, [paymentGateways]);
+
+  const hasAnyGateway = enabledGateways.chargily || enabledGateways.oneclick || enabledGateways.binance || enabledGateways.redotpay;
+
+  const [paymentMethod, setPaymentMethod] = useState<'chargily' | 'oneclick' | 'redotpay' | 'binance'>('chargily');
+
+  // Auto-switch to first available gateway if current is disabled
+  useEffect(() => {
+    if (paymentMethod === 'chargily' && !enabledGateways.chargily) {
+      if (enabledGateways.oneclick) setPaymentMethod('oneclick');
+      else if (enabledGateways.binance) setPaymentMethod('binance');
+      else if (enabledGateways.redotpay) setPaymentMethod('redotpay');
+    } else if (paymentMethod === 'oneclick' && !enabledGateways.oneclick) {
+      if (enabledGateways.chargily) setPaymentMethod('chargily');
+      else if (enabledGateways.binance) setPaymentMethod('binance');
+      else if (enabledGateways.redotpay) setPaymentMethod('redotpay');
+    } else if (paymentMethod === 'binance' && !enabledGateways.binance) {
+      if (enabledGateways.chargily) setPaymentMethod('chargily');
+      else if (enabledGateways.oneclick) setPaymentMethod('oneclick');
+      else if (enabledGateways.redotpay) setPaymentMethod('redotpay');
+    } else if (paymentMethod === 'redotpay' && !enabledGateways.redotpay) {
+      if (enabledGateways.chargily) setPaymentMethod('chargily');
+      else if (enabledGateways.oneclick) setPaymentMethod('oneclick');
+      else if (enabledGateways.binance) setPaymentMethod('binance');
+    }
+  }, [enabledGateways, paymentMethod]);
   const [customAmount, setCustomAmount] = useState<number>(1000);
   const searchParams = useSearchParams();
   const variantParamId = searchParams.get('variant');
@@ -616,124 +652,194 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               <div className="space-y-2">
                 <label className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
                   <span>{t('checkout.selectMethod')} <span className="text-red-500">*</span></span>
+                  {hasAnyGateway && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">
+                      {lang === 'ar' ? 'وسائل دفع آمنة 100%' : '100% Secure Payments'}
+                    </span>
+                  )}
                 </label>
                 
-                {/* 1. Top Wide Rectangle: Chargily (الذهبية / CIB) */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('chargily')}
-                  className={`w-full p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                    paymentMethod === 'chargily'
-                      ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/25 dark:border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
-                      : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white dark:bg-[#1C1F26] p-1 flex items-center justify-center shadow-xs shrink-0 border border-slate-200 dark:border-slate-700/60 overflow-hidden">
-                      <img 
-                        src="/images/algerie-poste.svg" 
-                        alt="Algérie Poste" 
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-
-                    <div className="text-right">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-900 dark:text-white">
-                          {t('checkout.edahabiaCib')}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
-                          {lang === 'ar' ? 'بريد الجزائر 🇩🇿' : 'Algérie Poste 🇩🇿'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-normal mt-0.5">
-                        {t('checkout.chargilyDesc')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      paymentMethod === 'chargily' 
-                        ? 'bg-emerald-600 text-white shadow-xs' 
-                        : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
-                    }`}>
-                      ✓
-                    </span>
-                  </div>
-                </button>
-
-                {/* 2. Bottom 2 Options Side-by-Side: Binance & RedotPay */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {/* Option 2: Binance */}
+                {/* 1. Automated Gateway: Chargily (الذهبية / CIB) */}
+                {enabledGateways.chargily && (
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('binance')}
-                    className={`p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
-                      paymentMethod === 'binance'
-                        ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/25 dark:border-amber-500 shadow-sm ring-2 ring-amber-500/20'
+                    onClick={() => setPaymentMethod('chargily')}
+                    className={`w-full p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                      paymentMethod === 'chargily'
+                        ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/25 dark:border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
                         : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded bg-[#F0B90B] flex items-center justify-center text-slate-950 font-bold shrink-0">
-                          <svg viewBox="0 0 24 24" className="w-3 h-3 fill-slate-950" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2.5l3.5 3.5-3.5 3.5-3.5-3.5L12 2.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm11 0l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm0-4.5l2 2-2 2-2-2 2-2z"/>
-                          </svg>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white dark:bg-[#1C1F26] p-1 flex items-center justify-center shadow-xs shrink-0 border border-slate-200 dark:border-slate-700/60 overflow-hidden">
+                        <img 
+                          src="/images/algerie-poste.svg" 
+                          alt="Algérie Poste" 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white">
+                            {t('checkout.edahabiaCib')}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                            {lang === 'ar' ? 'شارجيلي 🇩🇿' : 'Chargily 🇩🇿'}
+                          </span>
                         </div>
-                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                          {t('checkout.binance')}
-                        </span>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                          USDT
-                        </span>
+                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-normal mt-0.5">
+                          {t('checkout.chargilyDesc')}
+                        </p>
                       </div>
-                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                        paymentMethod === 'binance' 
-                          ? 'bg-[#F0B90B] text-slate-950 shadow-xs' 
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        paymentMethod === 'chargily' 
+                          ? 'bg-emerald-600 text-white shadow-xs' 
                           : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
                       }`}>
                         ✓
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-normal leading-tight">
-                      {t('checkout.binanceDesc')}
-                    </p>
                   </button>
+                )}
 
-                  {/* Option 3: RedotPay */}
+                {/* 2. Automated Gateway: OneClickDz (الذهبية / CIB) */}
+                {enabledGateways.oneclick && (
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('redotpay')}
-                    className={`p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
-                      paymentMethod === 'redotpay'
-                        ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/25 dark:border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+                    onClick={() => setPaymentMethod('oneclick')}
+                    className={`w-full p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                      paymentMethod === 'oneclick'
+                        ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/25 dark:border-blue-500 shadow-sm ring-2 ring-blue-500/20'
                         : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                          R
-                        </span>
-                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                          {t('checkout.redotpay')}
-                        </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 p-1 flex items-center justify-center shadow-xs shrink-0 border border-blue-200 dark:border-blue-800/60 overflow-hidden text-blue-600 dark:text-blue-400">
+                        <img 
+                          src="/images/algerie-poste.svg" 
+                          alt="Algérie Poste" 
+                          className="w-full h-full object-contain"
+                        />
                       </div>
-                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                        paymentMethod === 'redotpay' 
-                          ? 'bg-rose-600 text-white shadow-xs' 
+
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white">
+                            {t('checkout.edahabiaCib')}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border border-blue-300/60 dark:border-blue-700/60">
+                            {lang === 'ar' ? 'ون كليك 🇩🇿' : 'OneClickDz 🇩🇿'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-normal mt-0.5">
+                          {lang === 'ar' ? 'دفع إلكتروني آمن وفوري عبر OneClickDz' : 'Paiement électronique instantané via OneClickDz'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        paymentMethod === 'oneclick' 
+                          ? 'bg-blue-600 text-white shadow-xs' 
                           : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
                       }`}>
                         ✓
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-normal leading-tight">
-                      {t('checkout.redotpayDesc')}
-                    </p>
                   </button>
-                </div>
+                )}
+
+                {/* 3. Manual Options Side-by-Side: Binance & RedotPay */}
+                {(enabledGateways.binance || enabledGateways.redotpay) && (
+                  <div className={`grid gap-2 ${
+                    enabledGateways.binance && enabledGateways.redotpay ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'
+                  }`}>
+                    {/* Binance */}
+                    {enabledGateways.binance && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('binance')}
+                        className={`p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
+                          paymentMethod === 'binance'
+                            ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/25 dark:border-amber-500 shadow-sm ring-2 ring-amber-500/20'
+                            : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded bg-[#F0B90B] flex items-center justify-center text-slate-950 font-bold shrink-0">
+                              <svg viewBox="0 0 24 24" className="w-3 h-3 fill-slate-950" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2.5l3.5 3.5-3.5 3.5-3.5-3.5L12 2.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm11 0l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm-5.5 5.5l3.5 3.5-3.5 3.5-3.5-3.5 3.5-3.5zm0-4.5l2 2-2 2-2-2 2-2z"/>
+                              </svg>
+                            </div>
+                            <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                              {t('checkout.binance')}
+                            </span>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                              USDT
+                            </span>
+                          </div>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            paymentMethod === 'binance' 
+                              ? 'bg-[#F0B90B] text-slate-950 shadow-xs' 
+                              : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
+                          }`}>
+                            ✓
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 font-normal leading-tight">
+                          {t('checkout.binanceDesc')}
+                        </p>
+                      </button>
+                    )}
+
+                    {/* RedotPay */}
+                    {enabledGateways.redotpay && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('redotpay')}
+                        className={`p-2.5 sm:p-3 rounded-xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
+                          paymentMethod === 'redotpay'
+                            ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/25 dark:border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+                            : 'border-slate-200 dark:border-[#2C2E33]/80 hover:border-slate-300 dark:hover:border-[#3E4249] bg-white dark:bg-[#16181C]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                              R
+                            </span>
+                            <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                              {t('checkout.redotpay')}
+                            </span>
+                          </div>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            paymentMethod === 'redotpay' 
+                              ? 'bg-rose-600 text-white shadow-xs' 
+                              : 'border border-slate-300 dark:border-[#2C2E33] text-transparent'
+                          }`}>
+                            ✓
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 font-normal leading-tight">
+                          {t('checkout.redotpayDesc')}
+                        </p>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* If no gateways enabled at all */}
+                {!hasAnyGateway && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs sm:text-sm font-medium flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span>{lang === 'ar' ? 'بوابات الدفع معطلة مؤقتاً لأعمال الصيانة. يرجى التواصل معنا عبر تلغرام.' : 'Payment gateways are temporarily disabled for maintenance. Please contact us on Telegram.'}</span>
+                  </div>
+                )}
               </div>
 
               {/* Logged-in recognition or Guest Contact Inputs */}
@@ -872,16 +978,18 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
               )}
 
               {/* DYNAMIC CONTENT BASED ON PAYMENT METHOD */}
-              {paymentMethod === 'chargily' && (
+              {(paymentMethod === 'chargily' || paymentMethod === 'oneclick') && (
                 <>
                   {/* Chargily Notice */}
                   <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-xs space-y-0.5">
                     <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm">
                       <CreditCard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>{t('checkout.chargilyNoticeTitle')}</span>
+                      <span>{paymentMethod === 'oneclick' ? (lang === 'ar' ? 'الدفع محمي بواسطة OneClickDz' : 'Paiement sécurisé par OneClickDz') : t('checkout.chargilyNoticeTitle')}</span>
                     </div>
                     <p className="text-slate-600 dark:text-slate-400 font-normal pr-5 text-[11px] sm:text-xs leading-normal">
-                      {t('checkout.chargilyNoticeDesc')}
+                      {paymentMethod === 'oneclick'
+                        ? (lang === 'ar' ? 'لإتمام العملية بالبطاقة الذهبية أو بطاقة CIB سيتم تحويلك لصفحة الدفع التابعة لـ OneClickDz والتسليم فوراً.' : 'Paiement sécurisé par carte Edahabia ou CIB via OneClickDz.')
+                        : t('checkout.chargilyNoticeDesc')}
                     </p>
                   </div>
 
@@ -892,7 +1000,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                     className={`w-full py-3 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all ${
                       isOutOfStock
                         ? 'bg-red-600 hover:bg-red-700 text-white cursor-not-allowed shadow-md opacity-95'
-                        : 'chargily-btn text-white disabled:opacity-50 shadow-md hover:shadow-emerald-500/25 cursor-pointer'
+                        : paymentMethod === 'oneclick' ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 shadow-md hover:shadow-blue-500/25 cursor-pointer' : 'chargily-btn text-white disabled:opacity-50 shadow-md hover:shadow-emerald-500/25 cursor-pointer'
                     }`}
                   >
                     {isOutOfStock ? (
