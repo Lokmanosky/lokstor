@@ -345,11 +345,11 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
               <span>{t('hero.badge')}</span>
             </div>
             
-            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-snug">
-              <span className="block">
+            <h1 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-snug">
+              <span className="block whitespace-nowrap sm:whitespace-normal">
                 {t('hero.title1')} <span className="text-[var(--store-primary)] drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">{t('hero.title2')}</span>
               </span>
-              <span className="block mt-1 sm:mt-2">
+              <span className="block mt-0.5 sm:mt-1 whitespace-nowrap sm:whitespace-normal">
                 {t('hero.title3')}
               </span>
             </h1>
@@ -379,8 +379,13 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
               <span>{t('hero.badge')}</span>
             </div>
             
-            <h1 className="text-lg sm:text-2xl font-black text-[var(--store-text)] tracking-tight leading-snug">
-              <span>{t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span> {t('hero.title3')}</span>
+            <h1 className="text-xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight leading-snug">
+              <span className="block whitespace-nowrap sm:whitespace-normal">
+                {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span>
+              </span>
+              <span className="block mt-0.5 sm:mt-1 whitespace-nowrap sm:whitespace-normal">
+                {t('hero.title3')}
+              </span>
             </h1>
             
             <p className="text-xs sm:text-sm text-[var(--store-text-muted)] max-w-xl mx-auto font-medium leading-normal">
