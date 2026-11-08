@@ -332,9 +332,13 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
       }</style>
 
       
+      {/* Top Announcement Ticker Bar */}
+      <div className="w-full border-b border-black/5 dark:border-white/5 bg-slate-100 dark:bg-[#131417] shadow-2xs">
+        <TopTicker />
+      </div>
+
       {/* 1. Hero Section / Banners */}
       {banners.length > 0 ? (
-        <>
         <BannersCarousel banners={banners}>
           <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 pointer-events-none drop-shadow-lg scale-90 sm:scale-100">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/20 text-xs font-medium text-white/90 bg-black/40 backdrop-blur-md shadow-sm">
@@ -368,14 +372,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             </div>
           </div>
         </BannersCarousel>
-        <div className="max-w-7xl mx-auto mb-8 sm:mt-2">
-          <div className="border-y sm:border sm:rounded-xl overflow-hidden border-black/5 dark:border-white/5 shadow-sm">
-            <TopTicker />
-          </div>
-        </div>
-        </>
       ) : (
-        <>
         <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
           <div className="max-w-4xl mx-auto text-center space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--store-border)] text-xs font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-sm">
@@ -409,12 +406,6 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             </div>
           </div>
         </section>
-        <div className="max-w-7xl mx-auto mb-8 mt-3">
-          <div className="border-y sm:border sm:rounded-xl overflow-hidden border-black/5 dark:border-white/5 shadow-sm">
-            <TopTicker />
-          </div>
-        </div>
-        </>
       )}
 
       {/* 2. Products Section */}
