@@ -373,34 +373,28 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
           </div>
         </BannersCarousel>
       ) : (
-        <section className="pt-10 pb-8 px-4 border-b border-[var(--store-border)]">
-          <div className="max-w-4xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--store-border)] text-xs font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-sm">
+        <section className="pt-3 pb-2.5 px-4 border-b border-[var(--store-border)]">
+          <div className="max-w-4xl mx-auto text-center space-y-1.5 sm:space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[var(--store-border)] text-[11px] font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-xs">
               <span>{t('hero.badge')}</span>
             </div>
             
-            <h1 className="text-3xl sm:text-5xl font-black text-[var(--store-text)] tracking-tight leading-snug">
-              <span className="block">
-                {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span>
-              </span>
-              <span className="block mt-1 sm:mt-2">
-                {t('hero.title3')}
-              </span>
+            <h1 className="text-lg sm:text-2xl font-black text-[var(--store-text)] tracking-tight leading-snug">
+              <span>{t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span> {t('hero.title3')}</span>
             </h1>
             
-            
-            <p className="text-sm sm:text-lg text-[var(--store-text-muted)] max-w-2xl mx-auto font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-[var(--store-text-muted)] max-w-xl mx-auto font-medium leading-normal">
               {t('hero.desc')}
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
-              <div className="flex items-center gap-2 text-[#00c853]">
-                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+            <div className="pt-0.5 flex flex-wrap justify-center gap-3 sm:gap-5 text-xs text-[var(--store-text-muted)] font-bold">
+              <div className="flex items-center gap-1.5 text-[#00c853]">
+                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>{t('feat.secure')}</span>
               </div>
-              <div className="flex items-center gap-2 text-[#6366f1]">
-                <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
+              <div className="flex items-center gap-1.5 text-[#6366f1]">
+                <Headphones className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>{t('feat.support')}</span>
               </div>
             </div>
@@ -409,10 +403,10 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
       )}
 
       {/* 2. Products Section */}
-      <section id="products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+      <section id="products-section" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4 space-y-3 sm:space-y-4">
         
         {/* Filter Bar & Live Search — Modern Pill Style matching reference */}
-        <div className="space-y-4">
+        <div className="space-y-2.5">
           {/* 1. Full-Width Rounded Pill Search Bar */}
           <div className="relative w-full">
             <div className="relative flex items-center w-full bg-slate-50 dark:bg-[#131417] border border-slate-200/90 dark:border-slate-800 rounded-full shadow-xs transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 px-3.5 sm:px-4 py-2 sm:py-2.5">
@@ -676,12 +670,12 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
 
           // ── Section renderer ───────────────────────────────────────────────
           const renderSection = (emoji: string | undefined, title: string, slug: string, prods: any[], showViewAll: boolean) => (
-            <section key={slug} className="space-y-4">
+            <section key={slug} className="space-y-2.5 sm:space-y-3">
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  {emoji && <span className="text-2xl leading-none flex-shrink-0">{emoji}</span>}
-                  <h2 className="text-xl font-black text-[var(--store-text)] tracking-tight">{localizeCategory(title)}</h2>
-                  <span className="hidden sm:inline text-xs text-[var(--store-text-muted)] bg-[var(--store-card)] border border-[var(--store-border)] rounded-full px-2.5 py-0.5 font-medium flex-shrink-0">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {emoji && <span className="text-xl sm:text-2xl leading-none flex-shrink-0">{emoji}</span>}
+                  <h2 className="text-lg sm:text-xl font-black text-[var(--store-text)] tracking-tight">{localizeCategory(title)}</h2>
+                  <span className="hidden sm:inline text-xs text-[var(--store-text-muted)] bg-[var(--store-card)] border border-[var(--store-border)] rounded-full px-2 py-0.5 font-medium flex-shrink-0">
                     {prods.length} {t('store.productsCount')}
                   </span>
                 </div>
@@ -694,7 +688,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
               </div>
               {/* Divider */}
               <div className="h-px bg-gradient-to-l from-transparent via-[var(--store-border)] to-transparent" />
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {prods.map(p => renderCard(p))}
               </div>
             </section>
@@ -742,7 +736,7 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             const uncategorized = products.filter(p => !assigned.has(p.id));
 
             return (
-              <div className="space-y-14">
+              <div className="space-y-6 sm:space-y-8">
                 {sections.map(({ cat, prods }) =>
                   renderSection(cat.emoji, cat.name, cat.slug, prods, true)
                 )}
