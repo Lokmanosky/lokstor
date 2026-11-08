@@ -20,7 +20,7 @@ export default function AboutPage() {
       whyTitle: 'لماذا تختار Lokstor؟',
       features: [
         { title: 'تسليم فوري وتلقائي', desc: 'يصلك كود التفعيل أو رابط التحميل فوراً بعد إتمام الدفع بنجاح.', icon: Zap },
-        { title: 'دفع إلكتروني آمن 100%', desc: 'تشفير عالي ومعالجة رسمية بالتعاون مع بوابة Chargily المعتمدة.', icon: ShieldCheck },
+        { title: 'دفع إلكتروني آمن 100%', desc: 'تشفير عالي ومعالجة رسمية عبر بوابات الدفع الجزائرية المعتمدة (Chargily & OneClick).', icon: ShieldCheck },
         { title: 'منتجات رسمية وأصلية', desc: 'جميع الأكواد والاشتراكات أصلية ومضمونة بدون أي مخاطر.', icon: Award },
         { title: 'دعم فني متواصل', desc: 'فريقنا جاهز لمساعدتك عبر تلغرام والبريد الإلكتروني في أي وقت.', icon: Headphones },
       ],
@@ -37,7 +37,7 @@ export default function AboutPage() {
       whyTitle: 'Why Choose Lokstor?',
       features: [
         { title: 'Instant Automated Delivery', desc: 'Receive your activation key or download link immediately upon payment.', icon: Zap },
-        { title: '100% Secure Payments', desc: 'Bank-grade encryption powered by the certified Chargily payment gateway.', icon: ShieldCheck },
+        { title: '100% Secure Payments', desc: 'Bank-grade encryption powered by certified Algerian payment gateways (Chargily & OneClick).', icon: ShieldCheck },
         { title: 'Genuine & Official Products', desc: 'All keys, subscriptions, and digital assets are fully licensed and guaranteed.', icon: Award },
         { title: 'Dedicated Customer Support', desc: 'Our responsive team is available on Telegram and email whenever you need help.', icon: Headphones },
       ],
@@ -54,7 +54,7 @@ export default function AboutPage() {
       whyTitle: 'Pourquoi Choisir Lokstor ?',
       features: [
         { title: 'Livraison Immédiate & Automatisée', desc: 'Recevez votre clé d’activation ou lien de téléchargement aussitôt le paiement validé.', icon: Zap },
-        { title: 'Paiement 100% Sécurisé', desc: 'Transactions cryptées et protégées via la passerelle officielle Chargily.', icon: ShieldCheck },
+        { title: 'Paiement 100% Sécurisé', desc: 'Transactions cryptées et protégées via les passerelles algériennes officielles (Chargily & OneClick).', icon: ShieldCheck },
         { title: 'Produits Officiels & Authentiques', desc: 'Toutes nos licences et tous nos abonnements sont d’origine et pleinement garantis.', icon: Award },
         { title: 'Support Client Réactif', desc: 'Une assistance humaine disponible sur Telegram et par e-mail pour vous accompagner.', icon: Headphones },
       ],
