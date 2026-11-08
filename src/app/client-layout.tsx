@@ -318,10 +318,10 @@ function NavBar() {
   return (
     <>
     <header className="sticky top-0 z-50 border-b border-[var(--store-border)] text-[var(--store-text)] store-header bg-[var(--store-bg)]">
-      <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-1 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* Right (Menu Toggle & Logo & Links) */}
-        <div className="flex items-center gap-1 sm:gap-4 min-w-0 flex-shrink">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
           {/* Mobile Menu Toggle Button (تم نقله إلى شريط التنقل السفلي في الجوال) */}
           <button 
             onClick={() => setMobileMenuOpen(true)}
@@ -332,7 +332,7 @@ function NavBar() {
             <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--store-text)]" />
           </button>
 
-          <Link href="/" className="flex items-center gap-1 sm:gap-2.5 group min-w-0">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group min-w-0">
             <img 
               src={s.logoImageUrl || '/logo-round.png'} 
               alt={s.storeName || 'logo'} 
