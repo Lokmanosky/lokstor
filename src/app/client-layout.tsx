@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 
 import Link from 'next/link';
-import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu, Bell } from 'lucide-react';
+import { ShieldCheck, Lock, Sparkles, CreditCard, ShoppingCart, Search, Eye, EyeOff, X, UserPlus, LogOut, User, Globe, Moon, Sun, Settings, Menu, Bell, Smartphone, Download } from 'lucide-react';
 import { useStoreSettings, StoreSettingsProvider, DEFAULT_TICKER_ITEMS } from '@/lib/store-settings';
 import { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
@@ -14,6 +14,7 @@ import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signIn
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import PullToRefresh from '@/components/PullToRefresh';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -755,6 +756,24 @@ function NavBar() {
 
             {/* Bottom Section */}
             <div className="mt-auto pt-4 border-t border-[var(--store-border)] flex flex-col gap-3">
+              {/* PWA Install Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  window.dispatchEvent(new CustomEvent('open-pwa-install'));
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm transition-all active:scale-[0.98] shadow-xs cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Smartphone className="w-4 h-4 text-emerald-500" />
+                  <span>تثبيت تطبيق لوكستور</span>
+                </div>
+                <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold">
+                  تطبيق الجوال
+                </span>
+              </button>
+
               {user && (
                 <button 
                   onClick={handleSignOut} 
@@ -1050,6 +1069,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
       {!isAdmin && <Footer />}
       {!isAdmin && <TelegramFloat />}
       {!isAdmin && <MobileBottomNav />}
+      {!isAdmin && <PwaInstallPrompt />}
     </StoreSettingsProvider>
   );
 }

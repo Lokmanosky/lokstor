@@ -1,13 +1,20 @@
 {
-  "name": "Lokstor",
+  "name": "Lokstor - متجر المنتجات الرقمية",
   "short_name": "Lokstor",
-  "description": "متجر المنتجات الرقمية",
+  "description": "منصة بيع وشحن المنتجات الرقمية والاشتراكات في الجزائر",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#090a0f",
   "theme_color": "#10b981",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "/logo-round.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/logo-192x192.png",
       "sizes": "192x192",
