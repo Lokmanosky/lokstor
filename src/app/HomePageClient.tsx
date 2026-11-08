@@ -8,6 +8,7 @@ import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc } from 'fi
 import { useTranslation } from '@/lib/i18n-context';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
+import { useStoreSettings } from '@/lib/store-settings';
 
 import { Suspense } from 'react';
 import { TopTicker } from './client-layout';
@@ -175,6 +176,33 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
   const [loading, setLoading] = useState(initialProducts.length === 0);
   const [storeCategories, setStoreCategories] = useState<{id:string;name:string;slug:string;emoji?:string;sortOrder:number}[]>(initialCategories);
   const { t, lang, localizeCategory, formatCurrency } = useTranslation();
+  const { heroPhrases } = useStoreSettings();
+  const heroBadge = heroPhrases?.badge || t('hero.badge');
+  const heroTitle1 = heroPhrases?.titleLine1 || `${t('hero.title1')} ${t('hero.title2')}`;
+  const heroTitle2 = heroPhrases?.titleLine2 || t('hero.title3');
+  const heroDesc = heroPhrases?.description || t('hero.desc');
+  const heroFeature1 = heroPhrases?.feature1 || t('feat.secure');
+  const heroFeature2 = heroPhrases?.feature2 || t('feat.support');
+
+  const renderHeroTitle1 = (text: string, isLightMode = false) => {
+    const parts = (text || '').trim().split(' ');
+    if (parts.length > 1) {
+      return (
+        <>
+          {parts[0]}{' '}
+          <span className={`text-[var(--store-primary)] ${isLightMode ? '' : 'drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]'}`}>
+            {parts.slice(1).join(' ')}
+          </span>
+        </>
+      );
+    }
+    return (
+      <span className={`text-[var(--store-primary)] ${isLightMode ? '' : 'drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]'}`}>
+        {text}
+      </span>
+    );
+  };
+
   const { addToCart } = useCart();
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const [showLoginToast, setShowLoginToast] = useState(false);
@@ -342,32 +370,31 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
         <BannersCarousel banners={banners}>
           <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 pointer-events-none drop-shadow-lg scale-90 sm:scale-100">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/20 text-xs font-medium text-white/90 bg-black/40 backdrop-blur-md shadow-sm">
-              <span>{t('hero.badge')}</span>
+              <span>{heroBadge}</span>
             </div>
             
             <h1 className="text-xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-snug">
               <span className="block whitespace-nowrap sm:whitespace-normal">
-                {t('hero.title1')} <span className="text-[var(--store-primary)] drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">{t('hero.title2')}</span>
+                {renderHeroTitle1(heroTitle1, false)}
               </span>
               <span className="block mt-0.5 sm:mt-1 whitespace-nowrap sm:whitespace-normal">
-                {t('hero.title3')}
+                {heroTitle2}
               </span>
             </h1>
             
-            
             <p className="text-xs sm:text-base md:text-lg text-white/80 max-w-xl sm:max-w-2xl mx-auto font-medium leading-relaxed">
-              {t('hero.desc')}
+              {heroDesc}
             </p>
             
             {/* Feature Badges */}
             <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
               <div className="flex items-center gap-2 text-[#00e676]">
                 <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{t('feat.secure')}</span>
+                <span>{heroFeature1}</span>
               </div>
               <div className="flex items-center gap-2 text-[#818cf8]">
                 <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{t('feat.support')}</span>
+                <span>{heroFeature2}</span>
               </div>
             </div>
           </div>
@@ -376,31 +403,31 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
         <section className="pt-3 pb-2.5 px-4 border-b border-[var(--store-border)]">
           <div className="max-w-4xl mx-auto text-center space-y-1.5 sm:space-y-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[var(--store-border)] text-[11px] font-medium text-[var(--store-text-muted)] bg-[var(--store-card)] shadow-xs">
-              <span>{t('hero.badge')}</span>
+              <span>{heroBadge}</span>
             </div>
             
             <h1 className="text-xl sm:text-3xl font-black text-[var(--store-text)] tracking-tight leading-snug">
               <span className="block whitespace-nowrap sm:whitespace-normal">
-                {t('hero.title1')} <span className="text-[var(--store-primary)]">{t('hero.title2')}</span>
+                {renderHeroTitle1(heroTitle1, true)}
               </span>
               <span className="block mt-0.5 sm:mt-1 whitespace-nowrap sm:whitespace-normal">
-                {t('hero.title3')}
+                {heroTitle2}
               </span>
             </h1>
             
             <p className="text-xs sm:text-sm text-[var(--store-text-muted)] max-w-xl mx-auto font-medium leading-normal">
-              {t('hero.desc')}
+              {heroDesc}
             </p>
             
             {/* Feature Badges */}
             <div className="pt-0.5 flex flex-wrap justify-center gap-3 sm:gap-5 text-xs text-[var(--store-text-muted)] font-bold">
               <div className="flex items-center gap-1.5 text-[#00c853]">
                 <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>{t('feat.secure')}</span>
+                <span>{heroFeature1}</span>
               </div>
               <div className="flex items-center gap-1.5 text-[#6366f1]">
                 <Headphones className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>{t('feat.support')}</span>
+                <span>{heroFeature2}</span>
               </div>
             </div>
           </div>

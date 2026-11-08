@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign, CreditCard, Wallet, Zap, ShieldCheck } from 'lucide-react';
+import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign, CreditCard, Wallet, Zap, ShieldCheck, Sparkles } from 'lucide-react';
 import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
+import HeroPhrasesEditor from '@/components/admin/HeroPhrasesEditor';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -46,7 +47,18 @@ export default function SettingsPage() {
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountMsg, setAccountMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'store' | 'account'>('store');
+  const [activeTab, setActiveTab] = useState<'store' | 'hero' | 'account'>('store');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'hero' || tabParam === 'account' || tabParam === 'store') {
+        setActiveTab(tabParam as any);
+      }
+    }
+  }, []);
+
   const [testNotifLoading, setTestNotifLoading] = useState(false);
   const [testNotifMsg, setTestNotifMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -227,20 +239,21 @@ export default function SettingsPage() {
   ) : null;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className={`space-y-6 ${activeTab === 'hero' ? 'max-w-4xl' : 'max-w-2xl'}`}>
       <div>
         <h1 className="text-xl font-semibold text-[var(--admin-text)]">الإعدادات</h1>
-        <p className="text-sm text-[var(--admin-text-muted)] mt-1">إعدادات المتجر والحساب الشخصي</p>
+        <p className="text-sm text-[var(--admin-text-muted)] mt-1">إعدادات المتجر، عبارات الواجهة، والحساب الشخصي</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[var(--admin-border)]">
+      <div className="flex gap-1 border-b border-[var(--admin-border)] overflow-x-auto no-scrollbar">
         {[
-          { key: 'store' as const, label: 'إعدادات المتجر', icon: <ImageIcon className="w-4 h-4" /> },
+          { key: 'store' as const, label: 'إعدادات المتجر العامة', icon: <ImageIcon className="w-4 h-4" /> },
+          { key: 'hero' as const, label: 'نصوص الواجهة (الهيرو)', icon: <Sparkles className="w-4 h-4" /> },
           { key: 'account' as const, label: 'الحساب الشخصي', icon: <KeyRound className="w-4 h-4" /> },
         ].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === t.key
                 ? 'border-[var(--admin-primary)] text-[var(--admin-primary)]'
                 : 'border-transparent text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]'
@@ -691,6 +704,11 @@ export default function SettingsPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Hero Phrases Tab */}
+      {activeTab === 'hero' && (
+        <HeroPhrasesEditor />
       )}
 
       {/* Account Tab */}

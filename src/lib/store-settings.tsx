@@ -16,6 +16,24 @@ export interface PaymentGatewaysConfig {
   redotpayEnabled?: boolean;
 }
 
+export interface HeroPhrasesConfig {
+  badge?: string;
+  titleLine1?: string;
+  titleLine2?: string;
+  description?: string;
+  feature1?: string;
+  feature2?: string;
+}
+
+export const DEFAULT_HERO_PHRASES: HeroPhrasesConfig = {
+  badge: 'متجر المنتجات الرقمية الأول في الجزائر',
+  titleLine1: 'أفضل المنتجات الرقمية',
+  titleLine2: 'بدفع إلكتروني آمن',
+  description: 'كتب، قوالب جاهزة، واشتراكات مدفوعة مع تسليم فوري وتلقائي مباشرة بعد الدفع.',
+  feature1: 'بوابات دفع رسمية جزائرية',
+  feature2: 'دعم فني متواصل 24/7',
+};
+
 export interface StoreSettings {
   storeName: string;
   storeSlug: string;
@@ -27,6 +45,7 @@ export interface StoreSettings {
   tickerEnabled?: boolean;
   dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
   paymentGateways?: PaymentGatewaysConfig;
+  heroPhrases?: HeroPhrasesConfig;
   oneclickApiKey?: string;
   chargilyApiKey?: string;
   redotpayId?: string;
@@ -58,6 +77,7 @@ const defaultSettings: StoreSettings = {
     binanceEnabled: true,
     redotpayEnabled: true,
   },
+  heroPhrases: DEFAULT_HERO_PHRASES,
   oneclickApiKey: '',
   chargilyApiKey: '',
   redotpayId: '1622725404',
@@ -96,6 +116,10 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
             oneclickEnabled: combined.paymentGateways?.oneclickEnabled ?? true,
             binanceEnabled: combined.paymentGateways?.binanceEnabled ?? true,
             redotpayEnabled: combined.paymentGateways?.redotpayEnabled ?? true,
+          },
+          heroPhrases: {
+            ...DEFAULT_HERO_PHRASES,
+            ...(combined.heroPhrases || {}),
           },
           oneclickApiKey: combined.oneclickApiKey || '',
           chargilyApiKey: combined.chargilyApiKey || '',

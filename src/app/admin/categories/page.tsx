@@ -18,6 +18,7 @@ import {
   Pencil, X, Check, Loader2, ImageOff, ChevronDown, ChevronUp, Zap
 } from 'lucide-react';
 import { logAdminActivity } from '@/lib/admin-logger';
+import HeroPhrasesEditor from '@/components/admin/HeroPhrasesEditor';
 
 interface StoreCategory {
   id: string; name: string; slug: string; emoji?: string; sortOrder: number; createdAt: number;
@@ -586,7 +587,11 @@ export default function CategoriesPage() {
   const activeProd = activeData?.type === 'product' ? activeData.prod as Prod : null;
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-6" dir="rtl">
+      {/* ── التحكم بنصوص وعبارات الواجهة الترحيبية ── */}
+      <HeroPhrasesEditor />
+
+      {/* ── أغلفة وسلايدر المتجر ── */}
       <StoreBannersManager />
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
