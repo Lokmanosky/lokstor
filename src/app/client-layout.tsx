@@ -118,8 +118,13 @@ function NavBar() {
         setSearchQuery(e.detail);
       }
     };
+    const handleOpenMenu = () => setMobileMenuOpen(true);
     window.addEventListener('store-search-query', handleGlobalSearch);
-    return () => window.removeEventListener('store-search-query', handleGlobalSearch);
+    window.addEventListener('open-mobile-menu', handleOpenMenu);
+    return () => {
+      window.removeEventListener('store-search-query', handleGlobalSearch);
+      window.removeEventListener('open-mobile-menu', handleOpenMenu);
+    };
   }, []);
 
   const handleSearchChange = (val: string) => {
@@ -311,11 +316,11 @@ function NavBar() {
         
         {/* Right (Menu Toggle & Logo & Links) */}
         <div className="flex items-center gap-1 sm:gap-4 min-w-0 flex-shrink">
-          {/* Mobile Menu Toggle Button (في الزاوية قبل صورة اللوغو) */}
+          {/* Mobile Menu Toggle Button (تم نقله إلى شريط التنقل السفلي في الجوال) */}
           <button 
             onClick={() => setMobileMenuOpen(true)}
             aria-label={t('nav.menu')}
-            className="md:hidden w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+            className="hidden w-8 h-8 sm:w-10 sm:h-10 items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text)] hover:text-emerald-500 hover:border-emerald-500/50 hover:bg-[var(--store-card)] transition-all flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
             title={t('nav.menu')}
           >
             <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--store-text)]" />
@@ -519,7 +524,7 @@ function NavBar() {
             )}
           </div>
           
-          {/* Cart Icon */}
+          {/* Cart Icon (مخفي في الجوال لوجوده في الزر العائم في الأسفل) */}
           <Link 
             href="/cart" 
             onClick={(e) => {
@@ -530,7 +535,7 @@ function NavBar() {
               }
             }}
             aria-label={t('nav.cart')} 
-            className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text-muted)] hover:text-amber-500 hover:border-amber-500/40 hover:bg-[var(--store-card)] transition-all relative flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
+            className="hidden md:flex w-8 h-8 sm:w-10 sm:h-10 items-center justify-center border border-[var(--store-border)] rounded-xl text-[var(--store-text-muted)] hover:text-amber-500 hover:border-amber-500/40 hover:bg-[var(--store-card)] transition-all relative flex-shrink-0 cursor-pointer shadow-2xs active:scale-95"
             title={t('nav.cart')}
           >
             <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />

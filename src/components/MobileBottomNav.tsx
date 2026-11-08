@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, LayoutGrid, ShoppingCart, Search, User, X } from 'lucide-react';
+import { Home, Menu, ShoppingCart, Search, User, X } from 'lucide-react';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { useTranslation } from '@/lib/i18n-context';
@@ -55,18 +55,6 @@ export function MobileBottomNav() {
   const isHome = pathname === '/';
   const isCart = pathname === '/cart';
   const isAccount = pathname === '/account';
-
-  const handleProductsClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (pathname === '/') {
-      const section = document.getElementById('products-section') || document.getElementById('categories');
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth' });
-        return;
-      }
-    }
-    router.push('/#products-section');
-  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,14 +202,15 @@ export function MobileBottomNav() {
             </span>
           </Link>
 
-          {/* 2. المنتجات (Products / Categories) */}
+          {/* 2. القائمة (Menu Drawer) */}
           <button
-            onClick={handleProductsClick}
+            onClick={() => window.dispatchEvent(new CustomEvent('open-mobile-menu'))}
             className="flex-1 flex flex-col items-center justify-center gap-1 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition-colors cursor-pointer"
+            aria-label={lang === 'ar' ? 'القائمة' : 'Menu'}
           >
-            <LayoutGrid className="w-5 h-5 stroke-[1.8] hover:scale-110 transition-transform duration-200" />
+            <Menu className="w-5 h-5 stroke-[1.8] hover:scale-110 transition-transform duration-200" />
             <span className="text-[10px] leading-tight tracking-tight">
-              {lang === 'ar' ? 'المنتجات' : 'Produits'}
+              {lang === 'ar' ? 'القائمة' : 'Menu'}
             </span>
           </button>
 
