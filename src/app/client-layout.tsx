@@ -12,6 +12,7 @@ import { auth, db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc, getDoc, increment } from 'firebase/firestore';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -952,7 +953,7 @@ function Footer() {
 function TelegramFloat() {
   const { t } = useTranslation();
   return (
-    <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 flex items-center justify-center">
+    <div className="fixed bottom-20 md:bottom-6 right-5 sm:right-6 z-40 flex items-center justify-center">
       <div className="absolute inset-0 bg-[#229ED9] rounded-full animate-ping opacity-75"></div>
       <a
         href="https://t.me/Loktech"
@@ -1033,9 +1034,10 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   return (
     <StoreSettingsProvider>
       {!isAdmin && <NavBar />}
-      <main className={!isAdmin ? "flex-grow" : "flex-grow w-full"}>{children}</main>
+      <main className={!isAdmin ? "flex-grow pb-20 md:pb-0" : "flex-grow w-full"}>{children}</main>
       {!isAdmin && <Footer />}
       {!isAdmin && <TelegramFloat />}
+      {!isAdmin && <MobileBottomNav />}
     </StoreSettingsProvider>
   );
 }
