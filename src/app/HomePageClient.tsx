@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones, LayoutGrid } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
