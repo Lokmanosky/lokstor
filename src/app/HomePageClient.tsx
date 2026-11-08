@@ -420,69 +420,103 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
       {/* 2. Products Section */}
       <section id="products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
         
-        {/* Filter Bar & Live Search */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--store-border)] pb-3">
-          {/* Category Tabs — dynamic from Firestore */}
-          <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar">
-            <button 
-              onClick={() => selectTab('all')}
-              className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'all' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-            >
-              {t('nav.all')}
-            </button>
-            {storeCategories.length > 0 ? storeCategories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => selectTab(cat.slug)}
-                className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === cat.slug ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}
-              >
-                {cat.emoji && <span className={lang === 'ar' ? 'ml-1' : 'mr-1'}>{cat.emoji}</span>}{localizeCategory(cat.name)}
-              </button>
-            )) : (
-              <>
-                <button onClick={() => selectTab('digital')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'digital' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('nav.digital')}</button>
-                <button onClick={() => selectTab('subscription')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'subscription' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('nav.subs')}</button>
-                <button onClick={() => selectTab('games')} className={`pb-2 text-sm font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'games' ? 'border-emerald-500 text-[var(--store-text)]' : 'border-transparent text-[var(--store-text-muted)] hover:text-[var(--store-text)]'}`}>{t('category.games')}</button>
-              </>
-            )}
-          </div>
-
-          {/* In-page Live Search Input */}
-          <div className="relative w-full sm:w-80">
-            <input 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearchQuery(val);
-                window.dispatchEvent(new CustomEvent('store-search-query', { detail: val }));
-                const url = new URL(window.location.href);
-                if (val.trim()) {
-                  url.searchParams.set('q', val);
-                } else {
-                  url.searchParams.delete('q');
-                }
-                window.history.replaceState({}, '', url.toString());
-              }}
-              placeholder={t('store.searchPlaceholder')}
-              className={`w-full bg-[var(--store-card)] border border-[var(--store-border)] text-sm text-[var(--store-text)] rounded-xl px-4 py-2.5 ${lang === 'ar' ? 'pr-10 pl-8' : 'pl-10 pr-8'} focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-[var(--store-text-muted)] shadow-xs`}
-            />
-            <Search className={`w-4 h-4 text-[var(--store-text-muted)] absolute ${lang === 'ar' ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none`} />
-            {searchQuery && (
-              <button 
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  window.dispatchEvent(new CustomEvent('store-search-query', { detail: '' }));
+        {/* Filter Bar & Live Search — Modern Pill Style matching reference */}
+        <div className="space-y-4">
+          {/* 1. Full-Width Rounded Pill Search Bar */}
+          <div className="relative w-full">
+            <div className="relative flex items-center w-full bg-slate-50 dark:bg-[#131417] border border-slate-200/90 dark:border-slate-800 rounded-full shadow-xs transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 px-3.5 sm:px-4 py-2 sm:py-2.5">
+              <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0 select-none" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchQuery(val);
+                  window.dispatchEvent(new CustomEvent('store-search-query', { detail: val }));
                   const url = new URL(window.location.href);
-                  url.searchParams.delete('q');
+                  if (val.trim()) {
+                    url.searchParams.set('q', val);
+                  } else {
+                    url.searchParams.delete('q');
+                  }
                   window.history.replaceState({}, '', url.toString());
                 }}
-                className={`absolute ${lang === 'ar' ? 'left-2.5' : 'right-2.5'} top-1/2 -translate-y-1/2 text-[var(--store-text-muted)] hover:text-[var(--store-text)] p-1 rounded-full hover:bg-[var(--store-border)] transition-colors`}
-                title={t('store.clearSearch')}
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                placeholder={t('store.searchPlaceholder')}
+                className="w-full bg-transparent border-none text-xs sm:text-sm text-[var(--store-text)] px-3 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium"
+              />
+              {searchQuery && (
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    window.dispatchEvent(new CustomEvent('store-search-query', { detail: '' }));
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('q');
+                    window.history.replaceState({}, '', url.toString());
+                  }}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors mx-1"
+                  title={t('store.clearSearch')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+              <div className="px-3.5 py-1.5 rounded-full bg-slate-200/70 dark:bg-slate-800 text-[11px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0 select-none">
+                {lang === 'ar' ? 'بحث' : lang === 'fr' ? 'Chercher' : 'Search'}
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Category Pills Row with Hidden Scrollbar */}
+          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <button 
+              onClick={() => selectTab('all')}
+              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                activeTab === 'all' 
+                  ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500 shadow-xs' 
+                  : 'bg-white dark:bg-[#131417] text-slate-700 dark:text-slate-300 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 font-medium hover:text-[var(--store-text)]'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 shrink-0" />
+              <span>{t('nav.all')}</span>
+            </button>
+            {storeCategories.length > 0 ? storeCategories.map(cat => {
+              const isActive = activeTab === cat.slug;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => selectTab(cat.slug)}
+                  className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                    isActive 
+                      ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500 shadow-xs' 
+                      : 'bg-white dark:bg-[#131417] text-slate-700 dark:text-slate-300 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 font-medium hover:text-[var(--store-text)]'
+                  }`}
+                >
+                  {cat.emoji && <span className="text-base leading-none shrink-0">{cat.emoji}</span>}
+                  <span>{localizeCategory(cat.name)}</span>
+                </button>
+              );
+            }) : (
+              <>
+                {['digital', 'subscription', 'games'].map((slug) => {
+                  const isActive = activeTab === slug;
+                  const label = slug === 'digital' ? t('nav.digital') : slug === 'subscription' ? t('nav.subs') : t('category.games');
+                  const emoji = slug === 'digital' ? '💻' : slug === 'subscription' ? '🔑' : '🎮';
+                  return (
+                    <button 
+                      key={slug}
+                      onClick={() => selectTab(slug)} 
+                      className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                        isActive 
+                          ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500 shadow-xs' 
+                          : 'bg-white dark:bg-[#131417] text-slate-700 dark:text-slate-300 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 font-medium hover:text-[var(--store-text)]'
+                      }`}
+                    >
+                      <span className="text-base leading-none shrink-0">{emoji}</span>
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </>
             )}
           </div>
         </div>
