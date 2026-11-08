@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, Zap, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
@@ -247,30 +247,31 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
     return () => unsub();
   }, []);
 
-    useEffect(() => {
-    async function loadProducts() {
-      try {
-        const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
-        const list: any[] = [];
-        snap.forEach(d => { const data = d.data(); if (data.status === 'draft' || data.status === 'archived') return; list.push({ id: d.id, ...data }); });
-        // Sort by admin-set sortOrder, fallback to createdAt desc
-        list.sort((a, b) => {
-          const aO = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;
-          const bO = typeof b.sortOrder === 'number' ? b.sortOrder : 999999;
-          if (aO !== bO) return aO - bO;
-          const aT = typeof a.createdAt === 'number' ? a.createdAt : Number(a.createdAt || 0);
-          const bT = typeof b.createdAt === 'number' ? b.createdAt : Number(b.createdAt || 0);
-          return bT - aT;
-        });
-        setProducts(list);
-      } catch (e) {
-        console.error("Failed to load products:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProducts();
+  useEffect(() => {
+    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list: any[] = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.status === 'draft' || data.status === 'archived') return;
+        list.push({ id: d.id, ...data });
+      });
+      // Sort by admin-set sortOrder, fallback to createdAt desc
+      list.sort((a, b) => {
+        const aO = typeof a.sortOrder === 'number' ? a.sortOrder : 999999;
+        const bO = typeof b.sortOrder === 'number' ? b.sortOrder : 999999;
+        if (aO !== bO) return aO - bO;
+        const aT = typeof a.createdAt === 'number' ? a.createdAt : Number(a.createdAt || 0);
+        const bT = typeof b.createdAt === 'number' ? b.createdAt : Number(b.createdAt || 0);
+        return bT - aT;
+      });
+      setProducts(list);
+      setLoading(false);
+    }, (e) => {
+      console.error("Failed to sync products in real time:", e);
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
   const seedProducts = async () => {
@@ -356,10 +357,6 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             
             {/* Feature Badges */}
             <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
-              <div className="flex items-center gap-2 text-[#fbbf24]">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{t('feat.instant')}</span>
-              </div>
               <div className="flex items-center gap-2 text-[#00e676]">
                 <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.secure')}</span>
@@ -401,10 +398,6 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
             
             {/* Feature Badges */}
             <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
-              <div className="flex items-center gap-2 text-[#f59e0b]">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{t('feat.instant')}</span>
-              </div>
               <div className="flex items-center gap-2 text-[#00c853]">
                 <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.secure')}</span>

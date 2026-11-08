@@ -146,24 +146,23 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }, [isImagePreviewOpen]);
 
   useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const docRef = doc(db, 'products', productId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProduct({ id: docSnap.id, ...docSnap.data() } as Product);
-        } else {
-          const seed = INITIAL_PRODUCTS.find((p) => p.id === productId);
-          if (seed) setProduct(seed);
-        }
-      } catch (err) {
+    if (!productId) return;
+    const docRef = doc(db, 'products', productId);
+    const unsub = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setProduct({ id: docSnap.id, ...docSnap.data() } as Product);
+      } else {
         const seed = INITIAL_PRODUCTS.find((p) => p.id === productId);
         if (seed) setProduct(seed);
-      } finally {
-        setLoading(false);
       }
-    }
-    fetchProduct();
+      setLoading(false);
+    }, (err) => {
+      console.error("Failed to sync product in real time:", err);
+      const seed = INITIAL_PRODUCTS.find((p) => p.id === productId);
+      if (seed) setProduct(seed);
+      setLoading(false);
+    });
+    return () => unsub();
   }, [productId]);
 
   // Determine active variants (from Firestore or default fallback for game recharge products)

@@ -1,7 +1,8 @@
 import HomePageClient from './HomePageClient';
 import { adminDb } from '@/lib/firebaseAdmin';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function Page() {
   let products: any[] = [];
