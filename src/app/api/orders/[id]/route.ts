@@ -104,7 +104,7 @@ export async function GET(
     }
 
     // Auto-verify with OneClickDz API if pending and oneclickPaymentRef exists
-    if (order.status !== 'paid' && (order as any).oneclickPaymentRef && isOneClickConfigured()) {
+    if (order.status !== 'paid' && (order as any).oneclickPaymentRef) {
       try {
         let customOneClickKey = '';
         if (adminDb) {
@@ -116,12 +116,14 @@ export async function GET(
           } catch (err) {}
         }
 
-        const onecheck = await checkOneClickPayment((order as any).oneclickPaymentRef, customOneClickKey);
-        if (onecheck.success && onecheck.isPaid) {
-          const paidAmount = Number(order.productPrice || (order as any).amount || 0);
-          const deliveryResult = await processOrderDelivery(orderId, paidAmount, 'oneclick');
-          if (deliveryResult.success && deliveryResult.orderData) {
-            order = { ...order, ...deliveryResult.orderData } as Order;
+        if (isOneClickConfigured(customOneClickKey)) {
+          const onecheck = await checkOneClickPayment((order as any).oneclickPaymentRef, customOneClickKey);
+          if (onecheck.success && onecheck.isPaid) {
+            const paidAmount = Number(order.productPrice || (order as any).amount || 0);
+            const deliveryResult = await processOrderDelivery(orderId, paidAmount, 'oneclick');
+            if (deliveryResult.success && deliveryResult.orderData) {
+              order = { ...order, ...deliveryResult.orderData } as Order;
+            }
           }
         }
       } catch (ocErr) {

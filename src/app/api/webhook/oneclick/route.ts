@@ -50,7 +50,17 @@ export async function POST(req: NextRequest) {
     // Verify payment status with OneClickDz API
     const refToCheck = paymentRef || orderData.oneclickPaymentRef;
     if (refToCheck) {
-      const verifyResult = await checkOneClickPayment(refToCheck);
+      let customOneClickKey = '';
+      if (adminDb) {
+        try {
+          const privateSnap = await adminDb.collection('settings').doc('private').get();
+          if (privateSnap.exists) {
+            customOneClickKey = privateSnap.data()?.oneclickApiKey || '';
+          }
+        } catch (err) {}
+      }
+
+      const verifyResult = await checkOneClickPayment(refToCheck, customOneClickKey);
       if (!verifyResult.success || !verifyResult.isPaid) {
         console.warn('OneClick webhook verification was not confirmed:', verifyResult);
         return NextResponse.json({ success: false, message: 'Payment not confirmed' }, { status: 400 });
