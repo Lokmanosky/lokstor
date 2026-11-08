@@ -77,7 +77,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   ];
 
   return (
-    <aside className={`fixed top-0 right-0 h-full z-40 bg-[var(--admin-sidebar)] border-l border-[var(--admin-border)] flex flex-col transition-all duration-300 ${
+    <aside className={`fixed top-0 right-0 h-full z-50 bg-[var(--admin-sidebar)] border-l border-[var(--admin-border)] flex flex-col transition-all duration-300 ${
       isMobile ? (open ? 'w-64 translate-x-0' : 'w-64 translate-x-full') : (open ? 'w-64' : 'w-16')
     }`}>
       {/* Sidebar Header: Arrow on Right (Start in RTL), Lokstor on Left (End in RTL) */}
@@ -114,7 +114,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 py-4 space-y-1.5 px-2 overflow-y-auto">
+      <nav className="flex-1 py-4 space-y-1.5 px-2 overflow-y-auto no-scrollbar">
         {/* Top return to store */}
         <div className="pb-2 mb-2 border-b border-[var(--admin-border)]">
           <Link

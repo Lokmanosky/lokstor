@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminTopBar from '@/components/admin/AdminTopBar';
+import AdminBottomNav from '@/components/admin/AdminBottomNav';
 import OrderNotification from '@/components/admin/OrderNotification';
 import { Loader2, ShieldAlert, ArrowRight, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
@@ -138,10 +139,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }}
       >
         <AdminTopBar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isLoginPage={false} />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto bg-[var(--admin-bg)] min-w-0">
+        <main className="flex-1 p-4 sm:p-6 pb-24 md:pb-6 overflow-y-auto bg-[var(--admin-bg)] min-w-0">
           {children}
         </main>
       </div>
+      <AdminBottomNav />
       <OrderNotification />
     </div>
   );
