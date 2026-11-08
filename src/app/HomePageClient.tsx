@@ -95,62 +95,59 @@ function BannersCarousel({ banners, children }: { banners: any[], children?: Rea
     if (banners.length <= 1) return;
     const interval = setInterval(() => {
       setCurrent(c => (c + 1) % banners.length);
-    }, 4500);
+    }, 4000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
   if (!banners.length) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-2 sm:mt-4 mb-3 sm:mb-5">
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl shadow-slate-200/60 dark:shadow-black/70 border border-slate-200/90 dark:border-slate-800 bg-slate-950 sm:aspect-[24/9] md:aspect-[28/9]">
-        {banners.map((b, i) => (
+    <div className="relative w-full max-w-7xl mx-auto mb-0 sm:mt-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl sm:aspect-[24/9] md:aspect-[28/9] bg-black">
+      {banners.map((b, i) => (
+        <div 
+          key={b.id} 
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+        >
+          {/* Blurred Background */}
           <div 
-            key={b.id} 
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${i === current ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-          >
-            {/* Blurred Background to soften edges and fill letterboxing */}
-            <div 
-              className="absolute inset-0 bg-center bg-cover blur-2xl scale-125 opacity-40" 
-              style={{ backgroundImage: `url('${b.imageUrl}')` }}
+            className="absolute inset-0 bg-center bg-cover blur-2xl scale-125 opacity-50" 
+            style={{ backgroundImage: `url('${b.imageUrl}')` }}
+          />
+          {/* Main Image - Full uncropped view */}
+          <Link href={b.link || '#'}>
+            <img 
+              src={b.imageUrl} 
+              alt="Banner" 
+              className="absolute inset-0 w-full h-full object-contain drop-shadow-2xl" 
             />
-            {/* Main Image */}
-            <Link href={b.link || '#'}>
-              <img 
-                src={b.imageUrl} 
-                alt="Banner" 
-                className="absolute inset-0 w-full h-full object-cover sm:object-contain drop-shadow-2xl" 
-              />
-            </Link>
-          </div>
-        ))}
-        
-        {/* Soft dynamic gradient overlay - smoothly adapts for light & dark modes */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/35 z-20 pointer-events-none" />
+          </Link>
+        </div>
+      ))}
+      
+      {/* Dark Overlay for Text Readability */}
+      <div className="absolute inset-0 bg-black/60 z-20 pointer-events-none" />
 
-        {/* Children Content (Hero text) - Relative on mobile to expand parent dynamically! */}
-        {children && (
-          <div className="relative sm:absolute sm:inset-0 z-30 flex items-center justify-center p-4 py-6 sm:py-4 w-full">
-            <div className="w-full text-center">
-              {children}
-            </div>
+      {/* Children Content (Hero text) - Relative on mobile to expand parent dynamically! */}
+      {children && (
+        <div className="relative sm:absolute sm:inset-0 z-30 flex items-center justify-center p-4 py-6 sm:py-4 w-full">
+          <div className="w-full text-center">
+            {children}
           </div>
-        )}
-        
-        {/* Navigation Dots */}
-        {banners.length > 1 && (
-          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-40 flex gap-1.5 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10">
-            {banners.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrent(i)}
-                aria-label={`Slide ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${i === current ? 'bg-white w-4' : 'bg-white/40 w-2 hover:bg-white/70'}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      
+      {/* Navigation Dots */}
+      {banners.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-sm">
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`w-2 h-2 rounded-full transition-all ${i === current ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/80'}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -338,43 +335,44 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
       {banners.length > 0 ? (
         <>
         <BannersCarousel banners={banners}>
-          <div className="max-w-4xl mx-auto text-center space-y-2.5 sm:space-y-4 pointer-events-none drop-shadow-lg scale-95 sm:scale-100">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/20 text-[11px] sm:text-xs font-semibold text-white/95 bg-black/40 backdrop-blur-md shadow-sm">
+          <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 pointer-events-none drop-shadow-lg scale-90 sm:scale-100">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/20 text-xs font-medium text-white/90 bg-black/40 backdrop-blur-md shadow-sm">
               <span>{t('hero.badge')}</span>
             </div>
             
-            <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-white tracking-tight leading-snug">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-snug">
               <span className="block">
-                {t('hero.title1')} <span className="text-[var(--store-primary)] drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]">{t('hero.title2')}</span>
+                {t('hero.title1')} <span className="text-[var(--store-primary)] drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">{t('hero.title2')}</span>
               </span>
-              <span className="block mt-0.5 sm:mt-1">
+              <span className="block mt-1 sm:mt-2">
                 {t('hero.title3')}
               </span>
             </h1>
             
-            <p className="text-xs sm:text-base md:text-lg text-white/85 max-w-xl sm:max-w-2xl mx-auto font-medium leading-relaxed">
+            
+            <p className="text-xs sm:text-base md:text-lg text-white/80 max-w-xl sm:max-w-2xl mx-auto font-medium leading-relaxed">
               {t('hero.desc')}
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-1 flex flex-wrap justify-center gap-2 sm:gap-4 text-xs sm:text-sm text-white font-bold">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-amber-300 shadow-sm">
-                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+            <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-white/90 font-bold drop-shadow-md">
+              <div className="flex items-center gap-2 text-[#fbbf24]">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.instant')}</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-emerald-300 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <div className="flex items-center gap-2 text-[#00e676]">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.secure')}</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/15 text-indigo-300 shadow-sm">
-                <Headphones className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-300" />
+              <div className="flex items-center gap-2 text-[#818cf8]">
+                <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.support')}</span>
               </div>
             </div>
           </div>
         </BannersCarousel>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-6 sm:mb-8">
-          <div className="rounded-xl overflow-hidden border border-slate-200/80 dark:border-white/10 shadow-sm bg-slate-100 dark:bg-[#131417]">
+        <div className="max-w-7xl mx-auto mb-8 sm:mt-2">
+          <div className="border-y sm:border sm:rounded-xl overflow-hidden border-black/5 dark:border-white/5 shadow-sm">
             <TopTicker />
           </div>
         </div>
@@ -396,29 +394,30 @@ function HomePageContent({ initialProducts, initialCategories, initialBanners }:
               </span>
             </h1>
             
+            
             <p className="text-sm sm:text-lg text-[var(--store-text-muted)] max-w-2xl mx-auto font-medium leading-relaxed">
               {t('hero.desc')}
             </p>
             
             {/* Feature Badges */}
-            <div className="pt-1 flex flex-wrap justify-center gap-2 sm:gap-4 text-xs sm:text-sm font-bold">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm">
-                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <div className="pt-0 sm:pt-1 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm sm:text-base text-[var(--store-text-muted)] font-bold">
+              <div className="flex items-center gap-2 text-[#f59e0b]">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.instant')}</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <div className="flex items-center gap-2 text-[#00c853]">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.secure')}</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-sm">
-                <Headphones className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <div className="flex items-center gap-2 text-[#6366f1]">
+                <Headphones className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{t('feat.support')}</span>
               </div>
             </div>
           </div>
         </section>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-6 sm:mb-8 mt-3">
-          <div className="rounded-xl overflow-hidden border border-slate-200/80 dark:border-white/10 shadow-sm bg-slate-100 dark:bg-[#131417]">
+        <div className="max-w-7xl mx-auto mb-8 mt-3">
+          <div className="border-y sm:border sm:rounded-xl overflow-hidden border-black/5 dark:border-white/5 shadow-sm">
             <TopTicker />
           </div>
         </div>
