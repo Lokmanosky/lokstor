@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore';
 import {
   DndContext, DragOverlay, closestCorners,
-  PointerSensor, TouchSensor, useSensor, useSensors,
+  MouseSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
   SortableContext, useSortable, arrayMove, rectSortingStrategy, verticalListSortingStrategy,
@@ -15,7 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   Plus, Trash2, GripVertical, Package, FolderOpen, Upload,
-  Pencil, X, Check, Loader2, ImageOff, ChevronDown, ChevronUp, Zap
+  Pencil, X, Check, Loader2, ImageOff, ChevronDown, ChevronUp, Zap, FolderInput
 } from 'lucide-react';
 import { logAdminActivity } from '@/lib/admin-logger';
 import HeroPhrasesEditor from '@/components/admin/HeroPhrasesEditor';
@@ -30,7 +30,15 @@ interface Prod {
 }
 
 // ── Draggable product card ───────────────────────────────────────────────────
-function ProdCard({ prod, isOverlay }: { prod: Prod; isOverlay?: boolean }) {
+function ProdCard({ 
+  prod, 
+  isOverlay, 
+  onQuickMove 
+}: { 
+  prod: Prod; 
+  isOverlay?: boolean; 
+  onQuickMove?: (prod: Prod) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: 'prod:' + prod.id,
     data: { type: 'product', prod },
@@ -45,12 +53,29 @@ function ProdCard({ prod, isOverlay }: { prod: Prod; isOverlay?: boolean }) {
         'border-[var(--admin-border)] hover:border-[var(--admin-primary)]/60 hover:shadow-md'
       )}
     >
+      {/* Drag handle (visible on mobile touch, hover on desktop) */}
       <div {...attributes} {...listeners}
-        className="absolute top-1 right-1 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-1 right-1 z-10 cursor-grab active:cursor-grabbing p-1.5 sm:p-1 rounded-md bg-black/70 sm:bg-black/50 text-white opacity-85 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity touch-none shadow-xs"
         title="اسحب لتغيير مكان المنتج"
       >
-        <GripVertical className="w-3 h-3" />
+        <GripVertical className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
       </div>
+
+      {/* Quick Move Button for Mobile & Desktop */}
+      {onQuickMove && !isOverlay && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickMove(prod);
+          }}
+          className="absolute top-1 left-1 z-10 p-1.5 sm:p-1 rounded-md bg-black/70 sm:bg-black/50 text-white opacity-85 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-xs hover:bg-[var(--admin-primary)] hover:text-[var(--admin-bg)]"
+          title="نقل المنتج لقسم آخر سريعاً"
+        >
+          <FolderInput className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+        </button>
+      )}
+
       <div className="aspect-square bg-[var(--admin-bg)] flex items-center justify-center overflow-hidden">
         {img
           ? <img src={img} alt={prod.name} className="w-full h-full object-contain" />
@@ -69,10 +94,11 @@ function ProdCard({ prod, isOverlay }: { prod: Prod; isOverlay?: boolean }) {
 
 // ── Category section (sortable) ──────────────────────────────────────────────
 function CategorySection({
-  cat, prods, onDelete, onRename, isOverlay,
+  cat, prods, onDelete, onRename, isOverlay, onQuickMove,
 }: {
   cat: StoreCategory; prods: Prod[]; onDelete: () => void;
   onRename: (name: string, emoji: string) => void; isOverlay?: boolean;
+  onQuickMove?: (prod: Prod) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: 'cat:' + cat.id,
@@ -97,7 +123,7 @@ function CategorySection({
       <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--admin-bg)] border-b border-[var(--admin-border)]">
         {/* Cat drag handle */}
         <div {...attributes} {...listeners}
-          className="cursor-grab active:cursor-grabbing text-[var(--admin-text-muted)] hover:text-[var(--admin-primary)] transition-colors flex-shrink-0"
+          className="cursor-grab active:cursor-grabbing text-[var(--admin-text-muted)] hover:text-[var(--admin-primary)] transition-colors flex-shrink-0 touch-none p-1.5 -m-1"
           title="اسحب لإعادة ترتيب القسم"
         >
           <GripVertical className="w-5 h-5" />
@@ -150,7 +176,7 @@ function CategorySection({
           ) : (
             <SortableContext items={prodIds} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-                {prods.map(p => <ProdCard key={p.id} prod={p} />)}
+                {prods.map(p => <ProdCard key={p.id} prod={p} onQuickMove={onQuickMove} />)}
               </div>
             </SortableContext>
           )}
@@ -322,6 +348,9 @@ export default function CategoriesPage() {
   const [newEmoji, setNewEmoji] = useState('📦');
   const [adding, setAdding] = useState(false);
 
+  // Quick move product modal
+  const [movingProd, setMovingProd] = useState<Prod | null>(null);
+
   const EMOJI_PRESETS = ['📦','🎮','🔑','📱','💻','🎵','📺','🎓','📚','🎁','⭐','🛡️','⚡','🔥','🎨','🏆','🌐','🎯'];
 
   // Realtime subscriptions
@@ -367,11 +396,37 @@ export default function CategoriesPage() {
     return grouped;
   }, [cats, prods]);
 
-  // DnD sensors
+  // DnD sensors (MouseSensor for desktop mouse, TouchSensor for touch screens)
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   );
+
+  const handleQuickMove = async (targetCat: StoreCategory) => {
+    if (!movingProd) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'products', movingProd.id), {
+        type: targetCat.slug,
+        category: targetCat.name,
+        sortOrder: (prodsByCat[targetCat.id] || []).length,
+      });
+      notify(`تم نقل "${movingProd.name}" إلى قسم ${targetCat.name}`);
+      await logAdminActivity({
+        category: 'categories',
+        actionType: 'reorder',
+        title: `نقل سريع لمنتج: ${targetCat.name}`,
+        description: `تم نقل المنتج "${movingProd.name}" إلى قسم "${targetCat.name}"`,
+        targetId: movingProd.id,
+        targetName: movingProd.name,
+      });
+      setMovingProd(null);
+    } catch (e: any) {
+      notify('فشل النقل: ' + (e?.message || 'خطأ'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const catIds = cats.map(c => 'cat:' + c.id);
 
@@ -706,6 +761,7 @@ export default function CategoriesPage() {
                   <CategorySection key={cat.id} cat={cat} prods={prodsByCat[cat.id] || []}
                     onDelete={() => handleDeleteCat(cat)}
                     onRename={(name, emoji) => handleRename(cat, name, emoji)}
+                    onQuickMove={setMovingProd}
                   />
                 ))
               )}
@@ -726,7 +782,9 @@ export default function CategoriesPage() {
               <div className="p-3">
                 <SortableContext items={(prodsByCat['__uncategorized__'] || []).map(p => 'prod:' + p.id)} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-                    {(prodsByCat['__uncategorized__'] || []).map(p => <ProdCard key={p.id} prod={p} />)}
+                    {(prodsByCat['__uncategorized__'] || []).map(p => (
+                      <ProdCard key={p.id} prod={p} onQuickMove={setMovingProd} />
+                    ))}
                   </div>
                 </SortableContext>
               </div>
@@ -742,6 +800,74 @@ export default function CategoriesPage() {
             {activeProd && <ProdCard prod={activeProd} isOverlay />}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {/* Quick Move Product Modal (Mobile Friendly) */}
+      {movingProd && (
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={(e) => e.target === e.currentTarget && setMovingProd(null)}
+        >
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] flex flex-col" dir="rtl">
+            <div className="flex items-center justify-between border-b border-[var(--admin-border)] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--admin-text)] flex items-center gap-2">
+                  <FolderInput className="w-4 h-4 text-[var(--admin-primary)]" />
+                  <span>نقل المنتج إلى قسم آخر</span>
+                </h3>
+                <p className="text-xs text-[var(--admin-text-muted)] mt-0.5 truncate max-w-[280px]">
+                  {movingProd.name}
+                </p>
+              </div>
+              <button 
+                onClick={() => setMovingProd(null)}
+                className="p-1.5 rounded-lg text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5 overflow-y-auto flex-1 no-scrollbar py-1">
+              <p className="text-[11px] text-[var(--admin-text-muted)] mb-2 font-medium">اختر القسم المستهدف:</p>
+              {cats.map(c => {
+                const isCurrent = movingProd.type === c.slug || movingProd.category === c.name;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleQuickMove(c)}
+                    disabled={isCurrent || saving}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-right ${
+                      isCurrent 
+                        ? 'bg-[var(--admin-hover)] border-[var(--admin-primary)]/40 opacity-60 cursor-default'
+                        : 'bg-[var(--admin-bg)] border-[var(--admin-border)] hover:border-[var(--admin-primary)] hover:bg-[var(--admin-hover)] active:scale-[0.99]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{c.emoji || '📦'}</span>
+                      <span className="text-sm font-semibold text-[var(--admin-text)]">{c.name}</span>
+                    </div>
+                    {isCurrent ? (
+                      <span className="text-xs text-[var(--admin-primary)] font-bold">القسم الحالي</span>
+                    ) : (
+                      <span className="text-xs text-[var(--admin-text-muted)]">{(prodsByCat[c.id] || []).length} منتج</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-[var(--admin-border)]">
+              <button
+                type="button"
+                onClick={() => setMovingProd(null)}
+                className="w-full py-2.5 rounded-xl border border-[var(--admin-border)] text-sm font-medium text-[var(--admin-text-muted)] hover:bg-[var(--admin-hover)] transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Info bar */}

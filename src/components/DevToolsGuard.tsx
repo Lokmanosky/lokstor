@@ -22,6 +22,16 @@ function hasTextSelected(): boolean {
   return !!(sel && sel.toString().trim().length > 0);
 }
 
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.innerWidth < 768 ||
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  );
+}
+
 export default function DevToolsGuard() {
   const [menu, setMenu] = useState<MenuPos | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -41,7 +51,12 @@ export default function DevToolsGuard() {
     if (!isProd) return;
 
     const handleContextMenu = (e: MouseEvent) => {
-      // Show menu if: inside editable field OR there is selected text
+      // On mobile / Android: do not block or show custom menu, let native Android copy/paste work!
+      if (isMobileDevice()) {
+        return;
+      }
+
+      // Show menu on PC/Desktop if: inside editable field OR there is selected text
       if (isEditableTarget(e.target) || hasTextSelected()) {
         e.preventDefault();
 
@@ -54,7 +69,7 @@ export default function DevToolsGuard() {
 
         setMenu({ x, y });
       } else {
-        // Everywhere else: silent block
+        // Everywhere else on PC: silent block
         e.preventDefault();
         setMenu(null);
       }
@@ -118,7 +133,7 @@ export default function DevToolsGuard() {
           ref={menuRef}
           onClick={(e) => e.stopPropagation()}
           style={{ position: 'fixed', top: menu.y, left: menu.x, zIndex: 99999 }}
-          className="w-40 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden text-sm select-none"
+          className="hidden md:block w-40 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden text-sm select-none"
         >
           <button
             onClick={handleCut}
