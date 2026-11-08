@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
-import { sendChargilyPaidEmails } from '@/lib/email';
-import { adminMessaging } from '@/lib/firebase-admin';
 import { processOrderDelivery } from '@/lib/delivery';
 
 export async function POST(req: NextRequest) {
@@ -61,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'No order_id in metadata' }, { status: 400 });
     }
 
-    // 2. Fetch Order Data (Supporting both adminDb and client SDK fallback)
+    // 2. Fetch Order Data
     if (!adminDb) {
       console.error('Firebase Admin not initialized in webhook');
       return NextResponse.json({ success: false, message: 'Server configuration error' }, { status: 500 });
@@ -114,7 +110,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Order marked for manual delivery due to mismatch' });
     }
 
-    // 3. Fulfill Order via shared delivery function
+    // 3. Fulfill Order via shared delivery function (automatically dispatches emails & notifications)
     const deliveryResult = await processOrderDelivery(orderId, paidAmount, paymentMethodDetail);
     
     if (!deliveryResult.success) {
@@ -123,126 +119,6 @@ export async function POST(req: NextRequest) {
 
     if (deliveryResult.status === 200 && deliveryResult.message === 'Already processed') {
       return NextResponse.json({ success: true, message: 'Already processed', status: deliveryResult.orderStatus });
-    }
-
-    const orderUpdate = deliveryResult.orderData;
-    const downloadUrl = deliveryResult.deliveredLink || orderData.downloadUrl;
-
-    // 5. Create in-app Notification for Admin
-    try {
-      const notifData = {
-        title: 'طلب جديد مدفوع! 🎉',
-        message: `تم دفع طلب بقيمة ${paidAmount} د.ج بنجاح عبر شارجيلي (${paymentMethodDetail})!`,
-        type: 'success',
-        read: false,
-        createdAt: Date.now(),
-        orderId: orderId,
-      };
-
-      if (adminDb) {
-        await adminDb.collection('notifications').add(notifData);
-      }
-    } catch (nErr) {
-      console.warn('Failed to create notification:', nErr);
-    }
-
-    // 6. Send Notification & Confirmation Emails via Resend (Admin + Customer)
-    try {
-      if (!orderData.chargilyEmailsSent) {
-        await sendChargilyPaidEmails({
-          order: {
-            id: orderId,
-            productName: orderData.productName || 'منتج رقمي',
-            customerName: orderData.customerName || 'عميل',
-            customerEmail: orderData.customerEmail || '',
-            customerPhone: orderData.customerPhone,
-            customFieldsData: orderData.customFieldsData,
-            ...orderData,
-            ...orderUpdate,
-          },
-          paidAmount,
-          paymentMethodDetail,
-          downloadUrl: downloadUrl || undefined,
-        });
-
-        if (adminDb) {
-          await adminDb.collection('orders').doc(orderId).update({ chargilyEmailsSent: true });
-        }
-      }
-    } catch (eErr) {
-      console.warn('Failed to dispatch Chargily paid emails:', eErr);
-    }
-
-    // 7. Send Push Notifications (FCM)
-    try {
-      if (adminMessaging) {
-        const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://lokstor.vercel.app';
-        const baseUrl = (rawBaseUrl.includes('localhost') || rawBaseUrl.includes('127.0.0.1'))
-          ? 'https://lokstor.vercel.app'
-          : rawBaseUrl.replace(/\/$/, '');
-        
-        // Notify Customer
-        if (orderData.fcmToken) {
-          await adminMessaging.send({
-            token: orderData.fcmToken,
-            notification: {
-              title: 'تم تأكيد الدفع بنجاح ✅',
-              body: `تم الدفع بنجاح لطلبك #${orderId.replace('ord_', '').slice(0,8)}. اضغط هنا لعرض تفاصيل الطلب.`,
-            },
-            data: {
-              url: `${baseUrl}/account/orders`,
-            },
-            webpush: {
-              fcmOptions: {
-                link: `${baseUrl}/account/orders`
-              }
-            }
-          }).catch((e: any) => console.warn('Customer push failed:', e));
-        }
-
-        // Notify Admins
-        let adminTokens: string[] = [];
-        if (adminDb) {
-          const adminsSnap = await adminDb.collection('users').where('role', '==', 'admin').get();
-          const ownerSnap = await adminDb.collection('users').where('email', 'in', ['loktech.dz@gmail.com', 'admin@lokstor.dz', 'admin@lokstor.com']).get();
-          
-          const tokenSet = new Set<string>();
-          adminsSnap.docs.forEach((d: any) => { if (d.data().fcmToken) tokenSet.add(d.data().fcmToken); });
-          ownerSnap.docs.forEach((d: any) => { if (d.data().fcmToken) tokenSet.add(d.data().fcmToken); });
-          adminTokens = Array.from(tokenSet);
-        }
-        if (adminTokens.length > 0) {
-          const notifTitle = 'دفع جديد ناجح 💰';
-          const notifBody = `تم دفع ${paidAmount} د.ج لطلب #${orderId.replace('ord_', '').slice(0,8)} عبر شارجيلي.`;
-          const notifUrl = `${baseUrl}/admin/orders?search=${orderId}`;
-
-          await adminMessaging.sendEachForMulticast({
-            tokens: adminTokens,
-            data: {
-              title: notifTitle,
-              body: notifBody,
-              url: notifUrl,
-              tag: 'lokstor-order',
-              orderId: String(orderId || ''),
-              sound: 'default'
-            },
-            webpush: {
-              headers: {
-                Urgency: 'high',
-                TTL: '86400'
-              },
-              fcmOptions: {
-                link: notifUrl
-              }
-            },
-            android: {
-              priority: 'high'
-            }
-          }).catch((e: any) => console.warn('Admin push failed:', e));
-        }
-      }
-    } catch (pushErr) {
-      console.warn('Failed to dispatch push notifications:', pushErr);
     }
 
     return NextResponse.json({ success: true, message: 'Order fulfilled successfully' });

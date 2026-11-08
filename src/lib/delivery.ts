@@ -1,6 +1,6 @@
 import { adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
-import nodemailer from 'nodemailer';
+import { handleOrderPaidNotifications } from '@/lib/order-notifications';
 
 export async function processOrderDelivery(orderId: string, paidAmount: number, paymentMethodDetail: string) {
   if (!adminDb) {
@@ -129,31 +129,20 @@ export async function processOrderDelivery(orderId: string, paidAmount: number, 
     };
   });
 
-  // After transaction, send email backup if delivered
-  if (result.success && result.deliveredLink && result.orderData.customerEmail) {
+  // After transaction, dispatch notifications & emails (admin + customer) across all gateways
+  if (result.success && result.message !== 'Already processed' && result.orderData) {
     try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.GMAIL_USER,
-          pass: process.env.GMAIL_APP_PASSWORD,
-        },
+      await handleOrderPaidNotifications({
+        orderId,
+        orderData: result.orderData,
+        paidAmount,
+        paymentMethod: result.orderData.paymentMethod || (paymentMethodDetail === 'oneclick' ? 'oneclick' : paymentMethodDetail === 'chargily' ? 'chargily' : undefined),
+        paymentMethodDetail,
+        downloadUrl: result.deliveredLink || result.orderData.downloadUrl,
       });
-
-      const mailOptions = {
-        from: process.env.GMAIL_USER,
-        to: result.orderData.customerEmail,
-        subject: `Your Lokstor Order Delivery (#${orderId.replace('ord_', '').slice(0, 8)})`,
-        text: `Thank you for your purchase!\n\nYour product (${result.orderData.productName}) has been delivered.\n\nActivation Link/File:\n${result.deliveredLink}\n\nThank you for using Lokstor!`,
-      };
-
-      await transporter.sendMail(mailOptions);
-      
-      // Mark as email sent
-      await adminDb.collection('orders').doc(orderId).update({ deliveryEmailSent: true });
     } catch (e) {
-      console.error('Delivery email backup failed', e);
-      // Never block or rollback on email fail
+      console.error('Failed to dispatch order paid notifications in processOrderDelivery:', e);
+      // Never block or rollback on notification fail
     }
   }
 

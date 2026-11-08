@@ -34,6 +34,7 @@ export interface OrderEmailData {
   paidAt?: number | string;
   createdAt?: number | string;
   chargilyEmailsSent?: boolean;
+  paidEmailsSent?: boolean;
   downloadUrl?: string;
 }
 
@@ -104,22 +105,87 @@ function formatDateTime(timestamp?: number | string): string {
   });
 }
 
+/**
+ * Cleanly format payment method name for emails & alerts across all gateways
+ */
+export function formatPaymentMethod(method?: string, details?: string): string {
+  const m = (method || '').toLowerCase().trim();
+  const d = (details || '').toLowerCase().trim();
+
+  // OneClickDz (Navio)
+  if (m === 'oneclick' || d.includes('oneclick')) {
+    if (d.includes('edahabia') || d.includes('dahabia')) {
+      return 'البطاقة الذهبية (ون كليك - OneClickDz)';
+    }
+    if (d.includes('cib')) {
+      return 'بطاقة CIB (ون كليك - OneClickDz)';
+    }
+    return 'ون كليك (OneClickDz)';
+  }
+
+  // Chargily Pay
+  if (m === 'chargily' || d.includes('chargily')) {
+    if (d.includes('edahabia') || d.includes('dahabia')) {
+      return 'البطاقة الذهبية (شارجيلي - Chargily Pay)';
+    }
+    if (d.includes('cib')) {
+      return 'بطاقة بنكية CIB (شارجيلي - Chargily Pay)';
+    }
+    return 'شارجيلي (Chargily Pay)';
+  }
+
+  // Cards without gateway specified
+  if (d.includes('edahabia') || d.includes('dahabia')) {
+    return 'البطاقة الذهبية (Edahabia)';
+  }
+  if (d.includes('cib')) {
+    return 'بطاقة بنكية (CIB)';
+  }
+
+  // Binance
+  if (m === 'binance' || d.includes('binance')) {
+    return 'بايننس (Binance Pay / USDT)';
+  }
+
+  // RedotPay
+  if (m === 'redotpay' || d.includes('redotpay')) {
+    return 'ريدوت باي (RedotPay)';
+  }
+
+  // Manual approval
+  if (d.includes('manual') || m === 'manual') {
+    return 'تأكيد يدوي (لوحة التحكم)';
+  }
+
+  return details || method || 'دفع إلكتروني آمن';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Template: Admin Notification for Paid Chargily Order
+// 1. Template: Admin Notification for Paid Order (All Gateways: Chargily, OneClick, etc.)
 // ─────────────────────────────────────────────────────────────────────────────
-function renderAdminChargilyPaidHtml(params: {
+function renderAdminOrderPaidHtml(params: {
   order: OrderEmailData;
   paidAmount: number;
+  paymentMethod?: string;
   paymentMethodDetail?: string;
   adminOrderUrl: string;
 }): string {
-  const { order, paidAmount, paymentMethodDetail, adminOrderUrl } = params;
+  const { order, paidAmount, paymentMethod, paymentMethodDetail, adminOrderUrl } = params;
   const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
-  const paymentBadge = paymentMethodDetail?.toLowerCase().includes('edahabia')
-    ? 'البطاقة الذهبية (Edahabia)'
-    : paymentMethodDetail?.toLowerCase().includes('cib')
-    ? 'بطاقة بنكية (CIB)'
-    : 'شارجيلي (Chargily Pay)';
+  const effectiveMethod = paymentMethod || order.paymentMethod;
+  const effectiveDetail = paymentMethodDetail || order.paymentMethodDetails;
+  const paymentBadge = formatPaymentMethod(effectiveMethod, effectiveDetail);
+
+  let verificationNote = 'تم التحقق من عملية الدفع وتأكيد الطلب آلياً بنجاح.';
+  const m = (effectiveMethod || '').toLowerCase();
+  const d = (effectiveDetail || '').toLowerCase();
+  if (m === 'oneclick' || d.includes('oneclick')) {
+    verificationNote = 'تم التحقق من العملية وتأكيدها آلياً عبر بوابة ون كليك (OneClickDz).';
+  } else if (m === 'chargily' || d.includes('chargily')) {
+    verificationNote = 'تم التحقق من العملية وتأكيدها آلياً عبر بوابة شارجيلي (Chargily Pay).';
+  } else if (m === 'binance' || m === 'redotpay') {
+    verificationNote = `تم تأكيد استلام الدفعة بنجاح عبر ${paymentBadge}.`;
+  }
 
   const customFieldsRows = order.customFieldsData && typeof order.customFieldsData === 'object'
     ? Object.entries(order.customFieldsData)
@@ -135,7 +201,7 @@ function renderAdminChargilyPaidHtml(params: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <meta name="supported-color-schemes" content="light dark">
-  <title>دفع جديد ناجح عبر شارجيلي</title>
+  <title>دفع جديد ناجح: طلب #${shortId}</title>
   <style>
     * { box-sizing: border-box; }
     body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
@@ -162,7 +228,7 @@ function renderAdminChargilyPaidHtml(params: {
       <!-- Alert Badge -->
       <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
         <div style="font-weight:700;color:#065f46;font-size:13px;">🎉 تم تأكيد دفع الطلب بنجاح!</div>
-        <div style="color:#047857;font-size:11px;margin-top:2px;">تم التحقق من العملية وتأكيدها آلياً عبر Chargily Webhook.</div>
+        <div style="color:#047857;font-size:11px;margin-top:2px;">${verificationNote}</div>
       </div>
 
       <!-- Order Summary Table -->
@@ -232,17 +298,27 @@ function renderAdminChargilyPaidHtml(params: {
   `;
 }
 
+// Backward compatibility alias
+const renderAdminChargilyPaidHtml = renderAdminOrderPaidHtml;
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Template: Customer Confirmation for Paid Chargily Order (Invoice/Receipt)
+// 2. Template: Customer Confirmation for Paid Order (Invoice/Receipt - All Gateways)
 // ─────────────────────────────────────────────────────────────────────────────
-function renderCustomerChargilyPaidHtml(params: {
+function renderCustomerOrderPaidHtml(params: {
   order: OrderEmailData;
   paidAmount: number;
+  paymentMethod?: string;
+  paymentMethodDetail?: string;
   storeUrl: string;
   downloadUrl?: string;
 }): string {
-  const { order, paidAmount, storeUrl, downloadUrl } = params;
+  const { order, paidAmount, paymentMethod, paymentMethodDetail, storeUrl, downloadUrl } = params;
   const shortId = (order.id || '').replace('ord_', '').slice(0, 8).toUpperCase();
+  const effectiveMethod = paymentMethod || order.paymentMethod;
+  const effectiveDetail = paymentMethodDetail || order.paymentMethodDetails;
+  const paymentBadge = formatPaymentMethod(effectiveMethod, effectiveDetail);
+
+  const isDownloadLink = downloadUrl && (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://'));
 
   return `
 <!DOCTYPE html>
@@ -302,7 +378,7 @@ function renderCustomerChargilyPaidHtml(params: {
           </tr>
           <tr>
             <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;border-bottom:1px solid #e2e8f0;font-size:12px;vertical-align:top;white-space:nowrap;">طريقة الدفع:</td>
-            <td class="val-col" style="width:64%;padding:8px 4px;font-weight:600;color:#0f172a;text-align:left;border-bottom:1px solid #e2e8f0;word-break:break-word;">بطاقة دفع إلكتروني (Chargily)</td>
+            <td class="val-col" style="width:64%;padding:8px 4px;font-weight:600;color:#0f172a;text-align:left;border-bottom:1px solid #e2e8f0;word-break:break-word;">${paymentBadge}</td>
           </tr>
           <tr>
             <td class="label-col" style="width:36%;padding:8px 4px;color:#64748b;font-size:12px;vertical-align:top;white-space:nowrap;">تاريخ العملية:</td>
@@ -319,14 +395,22 @@ function renderCustomerChargilyPaidHtml(params: {
         </p>
       </div>
 
-      ${downloadUrl ? `
-      <!-- Download File Button -->
-      <div style="text-align:center;margin-bottom:18px;">
-        <a href="${downloadUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;box-shadow:0 3px 6px rgba(37, 99, 235, 0.2);">
-          ⬇️ تحميل نسخة من الملف
-        </a>
-      </div>
-      ` : ''}
+      ${downloadUrl ? (
+        isDownloadLink ? `
+        <!-- Download File Button -->
+        <div style="text-align:center;margin-bottom:18px;">
+          <a href="${downloadUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 24px;border-radius:8px;box-shadow:0 3px 6px rgba(37, 99, 235, 0.2);">
+            ⬇️ رابط تحميل / استلام المنتج
+          </a>
+        </div>
+        ` : `
+        <!-- Deliverable Text / Activation Code -->
+        <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:8px;padding:14px;text-align:center;word-break:break-all;margin-bottom:18px;">
+          <div style="font-size:11px;color:#64748b;margin-bottom:4px;">بيانات الاستلام / كود التفعيل:</div>
+          <strong style="color:#0f172a;font-size:14px;" dir="ltr">${downloadUrl}</strong>
+        </div>
+        `
+      ) : ''}
 
       <!-- Action Button -->
       <div style="text-align:center;margin-top:18px;">
@@ -347,6 +431,9 @@ function renderCustomerChargilyPaidHtml(params: {
 </html>
   `;
 }
+
+// Backward compatibility alias
+const renderCustomerChargilyPaidHtml = renderCustomerOrderPaidHtml;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Template: Admin Notification for Manual Payment Review (Binance / RedotPay)
@@ -488,17 +575,18 @@ function renderAdminManualPaymentReviewHtml(params: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Send 2 emails simultaneously when a Chargily payment succeeds:
+ * Send 2 emails simultaneously when an order payment succeeds (Chargily, OneClick, or any other gateway):
  * 1. Admin notification email
  * 2. Customer confirmation / receipt email
  */
-export async function sendChargilyPaidEmails(params: {
+export async function sendOrderPaidEmails(params: {
   order: OrderEmailData;
   paidAmount: number;
+  paymentMethod?: string;
   paymentMethodDetail?: string;
   downloadUrl?: string;
 }): Promise<{ adminSent: boolean; customerSent: boolean; error?: string }> {
-  const { order, paidAmount, paymentMethodDetail, downloadUrl } = params;
+  const { order, paidAmount, paymentMethod, paymentMethodDetail, downloadUrl } = params;
   const transporter = getTransporter();
 
   if (!transporter) {
@@ -520,9 +608,10 @@ export async function sendChargilyPaidEmails(params: {
     from: sender,
     to: adminEmail,
     subject: `[Lokstor] 💰 دفع جديد ناجح: طلب #${shortId} (${formatDzd(paidAmount)} د.ج)`,
-    html: renderAdminChargilyPaidHtml({
+    html: renderAdminOrderPaidHtml({
       order,
       paidAmount,
+      paymentMethod,
       paymentMethodDetail,
       adminOrderUrl,
     }),
@@ -535,9 +624,11 @@ export async function sendChargilyPaidEmails(params: {
         from: sender,
         to: customerEmail,
         subject: `[Lokstor] تم تأكيد طلبك بنجاح - #${shortId}`,
-        html: renderCustomerChargilyPaidHtml({
+        html: renderCustomerOrderPaidHtml({
           order,
           paidAmount,
+          paymentMethod,
+          paymentMethodDetail,
           storeUrl: baseUrl,
           downloadUrl,
         }),
@@ -566,6 +657,9 @@ export async function sendChargilyPaidEmails(params: {
 
   return { adminSent, customerSent };
 }
+
+// Backward compatibility alias
+export const sendChargilyPaidEmails = sendOrderPaidEmails;
 
 /**
  * Send 1 email ONLY to Admin requesting manual review when Binance / RedotPay order is submitted.

@@ -90,6 +90,8 @@ export interface Order {
   paidAt?: number | string;
   paymentReminderSent?: boolean;
   paymentReminderSentAt?: number;
+  paidEmailsSent?: boolean;
+  chargilyEmailsSent?: boolean;
 }
 
 export interface CreateCheckoutInput {
