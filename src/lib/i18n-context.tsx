@@ -70,7 +70,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'category.other': 'منتجات أخرى',
 
     // Product Listing & Cards
-    'store.searchPlaceholder': 'ابحث فوراً بالاسم أو الوصف...',
+    'store.searchPlaceholder': 'ابحث عن منتجاتك المفضلة...',
     'store.searchResultsFor': 'نتائج البحث عن:',
     'store.productsCount': 'منتج',
     'store.clearFilter': 'إلغاء التصفية',
@@ -420,7 +420,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'category.other': 'Other Products',
 
     // Product Listing & Cards
-    'store.searchPlaceholder': 'Search by product name or description...',
+    'store.searchPlaceholder': 'Search for your favorite products...',
     'store.searchResultsFor': 'Search results for:',
     'store.productsCount': 'products',
     'store.clearFilter': 'Clear Filter',
@@ -770,7 +770,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'category.other': 'Autres Produits',
 
     // Product Listing & Cards
-    'store.searchPlaceholder': 'Rechercher par nom ou description...',
+    'store.searchPlaceholder': 'Recherchez vos produits préférés...',
     'store.searchResultsFor': 'Résultats de recherche pour :',
     'store.productsCount': 'produits',
     'store.clearFilter': 'Effacer le filtre',
