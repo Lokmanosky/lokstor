@@ -29,8 +29,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const [form, setForm] = useState<Partial<Product>>({
     name: '',
     description: '',
-    price: 0,
-    priceUsd: 0,
+    price: '' as any,
+    priceUsd: '' as any,
     dollarRate: 250,
     originalPrice: undefined,
     originalPriceUsd: undefined,
@@ -81,15 +81,18 @@ export default function ProductForm({ productId }: ProductFormProps) {
         }
 
         const loadedDollarRate = Number(data.dollarRate || settings.dollarRate || 250);
-        const loadedPriceUsd = data.priceUsd !== undefined 
+        const loadedPrice = (data.price !== undefined && data.price !== null && data.price !== 0) ? data.price : ('' as any);
+        const rawUsd = data.priceUsd !== undefined 
           ? Number(data.priceUsd) 
           : (data.price ? Math.round((data.price / loadedDollarRate) * 100) / 100 : 0);
+        const loadedPriceUsd = (rawUsd && rawUsd > 0) ? rawUsd : ('' as any);
         const loadedOrigUsd = data.originalPriceUsd !== undefined 
           ? Number(data.originalPriceUsd) 
           : (data.originalPrice ? Math.round((data.originalPrice / loadedDollarRate) * 100) / 100 : undefined);
 
         setInitialProduct({
           ...data,
+          price: loadedPrice,
           dollarRate: loadedDollarRate,
           priceUsd: loadedPriceUsd,
           originalPriceUsd: loadedOrigUsd,
@@ -98,6 +101,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         setForm({
           ...data,
           id: snap.id,
+          price: loadedPrice,
           imageUrl: cleanImage,
           image: cleanImage,
           dollarRate: loadedDollarRate,
@@ -182,8 +186,13 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const handleDollarRateChange = (newRate: number) => {
     const safeRate = newRate > 0 ? newRate : 1;
     setForm(prev => {
-      const currentUsd = prev.priceUsd || (prev.price ? Math.round((prev.price / safeRate) * 100) / 100 : 0);
-      const newDzd = currentUsd > 0 ? Math.round(currentUsd * safeRate) : (prev.price || 0);
+      const prevPriceNum = prev.price ? Number(prev.price) : 0;
+      const currentUsd = (prev.priceUsd && Number(prev.priceUsd) > 0)
+        ? Number(prev.priceUsd) 
+        : (prevPriceNum > 0 ? Math.round((prevPriceNum / safeRate) * 100) / 100 : ('' as any));
+      const newDzd = (currentUsd && Number(currentUsd) > 0) 
+        ? Math.round(Number(currentUsd) * safeRate) 
+        : (prevPriceNum > 0 ? prevPriceNum : ('' as any));
       const newOrigDzd = prev.originalPriceUsd ? Math.round(prev.originalPriceUsd * safeRate) : prev.originalPrice;
       return {
         ...prev,
@@ -196,24 +205,44 @@ export default function ProductForm({ productId }: ProductFormProps) {
   };
 
   // When admin edits price in DZD (د.ج)
-  const handleDzdPriceChange = (dzd: number) => {
+  const handleDzdPriceChange = (val: string | number) => {
+    if (val === '' || val === undefined || val === null) {
+      setForm(prev => ({
+        ...prev,
+        price: '' as any,
+        priceUsd: '' as any,
+      }));
+      return;
+    }
+    const dzd = Number(val);
+    if (isNaN(dzd)) return;
     const rate = currentDollarRate > 0 ? currentDollarRate : 250;
-    const usd = dzd > 0 ? Math.round((dzd / rate) * 100) / 100 : 0;
+    const usd = dzd > 0 ? Math.round((dzd / rate) * 100) / 100 : ('' as any);
     setForm(prev => ({
       ...prev,
-      price: dzd,
+      price: dzd > 0 ? dzd : ('' as any),
       priceUsd: usd,
     }));
   };
 
   // When admin edits price in USD ($)
-  const handleUsdPriceChange = (usd: number) => {
+  const handleUsdPriceChange = (val: string | number) => {
+    if (val === '' || val === undefined || val === null) {
+      setForm(prev => ({
+        ...prev,
+        price: '' as any,
+        priceUsd: '' as any,
+      }));
+      return;
+    }
+    const usd = Number(val);
+    if (isNaN(usd)) return;
     const rate = currentDollarRate > 0 ? currentDollarRate : 250;
-    const dzd = usd > 0 ? Math.round(usd * rate) : 0;
+    const dzd = usd > 0 ? Math.round(usd * rate) : ('' as any);
     setForm(prev => ({
       ...prev,
       price: dzd,
-      priceUsd: usd,
+      priceUsd: usd > 0 ? usd : ('' as any),
     }));
   };
 
@@ -240,22 +269,42 @@ export default function ProductForm({ productId }: ProductFormProps) {
   };
 
   // Variant price conversions
-  const handleVariantPriceDzdChange = (index: number, dzd: number) => {
+  const handleVariantPriceDzdChange = (index: number, val: string | number) => {
+    if (val === '' || val === undefined || val === null) {
+      setVariants(prev => {
+        const copy = [...prev];
+        copy[index] = { ...copy[index], price: '' as any, priceUsd: '' as any };
+        return copy;
+      });
+      return;
+    }
+    const dzd = Number(val);
+    if (isNaN(dzd)) return;
     const rate = currentDollarRate > 0 ? currentDollarRate : 250;
-    const usd = dzd > 0 ? Math.round((dzd / rate) * 100) / 100 : 0;
+    const usd = dzd > 0 ? Math.round((dzd / rate) * 100) / 100 : ('' as any);
     setVariants(prev => {
       const copy = [...prev];
-      copy[index] = { ...copy[index], price: dzd, priceUsd: usd };
+      copy[index] = { ...copy[index], price: dzd > 0 ? dzd : ('' as any), priceUsd: usd };
       return copy;
     });
   };
 
-  const handleVariantPriceUsdChange = (index: number, usd: number) => {
+  const handleVariantPriceUsdChange = (index: number, val: string | number) => {
+    if (val === '' || val === undefined || val === null) {
+      setVariants(prev => {
+        const copy = [...prev];
+        copy[index] = { ...copy[index], price: '' as any, priceUsd: '' as any };
+        return copy;
+      });
+      return;
+    }
+    const usd = Number(val);
+    if (isNaN(usd)) return;
     const rate = currentDollarRate > 0 ? currentDollarRate : 250;
-    const dzd = usd > 0 ? Math.round(usd * rate) : 0;
+    const dzd = usd > 0 ? Math.round(usd * rate) : ('' as any);
     setVariants(prev => {
       const copy = [...prev];
-      copy[index] = { ...copy[index], price: dzd, priceUsd: usd };
+      copy[index] = { ...copy[index], price: dzd, priceUsd: usd > 0 ? usd : ('' as any) };
       return copy;
     });
   };
@@ -450,8 +499,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
       {
         id: 'var_' + Date.now() + Math.random().toString(36).substr(2, 4),
         name: '',
-        price: 0,
-        priceUsd: 0,
+        price: '' as any,
+        priceUsd: '' as any,
         image: '/images/game-coin.jpg',
       }
     ]);
@@ -636,7 +685,13 @@ export default function ProductForm({ productId }: ProductFormProps) {
   // ── Save directly to Cloud Firestore Database ───────────────────────────────
   const handleSave = async () => {
     if (!form.name?.trim()) { setError('اسم المنتج مطلوب'); return; }
-    if (!form.priceUnspecified && (form.price === undefined || form.price < 0)) { setError('السعر يجب أن يكون قيمة صحيحة'); return; }
+    if (!form.priceUnspecified && !hasVariants) {
+      const priceNum = Number(form.price);
+      if (!priceNum || priceNum < 0) {
+        setError('يرجى تحديد سعر المنتج (د.ج)');
+        return;
+      }
+    }
 
     setSaving(true);
     setError('');
@@ -976,9 +1031,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       type="number"
                       min={0}
                       disabled={Boolean(form.priceUnspecified)}
-                      value={form.priceUnspecified ? 0 : (form.price || 0)}
-                      onChange={e => handleDzdPriceChange(Number(e.target.value))}
-                      placeholder={form.priceUnspecified ? 'السعر غير محدد' : '0'}
+                      value={form.priceUnspecified || !form.price ? '' : form.price}
+                      onChange={e => handleDzdPriceChange(e.target.value)}
+                      placeholder={form.priceUnspecified ? 'السعر غير محدد' : 'أدخل السعر'}
                     />
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
                       د.ج
@@ -1003,9 +1058,9 @@ export default function ProductForm({ productId }: ProductFormProps) {
                       min={0}
                       step="0.01"
                       disabled={Boolean(form.priceUnspecified)}
-                      value={form.priceUnspecified ? 0 : (form.priceUsd !== undefined ? form.priceUsd : 0)}
-                      onChange={e => handleUsdPriceChange(Number(e.target.value))}
-                      placeholder="0.00"
+                      value={form.priceUnspecified || !form.priceUsd ? '' : form.priceUsd}
+                      onChange={e => handleUsdPriceChange(e.target.value)}
+                      placeholder={form.priceUnspecified ? 'غير محدد' : '0.00'}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
                       $
@@ -1210,8 +1265,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
                             <input
                               type="number"
                               min={0}
-                              value={v.price || ''}
-                              onChange={e => handleVariantPriceDzdChange(idx, Number(e.target.value))}
+                              value={!v.price ? '' : v.price}
+                              onChange={e => handleVariantPriceDzdChange(idx, e.target.value)}
                               placeholder="السعر (د.ج)"
                               className={inputCls + ' text-xs font-mono font-bold w-full pl-7'}
                               title="السعر بالدينار الجزائري"
@@ -1225,8 +1280,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
                               type="number"
                               min={0}
                               step="0.01"
-                              value={v.priceUsd !== undefined ? v.priceUsd : ''}
-                              onChange={e => handleVariantPriceUsdChange(idx, Number(e.target.value))}
+                              value={!v.priceUsd ? '' : v.priceUsd}
+                              onChange={e => handleVariantPriceUsdChange(idx, e.target.value)}
                               placeholder="السعر ($)"
                               className={inputCls + ' text-xs font-mono font-bold w-full pr-5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'}
                               title="السعر بالدولار ($ USD) - يتغير تلقائياً مع الدينار"
