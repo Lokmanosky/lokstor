@@ -48,6 +48,11 @@ export function TopTicker() {
 
   if (tickerItems.length === 0) return null;
 
+  // Auto-fill and distribute items so that regardless of how many items remain (even 1 or 2),
+  // they evenly share the entire track continuously without leaving any empty void or gap.
+  const multiplier = Math.max(2, Math.ceil(8 / tickerItems.length));
+  const fullBlockItems = Array.from({ length: multiplier }, () => tickerItems).flat();
+
   return (
     <div className="bg-slate-100 dark:bg-[#131417] text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 transition-colors" dir="ltr">
       <style>{`
@@ -58,7 +63,7 @@ export function TopTicker() {
         .marquee-wrapper {
           display: flex;
           width: max-content;
-          animation: marquee-left 25s linear infinite;
+          animation: marquee-left 30s linear infinite;
         }
         .marquee-wrapper:hover {
           animation-play-state: paused;
@@ -66,18 +71,18 @@ export function TopTicker() {
       `}</style>
       <div className="marquee-wrapper">
         {/* First block */}
-        <div className="flex flex-nowrap items-center gap-8 sm:gap-16 pr-8 sm:pr-16" dir="rtl">
-          {tickerItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
+        <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir="rtl">
+          {fullBlockItems.map((item, i) => (
+            <div key={`blk1-${i}`} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
               {item.icon}
               <span className={`tracking-wide whitespace-nowrap ${item.colorClass}`}>{item.text}</span>
             </div>
           ))}
         </div>
         {/* Second block (duplicate for seamless loop) */}
-        <div className="flex flex-nowrap items-center gap-8 sm:gap-16 pr-8 sm:pr-16" dir="rtl" aria-hidden="true">
-          {tickerItems.map((item, i) => (
-            <div key={`dup-${i}`} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
+        <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir="rtl" aria-hidden="true">
+          {fullBlockItems.map((item, i) => (
+            <div key={`blk2-${i}`} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
               {item.icon}
               <span className={`tracking-wide whitespace-nowrap ${item.colorClass}`}>{item.text}</span>
             </div>
