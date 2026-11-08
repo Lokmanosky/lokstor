@@ -13,6 +13,7 @@ import { collection, onSnapshot, doc, setDoc, getDoc, increment } from 'firebase
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import PullToRefresh from '@/components/PullToRefresh';
 
 const GoogleIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -1038,6 +1039,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
 
   return (
     <StoreSettingsProvider>
+      {!isAdmin && <PullToRefresh />}
       {!isAdmin && <NavBar />}
       <main className={!isAdmin ? "flex-grow pb-20 md:pb-0" : "flex-grow w-full"}>{children}</main>
       {!isAdmin && <Footer />}

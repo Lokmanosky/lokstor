@@ -17,6 +17,10 @@
   --foreground: #f8fafc;
 }
 
+html, body {
+  overscroll-behavior-y: auto;
+}
+
 body {
   font-family: var(--font-cairo), system-ui, -apple-system, sans-serif;
   direction: rtl;
