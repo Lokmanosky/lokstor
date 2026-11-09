@@ -21,6 +21,12 @@ html, body {
   overscroll-behavior-y: auto;
 }
 
+/* Optimize touch responsiveness and eliminate 300ms click delay on mobile */
+html, body, button, a, input, select, textarea, [role="button"], label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   font-family: var(--font-cairo), system-ui, -apple-system, sans-serif;
   direction: rtl;
