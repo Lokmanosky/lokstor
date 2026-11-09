@@ -177,7 +177,7 @@ export function MobileBottomNav() {
       ───────────────────────────────────────────────────────────── */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.35)] pb-[max(env(safe-area-inset-bottom),0.35rem)] transition-colors duration-200"
+        className="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.35)] pb-[max(env(safe-area-inset-bottom),0.35rem)] transition-colors duration-200"
         dir={lang === 'ar' ? 'rtl' : 'ltr'}
       >
         <div className="max-w-md mx-auto px-3 h-16 flex items-center justify-between relative">
@@ -185,7 +185,12 @@ export function MobileBottomNav() {
           {/* 1. الرئيسية (Home) */}
           <Link
             href="/"
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
+            onClick={() => {
+              if (isHome && typeof window !== 'undefined') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-colors relative z-10 cursor-pointer active:scale-95 touch-manipulation select-none ${
               isHome
                 ? 'text-emerald-600 dark:text-emerald-400 font-bold'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
