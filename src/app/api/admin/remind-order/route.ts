@@ -89,10 +89,14 @@ export async function POST(req: NextRequest) {
         });
 
         if (res.customerSent) {
+          const currentCount = Number(data.paymentReminderCount || (data.paymentReminderSent ? 1 : 0));
+          const newCount = currentCount + 1;
           await orderRef.update({
             paymentReminderSent: true,
             paymentReminderSentAt: now,
-            paymentReminderType: 'forced_manual',
+            lastReminderSentAt: now,
+            paymentReminderCount: newCount,
+            paymentReminderType: 'manual',
           });
           remindedCount++;
         } else {

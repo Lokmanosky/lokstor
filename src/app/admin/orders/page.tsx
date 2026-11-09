@@ -250,11 +250,34 @@ export default function OrdersPage() {
       return;
     }
 
+    const createdAt = Number(order.createdAt || 0);
+    const isOlderThan24h = createdAt > 0 && (Date.now() - createdAt) >= 24 * 60 * 60 * 1000;
+    const count = Number(order.paymentReminderCount || (order.paymentReminderSent ? 1 : 0));
+    const nextCount = count + 1;
+
+    let title = 'إرسال تذكير بالدفع للعميل';
+    let message = '';
+    let confirmText = 'نعم، أرسل التذكير فوراً';
+
+    if (count > 0) {
+      title = `إعادة إرسال تذكير بالدفع (تذكير #${nextCount})`;
+      message = `تم إرسال تذكير لهذا الطلب مسبقاً (${count} ${count === 1 ? 'مرة' : 'مرات'}). هل أنت متأكد من إعادة إرسال إيميل تذكير إضافي للطلب #${shortId} إلى العميل (${customerEmail})؟ سيصبح عداد التذكيرات (${nextCount}).`;
+      confirmText = `نعم، أعد التذكير (المرة #${nextCount})`;
+    } else if (isOlderThan24h) {
+      title = 'إرسال تذكير بالدفع للعميل';
+      message = `هل أنت متأكد من إرسال إيميل تذكير بالدفع للطلب #${shortId} إلى العميل (${customerEmail})؟ الطلب معلق منذ أكثر من 24 ساعة، وسيتم إرسال الإيميل وتسجيل العداد كـ (1).`;
+      confirmText = 'نعم، أرسل التذكير الآن';
+    } else {
+      title = 'تذكير مبكر بالدفع (أقل من 24 ساعة)';
+      message = `تم إنشاء هذا الطلب منذ أقل من 24 ساعة. هل تريد إرسال إيميل تذكير بالدفع مبكراً للطلب #${shortId} إلى العميل (${customerEmail}) الآن؟`;
+      confirmText = 'نعم، أرسل التذكير مبكراً';
+    }
+
     setGenericConfirm({
       isOpen: true,
-      title: 'تذكير قسري بالدفع فوري',
-      message: `هل أنت متأكد من إرسال إيميل تذكير بالدفع فوراً للطلب #${shortId} إلى العميل (${customerEmail})؟ سيتم تجاوز شرط الـ 24 ساعة وإرسال الإيميل مباشرة الآن.`,
-      confirmText: 'نعم، أرسل التذكير فوراً',
+      title,
+      message,
+      confirmText,
       isDanger: false,
       onConfirm: async () => {
         setRemindingOrderId(order.id);
@@ -270,15 +293,17 @@ export default function OrdersPage() {
           });
           const data = await res.json();
           if (data.success) {
-            setBulkFeedback(`تم بنجاح إرسال تذكير الدفع القسري للعميل (${customerEmail}) ✉️`);
+            setBulkFeedback(count > 0
+              ? `تم بنجاح إعادة إرسال تذكير الدفع (تذكير #${nextCount}) للعميل (${customerEmail}) ✉️`
+              : `تم بنجاح إرسال تذكير الدفع للعميل (${customerEmail}) ✉️`);
             await logAdminActivity({
               category: 'orders',
               actionType: 'reminder',
-              title: `تذكير قسري بالدفع #${shortId}`,
-              description: `تم إرسال إيميل تذكير بالدفع فوراً للطلب #${shortId} للعميل (${customerEmail})`,
+              title: count > 0 ? `إعادة تذكير بالدفع #${shortId} (المرة ${nextCount})` : `تذكير بالدفع #${shortId}`,
+              description: `تم إرسال إيميل تذكير بالدفع للطلب #${shortId} للعميل (${customerEmail}) (إجمالي التذكيرات: ${nextCount})`,
               targetId: order.id,
               targetName: `طلب #${shortId}`,
-              metadata: { customerEmail }
+              metadata: { customerEmail, reminderCount: nextCount }
             });
           } else {
             alert('فشل إرسال التذكير: ' + (data.error || 'حدث خطأ غير معروف'));
@@ -300,9 +325,9 @@ export default function OrdersPage() {
 
     setGenericConfirm({
       isOpen: true,
-      title: 'تذكير قسري بالدفع للطلبات المحددة',
-      message: `هل أنت متأكد من إرسال إيميلات تذكير بالدفع قسرياً لـ (${count}) طلب محدد؟ سيتم تجاوز شرط الـ 24 ساعة وإرسال الإيميلات فوراً لجميع العملاء.`,
-      confirmText: `نعم، تذكير (${count}) عميل فوراً`,
+      title: 'إرسال تذكير بالدفع للطلبات المحددة',
+      message: `هل أنت متأكد من إرسال إيميلات تذكير بالدفع لـ (${count}) طلب محدد؟ سيتم إرسال الإيميلات فوراً لجميع العملاء وزيادة عداد التذكيرات لكل طلب.`,
+      confirmText: `نعم، تذكير (${count}) عميل الآن`,
       isDanger: false,
       onConfirm: async () => {
         setIsBulkProcessing(true);
@@ -318,12 +343,12 @@ export default function OrdersPage() {
           });
           const data = await res.json();
           if (data.success) {
-            setBulkFeedback(data.message || `تم بنجاح إرسال تذكير الدفع القسري لـ (${data.remindedCount || count}) طلب.`);
+            setBulkFeedback(data.message || `تم بنجاح إرسال تذكير الدفع لـ (${data.remindedCount || count}) طلب.`);
             await logAdminActivity({
               category: 'orders',
               actionType: 'reminder',
               title: `تذكير جماعي بالدفع (${count} طلب)`,
-              description: `تم إرسال تذكيرات دفع فورية لـ (${data.remindedCount || count}) طلب محدد`,
+              description: `تم إرسال تذكيرات دفع لـ (${data.remindedCount || count}) طلب محدد وزيادة عدادات التذكير`,
               metadata: { count, orderIds: selectedOrderIds }
             });
             setSelectedOrderIds([]);
@@ -1343,15 +1368,18 @@ export default function OrdersPage() {
                               : 'ملغي'}
                           </span>
                         </span>
-                        {o.status === 'pending' && o.paymentReminderSent && (
-                          <span 
-                            className="inline-flex items-center gap-1 text-[10px] text-amber-500 bg-amber-500/15 font-bold px-2 py-0.5 rounded-md border border-amber-500/30 shadow-2xs" 
-                            title={`تم إرسال إيميل تذكير بالدفع للعميل${o.paymentReminderSentAt ? ` في ${formatDate(o.paymentReminderSentAt)}` : ''}`}
-                          >
-                            <Clock className="w-3 h-3 text-amber-500 shrink-0" />
-                            <span>⏳ تم التذكير</span>
-                          </span>
-                        )}
+                        {o.status === 'pending' && (o.paymentReminderSent || (o.paymentReminderCount && o.paymentReminderCount > 0)) && (() => {
+                          const count = Number(o.paymentReminderCount || 1);
+                          return (
+                            <span 
+                              className="inline-flex items-center gap-1 text-[10px] text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 font-bold px-1.5 py-0.5 rounded-md border border-slate-300/80 dark:border-slate-700/80 shadow-2xs" 
+                              title={`تم إرسال إيميل تذكير بالدفع للعميل (${count} ${count === 1 ? 'مرة' : 'مرات'})${o.paymentReminderSentAt ? ` - آخر تذكير: ${formatDate(o.paymentReminderSentAt)}` : ''}`}
+                            >
+                              <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400 shrink-0" />
+                              <span>⏳ تم التذكير ({count})</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                     </td>
 
@@ -1366,28 +1394,52 @@ export default function OrdersPage() {
                     {/* Action Buttons */}
                     <td className="px-2 py-2">
                       <div className="flex items-center justify-center gap-1">
-                        {/* Force Payment Reminder (Bypasses 24h requirement) */}
-                        {o.status !== 'paid' && (
-                          <button
-                            type="button"
-                            disabled={remindingOrderId === o.id}
-                            onClick={() => handleForcePaymentReminder(o)}
-                            title={o.paymentReminderSent 
-                              ? `إعادة إرسال تذكير الدفع قسرياً للعميل (أُرسل مسبقاً - تجاوز شرط 24س)` 
-                              : `تذكير قسري فوري بالدفع (تجاوز شرط 24س)`}
-                            className={`p-1 rounded transition-colors cursor-pointer disabled:opacity-50 ${
-                              o.paymentReminderSent
-                                ? 'text-amber-500 hover:bg-amber-500/15'
-                                : 'text-[var(--admin-text-muted)] hover:text-amber-500 hover:bg-amber-500/10'
-                            }`}
-                          >
-                            {remindingOrderId === o.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
-                            ) : (
-                              <BellRing className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        )}
+                        {/* Payment Reminder Button */}
+                        {o.status !== 'paid' && (() => {
+                          const createdAt = Number(o.createdAt || 0);
+                          const isOlderThan24h = createdAt > 0 && (Date.now() - createdAt) >= 24 * 60 * 60 * 1000;
+                          const remindCount = Number(o.paymentReminderCount || (o.paymentReminderSent ? 1 : 0));
+                          const hasReminded = remindCount > 0 || Boolean(o.paymentReminderSent);
+
+                          let title = '';
+                          if (hasReminded) {
+                            title = `إعادة إرسال تذكير الدفع (أُرسل مسبقاً ${remindCount} ${remindCount === 1 ? 'مرة' : 'مرات'})`;
+                          } else if (isOlderThan24h) {
+                            title = 'إرسال تذكير بالدفع للعميل (معلق منذ أكثر من 24 ساعة)';
+                          } else {
+                            title = 'تذكير مبكر بالدفع (طلب حديث خلال 24 ساعة)';
+                          }
+
+                          // If already reminded: Gray (رمادي) with counter next to bell.
+                          // If NOT reminded & overdue (>24h): Amber (مضاء بالبرتقالي/الكهرماني) to alert admin.
+                          // If NOT reminded & fresh (<24h): Muted gray (رمادي هادئ).
+                          const btnClass = hasReminded
+                            ? 'text-slate-400 dark:text-slate-500 hover:text-amber-500 hover:bg-amber-500/10'
+                            : isOlderThan24h
+                            ? 'text-amber-500 hover:bg-amber-500/15 border border-amber-500/30 bg-amber-500/10 shadow-2xs'
+                            : 'text-[var(--admin-text-muted)] hover:text-amber-500 hover:bg-amber-500/10';
+
+                          return (
+                            <button
+                              type="button"
+                              disabled={remindingOrderId === o.id}
+                              onClick={() => handleForcePaymentReminder(o)}
+                              title={title}
+                              className={`p-1 rounded transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-0.5 ${btnClass}`}
+                            >
+                              {remindingOrderId === o.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                              ) : (
+                                <>
+                                  <BellRing className="w-3.5 h-3.5" />
+                                  {hasReminded && (
+                                    <span className="text-[10px] font-bold leading-none">{remindCount}</span>
+                                  )}
+                                </>
+                              )}
+                            </button>
+                          );
+                        })()}
 
                         <button
                           type="button"
@@ -1465,12 +1517,18 @@ export default function OrdersPage() {
                 }`}>
                   {selectedOrder.status === 'paid' ? 'مدفوع' : 'معلق'}
                 </span>
-                {selectedOrder.status === 'pending' && selectedOrder.paymentReminderSent && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>تم إرسال تذكير الدفع ✉️</span>
-                  </span>
-                )}
+                {selectedOrder.status === 'pending' && (selectedOrder.paymentReminderSent || (selectedOrder.paymentReminderCount && selectedOrder.paymentReminderCount > 0)) && (() => {
+                  const modalCount = Number(selectedOrder.paymentReminderCount || 1);
+                  return (
+                    <span 
+                      className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 flex items-center gap-1"
+                      title={selectedOrder.paymentReminderSentAt ? `آخر تذكير: ${formatDate(selectedOrder.paymentReminderSentAt)}` : undefined}
+                    >
+                      <Clock className="w-3 h-3 text-slate-500" />
+                      <span>تم التذكير ({modalCount}) ✉️</span>
+                    </span>
+                  );
+                })()}
               </div>
               <button onClick={() => { setSelectedOrder(null); setDeliveryLinkInput(''); }} className="p-1 rounded-md text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] cursor-pointer">
                 <X className="w-4 h-4" />
@@ -1520,6 +1578,15 @@ export default function OrdersPage() {
                   <span className="font-mono text-[var(--admin-text-muted)] text-[11px] block mt-0.5">—</span>
                 )}
               </div>
+              {Boolean(selectedOrder.paymentReminderSent || (selectedOrder.paymentReminderCount && selectedOrder.paymentReminderCount > 0)) && (
+                <div className="col-span-2 flex items-center justify-between text-[11px] bg-slate-500/10 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700">
+                  <span className="text-[var(--admin-text-muted)] font-medium">سجل تذكيرات الدفع:</span>
+                  <span className="font-bold text-[var(--admin-text)]">
+                    تم التذكير {Number(selectedOrder.paymentReminderCount || 1)} {Number(selectedOrder.paymentReminderCount || 1) === 1 ? 'مرة' : 'مرات'}
+                    {selectedOrder.paymentReminderSentAt ? ` (آخرها في ${formatDate(selectedOrder.paymentReminderSentAt)})` : ''}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* GAME ACCOUNT DETAILS */}

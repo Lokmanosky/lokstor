@@ -154,6 +154,8 @@ async function handleReminders(req: NextRequest) {
             await item.docSnap.ref.update({
               paymentReminderSent: true,
               paymentReminderSentAt: now,
+              lastReminderSentAt: now,
+              paymentReminderCount: 1,
               paymentReminderType: 'single',
             });
             remindedCount++;
@@ -179,6 +181,8 @@ async function handleReminders(req: NextRequest) {
               batch.update(item.docSnap.ref, {
                 paymentReminderSent: true,
                 paymentReminderSentAt: now,
+                lastReminderSentAt: now,
+                paymentReminderCount: 1,
                 paymentReminderType: 'consolidated',
                 consolidatedWithCount: group.items.length,
               });

@@ -90,6 +90,8 @@ export interface Order {
   paidAt?: number | string;
   paymentReminderSent?: boolean;
   paymentReminderSentAt?: number;
+  paymentReminderCount?: number;
+  lastReminderSentAt?: number;
   paidEmailsSent?: boolean;
   chargilyEmailsSent?: boolean;
 }
