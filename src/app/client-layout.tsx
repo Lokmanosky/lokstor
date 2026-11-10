@@ -172,6 +172,23 @@ function NavBar() {
     setIsLoginModalOpen(true);
   };
 
+  // Listen for global open-login-modal custom event and URL query params (?login=1 or #login)
+  useEffect(() => {
+    const handleOpenLogin = () => openLoginModal();
+    window.addEventListener('open-login-modal', handleOpenLogin);
+
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('login') === '1' || window.location.hash === '#login') {
+        openLoginModal();
+      }
+    }
+
+    return () => {
+      window.removeEventListener('open-login-modal', handleOpenLogin);
+    };
+  }, []);
+
   // Safe signOut with complete state reset
   const handleSignOut = async () => {
     try {

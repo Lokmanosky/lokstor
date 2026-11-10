@@ -57,7 +57,7 @@ export default function CustomerAccountPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace('/');
+      router.replace('/?login=1');
     }
   }, [user, authLoading, router]);
 

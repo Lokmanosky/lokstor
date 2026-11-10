@@ -255,25 +255,42 @@ export function MobileBottomNav() {
             </span>
           </button>
 
-          {/* 5. حسابي (Account / Orders) */}
-          <Link
-            href={user ? '/account' : '/account'}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
-              isAccount
-                ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
-            }`}
-          >
-            <div className="relative">
-              <User className={`w-5 h-5 transition-transform duration-200 ${isAccount ? 'scale-110 stroke-[2.4]' : 'stroke-[1.8]'}`} />
-              {isAccount && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              )}
-            </div>
-            <span className="text-[10px] leading-tight tracking-tight">
-              {user ? (lang === 'ar' ? 'حسابي' : 'Compte') : (lang === 'ar' ? 'دخول' : 'Connexion')}
-            </span>
-          </Link>
+          {/* 5. حسابي / دخول (Account / Login) */}
+          {user ? (
+            <Link
+              href="/account"
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-colors relative z-10 cursor-pointer active:scale-95 touch-manipulation select-none ${
+                isAccount
+                  ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+              }`}
+            >
+              <div className="relative">
+                <User className={`w-5 h-5 transition-transform duration-200 ${isAccount ? 'scale-110 stroke-[2.4]' : 'stroke-[1.8]'}`} />
+                {isAccount && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+              </div>
+              <span className="text-[10px] leading-tight tracking-tight">
+                {lang === 'ar' ? 'حسابي' : 'Compte'}
+              </span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-login-modal'));
+              }}
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-colors relative z-10 cursor-pointer active:scale-95 touch-manipulation select-none text-slate-500 dark:text-slate-400 hover:text-emerald-500 font-medium"
+            >
+              <div className="relative">
+                <User className="w-5 h-5 stroke-[1.8] hover:scale-110 transition-transform duration-200" />
+              </div>
+              <span className="text-[10px] leading-tight tracking-tight text-emerald-600 dark:text-emerald-400 font-bold">
+                {lang === 'ar' ? 'دخول' : 'Connexion'}
+              </span>
+            </button>
+          )}
 
         </div>
       </nav>
