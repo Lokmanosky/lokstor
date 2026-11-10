@@ -21,8 +21,10 @@ import {
   GripVertical
 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n-context';
 
 export default function ProductsPage() {
+  const { t, lang } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
@@ -245,11 +247,11 @@ export default function ProductsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-[var(--admin-text)] flex items-center gap-2">
-            المنتجات
+            {t('nav.adminProducts')}
             {savingOrder && <span className="flex items-center gap-1 text-xs text-[var(--admin-text-muted)] font-normal"><Loader2 className="w-3 h-3 animate-spin" />يحفظ الترتيب...</span>}
           </h1>
           <p className="text-sm text-[var(--admin-text-muted)] mt-1">
-            إدارة منتجات المتجر وتفاصيلها ({products.length} منتج مسجل) — اسحب ≡ لإعادة الترتيب في الصفحة الرئيسية
+            {t('admin.productsDesc')} ({products.length}) — {lang === 'ar' ? 'اسحب ≡ لإعادة الترتيب في الصفحة الرئيسية' : 'Drag ≡ to reorder on homepage'}
           </p>
         </div>
         <Link
@@ -257,7 +259,7 @@ export default function ProductsPage() {
           className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[var(--admin-primary)] text-[var(--admin-bg)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity w-full sm:w-auto shadow-sm"
         >
           <Plus className="w-4 h-4" />
-          <span>إضافة منتج</span>
+          <span>{t('admin.addProduct')}</span>
         </Link>
       </div>
 

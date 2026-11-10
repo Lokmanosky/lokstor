@@ -77,19 +77,19 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   ];
 
   return (
-    <aside className={`fixed top-0 right-0 h-full z-50 bg-[var(--admin-sidebar)] border-l border-[var(--admin-border)] flex flex-col transition-all duration-300 ${
-      isMobile ? (open ? 'w-64 translate-x-0' : 'w-64 translate-x-full') : (open ? 'w-64' : 'w-16')
-    }`}>
-      {/* Sidebar Header: Arrow on Right (Start in RTL), Lokstor on Left (End in RTL) */}
+    <aside className={`fixed top-0 ${lang === 'ar' ? 'right-0 border-l' : 'left-0 border-r'} h-full z-50 bg-[var(--admin-sidebar)] border-[var(--admin-border)] flex flex-col transition-all duration-300 ${
+      isMobile ? (open ? 'w-64 translate-x-0' : (lang === 'ar' ? 'w-64 translate-x-full' : 'w-64 -translate-x-full')) : (open ? 'w-64' : 'w-16')
+    }`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      {/* Sidebar Header */}
       <div className={`h-16 flex items-center border-b border-[var(--admin-border)] px-4 ${(!isMobile && !open) ? 'justify-center' : 'justify-between'}`}>
         {!isMobile ? (
           <button
             type="button"
             onClick={() => setOpen(!open)}
             className="p-1.5 rounded-md text-[var(--admin-sidebar-muted)] hover:text-[var(--admin-sidebar-text)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
-            title={open ? 'تصغير القائمة' : 'توسيع القائمة'}
+            title={open ? t('admin.collapseMenu') : t('admin.expandMenu')}
           >
-            <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${open ? '' : 'rotate-180'}`} />
+            <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${open ? (lang === 'ar' ? '' : 'rotate-180') : (lang === 'ar' ? 'rotate-180' : '')}`} />
           </button>
         ) : (
           <button
@@ -97,7 +97,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
             onClick={() => setOpen(false)}
             className="p-1.5 rounded-md text-[var(--admin-sidebar-muted)] hover:text-[var(--admin-sidebar-text)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className={`w-4 h-4 ${lang === 'ar' ? '' : 'rotate-180'}`} />
           </button>
         )}
 
@@ -120,7 +120,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           <Link
             href="/"
             className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs"
-            title="العودة للمتجر"
+            title={t('nav.backToStore')}
             onClick={() => { if (isMobile) setOpen(false); }}
           >
             <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
@@ -130,13 +130,14 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
         {navItems.map(({ href, label, icon: Icon, badge }) => {
           const isActive = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
           const showLabel = isMobile || open;
+          const activeBorder = lang === 'ar' ? 'border-r-2' : 'border-l-2';
           return (
             <Link
               key={href}
               href={href}
               onClick={() => { if(isMobile) setOpen(false); }}
               className={`admin-sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative rounded-md ${
-                isActive ? 'active border-r-2 border-[var(--admin-sidebar-active)]' : 'border-r-2 border-transparent hover:bg-[var(--admin-hover)]'
+                isActive ? `active ${activeBorder} border-[var(--admin-sidebar-active)]` : `${activeBorder} border-transparent hover:bg-[var(--admin-hover)]`
               }`}
             >
               <Icon className="w-[18px] h-[18px] flex-shrink-0 transition-colors" />

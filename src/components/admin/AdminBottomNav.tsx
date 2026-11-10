@@ -6,9 +6,11 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ShoppingCart, Package, Plus, Tag, Settings } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n-context';
 
 export default function AdminBottomNav() {
   const pathname = usePathname();
+  const { t, lang } = useTranslation();
   const [pendingOrders, setPendingOrders] = useState(0);
 
   useEffect(() => {
@@ -25,13 +27,13 @@ export default function AdminBottomNav() {
 
   return (
     <nav 
-      aria-label="شريط التنقل السريع للوحة التحكم"
+      aria-label={t('admin.quickNav')}
       className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-[var(--admin-card)]/95 backdrop-blur-md border-t border-[var(--admin-border)] shadow-[0_-4px_25px_rgba(0,0,0,0.12)] px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-      dir="rtl"
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
     >
       <div className="grid grid-cols-5 items-center justify-items-center max-w-md mx-auto">
         
-        {/* 1. اليمين الأول: طلبات */}
+        {/* 1. الطلبات */}
         <Link
           href="/admin/orders"
           className={`flex flex-col items-center justify-center w-full py-1 text-center transition-all ${
@@ -48,13 +50,13 @@ export default function AdminBottomNav() {
               </span>
             )}
           </div>
-          <span className="text-[10px] mt-1 tracking-tight">الطلبات</span>
+          <span className="text-[10px] mt-1 tracking-tight truncate max-w-full px-0.5">{t('nav.adminOrders')}</span>
           {isOrdersActive && (
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)] mt-0.5"></span>
           )}
         </Link>
 
-        {/* 2. اليمين الثاني: منتجات */}
+        {/* 2. المنتجات */}
         <Link
           href="/admin/products"
           className={`flex flex-col items-center justify-center w-full py-1 text-center transition-all ${
@@ -64,17 +66,17 @@ export default function AdminBottomNav() {
           }`}
         >
           <Package className={`w-5 h-5 transition-transform ${isProductsActive ? 'scale-110' : ''}`} />
-          <span className="text-[10px] mt-1 tracking-tight">المنتجات</span>
+          <span className="text-[10px] mt-1 tracking-tight truncate max-w-full px-0.5">{t('nav.adminProducts')}</span>
           {isProductsActive && (
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)] mt-0.5"></span>
           )}
         </Link>
 
-        {/* 3. الوسط: إضافة منتج (زر مميز بارز) */}
+        {/* 3. إضافة منتج */}
         <Link
           href="/admin/products/new"
           className="flex flex-col items-center justify-center w-full group -mt-4 relative"
-          title="إضافة منتج جديد"
+          title={t('admin.addProduct')}
         >
           <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all border-4 border-[var(--admin-card)] ${
             isAddProductActive
@@ -83,14 +85,14 @@ export default function AdminBottomNav() {
           }`}>
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </div>
-          <span className={`text-[10px] mt-0.5 font-bold tracking-tight ${
+          <span className={`text-[10px] mt-0.5 font-bold tracking-tight truncate max-w-full px-0.5 ${
             isAddProductActive ? 'text-[var(--admin-primary)]' : 'text-[var(--admin-text)]'
           }`}>
-            إضافة منتج
+            {t('admin.addProduct')}
           </span>
         </Link>
 
-        {/* 4. اليسار الثاني: أكواد خصم */}
+        {/* 4. أكواد خصم */}
         <Link
           href="/admin/discounts"
           className={`flex flex-col items-center justify-center w-full py-1 text-center transition-all ${
@@ -100,13 +102,13 @@ export default function AdminBottomNav() {
           }`}
         >
           <Tag className={`w-5 h-5 transition-transform ${isDiscountsActive ? 'scale-110' : ''}`} />
-          <span className="text-[10px] mt-1 tracking-tight">أكواد خصم</span>
+          <span className="text-[10px] mt-1 tracking-tight truncate max-w-full px-0.5">{t('nav.adminDiscounts')}</span>
           {isDiscountsActive && (
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)] mt-0.5"></span>
           )}
         </Link>
 
-        {/* 5. اليسار الأول: إعدادات */}
+        {/* 5. إعدادات */}
         <Link
           href="/admin/settings"
           className={`flex flex-col items-center justify-center w-full py-1 text-center transition-all ${
@@ -116,7 +118,7 @@ export default function AdminBottomNav() {
           }`}
         >
           <Settings className={`w-5 h-5 transition-transform ${isSettingsActive ? 'scale-110' : ''}`} />
-          <span className="text-[10px] mt-1 tracking-tight">الإعدادات</span>
+          <span className="text-[10px] mt-1 tracking-tight truncate max-w-full px-0.5">{t('nav.adminSettings')}</span>
           {isSettingsActive && (
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)] mt-0.5"></span>
           )}

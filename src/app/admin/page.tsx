@@ -6,8 +6,10 @@ import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/fire
 import { Order } from '@/types';
 import Link from 'next/link';
 import { Wallet, ShoppingBag, TrendingUp, Clock, Eye, Users, Activity } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n-context';
 
 export default function AdminOverview() {
+  const { t, lang } = useTranslation();
   const [stats, setStats] = useState({
     totalSales: 0,
     todaySales: 0,
@@ -93,21 +95,23 @@ export default function AdminOverview() {
     };
   }, []);
 
+  const currency = t('common.currency');
+
   const cards = [
-    { title: 'إجمالي المبيعات', value: `${stats.totalSales.toLocaleString()} د.ج`, icon: Wallet, borderColor: 'border-emerald-500/40', textColor: 'text-emerald-500', href: '/admin/orders' },
-    { title: 'مبيعات اليوم', value: `${stats.todaySales.toLocaleString()} د.ج`, icon: TrendingUp, borderColor: 'border-amber-500/40', textColor: 'text-amber-500', href: '/admin/orders' },
-    { title: 'إجمالي الطلبات', value: stats.totalOrders.toString(), icon: ShoppingBag, borderColor: 'border-teal-500/40', textColor: 'text-teal-500', href: '/admin/orders' },
-    { title: 'طلبات في الانتظار', value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0, borderColor: 'border-rose-500/40', textColor: 'text-rose-500', href: '/admin/abandoned' },
-    { title: 'متصل الآن', value: activeUsersCount.toString(), icon: Activity, alert: activeUsersCount > 0, borderColor: 'border-blue-500/40', textColor: 'text-blue-500', href: '/admin' },
-    { title: 'إجمالي الزيارات', value: stats.totalVisits.toString(), icon: Eye, borderColor: 'border-indigo-500/40', textColor: 'text-indigo-500', href: '/admin' },
-    { title: 'الزوار الفريدين', value: stats.uniqueVisitors.toString(), icon: Users, borderColor: 'border-purple-500/40', textColor: 'text-purple-500', href: '/admin' },
+    { title: t('admin.totalSales'), value: `${stats.totalSales.toLocaleString()} ${currency}`, icon: Wallet, borderColor: 'border-emerald-500/40', textColor: 'text-emerald-500', href: '/admin/orders' },
+    { title: t('admin.todaySales'), value: `${stats.todaySales.toLocaleString()} ${currency}`, icon: TrendingUp, borderColor: 'border-amber-500/40', textColor: 'text-amber-500', href: '/admin/orders' },
+    { title: t('admin.totalOrders'), value: stats.totalOrders.toString(), icon: ShoppingBag, borderColor: 'border-teal-500/40', textColor: 'text-teal-500', href: '/admin/orders' },
+    { title: t('admin.pendingOrders'), value: stats.pendingOrders.toString(), icon: Clock, alert: stats.pendingOrders > 0, borderColor: 'border-rose-500/40', textColor: 'text-rose-500', href: '/admin/abandoned' },
+    { title: t('admin.activeNow'), value: activeUsersCount.toString(), icon: Activity, alert: activeUsersCount > 0, borderColor: 'border-blue-500/40', textColor: 'text-blue-500', href: '/admin' },
+    { title: t('admin.totalVisits'), value: stats.totalVisits.toString(), icon: Eye, borderColor: 'border-indigo-500/40', textColor: 'text-indigo-500', href: '/admin' },
+    { title: t('admin.uniqueVisitors'), value: stats.uniqueVisitors.toString(), icon: Users, borderColor: 'border-purple-500/40', textColor: 'text-purple-500', href: '/admin' },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-[var(--admin-text)]">نظرة عامة</h1>
-        <p className="text-sm text-[var(--admin-text-muted)] mt-1">ملخص أداء المتجر والإحصائيات</p>
+        <h1 className="text-xl font-semibold text-[var(--admin-text)]">{t('admin.overview')}</h1>
+        <p className="text-sm text-[var(--admin-text-muted)] mt-1">{t('admin.overviewSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -133,16 +137,16 @@ export default function AdminOverview() {
 
       <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md shadow-sm">
         <div className="p-4 border-b border-[var(--admin-border)] flex items-center justify-between">
-          <h2 className="text-sm font-medium text-[var(--admin-text)]">أحدث الطلبات</h2>
+          <h2 className="text-sm font-medium text-[var(--admin-text)]">{t('admin.recentOrders')}</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-right">
+          <table className={`w-full text-sm ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
             <thead className="bg-[var(--admin-bg)] text-[var(--admin-text-muted)]">
               <tr className="border-b border-[var(--admin-border)]">
-                <th className="px-4 py-3 font-medium">المنتج</th>
-                <th className="px-4 py-3 font-medium">العميل</th>
-                <th className="px-4 py-3 font-medium">المبلغ</th>
-                <th className="px-4 py-3 font-medium">الحالة</th>
+                <th className="px-4 py-3 font-medium">{t('admin.product')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.customer')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.amount')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--admin-border)]">
@@ -150,12 +154,12 @@ export default function AdminOverview() {
                 <tr key={o.id} className="hover:bg-[var(--admin-hover)] transition-colors">
                   <td className="px-4 py-3 text-[var(--admin-text)]">{o.productName || '\u2014'}</td>
                   <td className="px-4 py-3 text-[var(--admin-text-muted)]">{o.customerEmail || '\u2014'}</td>
-                  <td className="px-4 py-3 text-[var(--admin-text)]">{Number(o.amount || o.productPrice || 0).toLocaleString()} د.ج</td>
+                  <td className="px-4 py-3 text-[var(--admin-text)]">{Number(o.amount || o.productPrice || 0).toLocaleString()} {currency}</td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-1.5 text-xs">
                       <span className={`w-1.5 h-1.5 rounded-full ${o.status === 'paid' ? 'bg-[var(--admin-primary)]' : o.status === 'pending' ? 'bg-amber-400' : 'bg-[var(--admin-danger)]'}`} />
                       <span className="text-[var(--admin-text-muted)]">
-                        {o.status === 'paid' ? 'مكتمل' : o.status === 'pending' ? 'انتظار' : 'ملغي'}
+                        {o.status === 'paid' ? t('admin.completed') : o.status === 'pending' ? t('admin.pending') : t('admin.cancelled')}
                       </span>
                     </span>
                   </td>
@@ -164,7 +168,7 @@ export default function AdminOverview() {
               {recentOrders.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-[var(--admin-text-muted)] text-sm">
-                    لا توجد طلبات حديثة
+                    {t('admin.noRecentOrders')}
                   </td>
                 </tr>
               )}

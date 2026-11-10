@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useTranslation } from '@/lib/i18n-context';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminTopBar from '@/components/admin/AdminTopBar';
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
@@ -119,9 +120,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  const { lang } = useTranslation();
+  const isRtl = lang === 'ar';
+
   // Admin verified
   return (
-    <div className="min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] relative overflow-x-hidden" dir="rtl">
+    <div className="min-h-screen bg-[var(--admin-bg)] text-[var(--admin-text)] relative overflow-x-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
       {isMobile && sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 transition-opacity"
@@ -134,7 +138,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div 
         className="flex flex-col min-w-0 transition-all duration-300 min-h-screen"
         style={{
-          marginRight: isMobile ? 0 : (sidebarOpen ? '16rem' : '4rem'),
+          marginRight: isMobile ? 0 : (isRtl ? (sidebarOpen ? '16rem' : '4rem') : 0),
+          marginLeft: isMobile ? 0 : (!isRtl ? (sidebarOpen ? '16rem' : '4rem') : 0),
           width: isMobile ? '100%' : (sidebarOpen ? 'calc(100% - 16rem)' : 'calc(100% - 4rem)'),
         }}
       >

@@ -34,8 +34,10 @@ import {
   Mail,
   BellOff
 } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n-context';
 
 export default function OrdersPage() {
+  const { t, lang, formatCurrency } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -808,7 +810,8 @@ export default function OrdersPage() {
     if (!timestamp) return '—';
     try {
       const d = new Date(Number(timestamp));
-      return d.toLocaleDateString('ar-DZ', {
+      const locale = lang === 'ar' ? 'ar-DZ' : (lang === 'fr' ? 'fr-FR' : 'en-US');
+      return d.toLocaleDateString(locale, {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -824,16 +827,16 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-[var(--admin-text)]">الطلبات</h1>
-          <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">إدارة جميع الطلبات والمدفوعات ومتابعة حالات الشراء</p>
+          <h1 className="text-xl font-bold text-[var(--admin-text)]">{t('nav.adminOrders')}</h1>
+          <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">{t('admin.ordersDesc')}</p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           {/* Total revenue badge */}
           <div className="flex items-center gap-2 bg-[var(--admin-card)] border border-[var(--admin-border)] px-3 py-1.5 rounded-lg shadow-xs">
-            <span className="text-[11px] text-[var(--admin-text-muted)]">إجمالي المبيعات المدفوعة:</span>
+            <span className="text-[11px] text-[var(--admin-text-muted)]">{t('admin.paidRevenue')}</span>
             <span className="text-xs font-bold text-[var(--admin-primary)]">
-              {filteredPaidSum.toLocaleString('en-US')} د.ج
+              {filteredPaidSum.toLocaleString('en-US')} {t('common.currency')}
             </span>
           </div>
 
@@ -843,14 +846,14 @@ export default function OrdersPage() {
             disabled={isSendingReminders}
             onClick={handleTriggerPaymentReminders}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-900 font-extrabold text-xs transition-all cursor-pointer shadow-md disabled:opacity-50 active:scale-95"
-            title="فحص كافة الطلبات المعلقة لأكثر من 24 ساعة وإرسال إيميل تذكير بالدفع للعملاء (مرة واحدة فقط)"
+            title="فحص كافة الطلبات المعلقة لأكثر من 24 ساعة وإرسال إيميل تذكير بالدفع للعملاء"
           >
             {isSendingReminders ? (
               <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
             ) : (
               <Send className="w-4 h-4 text-slate-900" />
             )}
-            <span>تذكير المعلقين (&gt;24 س)</span>
+            <span>{t('admin.remindPendingOver24h')}</span>
           </button>
         </div>
       </div>
