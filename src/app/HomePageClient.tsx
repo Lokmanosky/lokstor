@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ShoppingCart, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones, LayoutGrid } from 'lucide-react';
+import { ShoppingCart, ShieldCheck, FileText, ChevronDown, PackageX, Check, LogIn, Search, X, Headphones, LayoutGrid, Plus, Loader2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, orderBy, doc, setDoc, addDoc } from 'firebase/firestore';
 import { useTranslation } from '@/lib/i18n-context';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
@@ -14,9 +14,226 @@ import { Suspense } from 'react';
 import { TopTicker } from './client-layout';
 import { Star as StarIcon, Quote } from 'lucide-react';
 
+function AddReviewModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const { lang } = useTranslation();
+  const { user } = useAuth();
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [userName, setUserName] = useState('');
+  const [comment, setComment] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  // Auto pre-fill username if user is logged in
+  useEffect(() => {
+    if (user?.displayName) {
+      setUserName(user.displayName);
+    } else if (user?.email) {
+      setUserName(user.email.split('@')[0]);
+    }
+  }, [user]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userName.trim()) {
+      setError(lang === 'ar' ? 'يرجى كتابة اسمك' : lang === 'fr' ? 'Veuillez saisir votre nom' : 'Please enter your name');
+      return;
+    }
+    if (!comment.trim()) {
+      setError(lang === 'ar' ? 'يرجى كتابة تعليقك أو رأيك' : lang === 'fr' ? 'Veuillez écrire votre avis' : 'Please enter your comment');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        userName: userName.trim(),
+        customerName: userName.trim(),
+        rating: Number(rating),
+        comment: comment.trim(),
+        status: 'pending', // Under admin review before publishing
+        userId: user?.uid || null,
+        userEmail: user?.email || null,
+        createdAt: Date.now()
+      });
+
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error('Failed to submit review:', err);
+      setError(lang === 'ar' ? 'حدث خطأ أثناء إرسال التقييم، حاول مجدداً' : 'Failed to submit review');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRatingLabel = (val: number) => {
+    switch (val) {
+      case 5: return lang === 'ar' ? 'ممتاز جداً 🌟' : 'Excellent 🌟';
+      case 4: return lang === 'ar' ? 'جيد جداً 👍' : 'Very Good 👍';
+      case 3: return lang === 'ar' ? 'جيد 👏' : 'Good 👏';
+      case 2: return lang === 'ar' ? 'مقبول 😐' : 'Fair 😐';
+      case 1: return lang === 'ar' ? 'يحتاج تحسين ⚠️' : 'Poor ⚠️';
+      default: return '';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div 
+        className="fixed inset-0" 
+        onClick={() => { if (!loading) { onClose(); setSubmitted(false); } }} 
+      />
+      <div className="relative bg-[var(--store-card)] border border-[var(--store-border)] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200 z-10" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <button
+          type="button"
+          onClick={() => { onClose(); setSubmitted(false); }}
+          className="absolute top-5 left-5 text-[var(--store-text-muted)] hover:text-[var(--store-text)] p-1 rounded-full hover:bg-[var(--store-hover)] transition-colors cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {submitted ? (
+          <div className="text-center py-6 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center mx-auto">
+              <Check className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-[var(--store-text)]">
+                {lang === 'ar' ? 'شكراً لمشاركتك رأيك! 💚' : 'Thank You for Your Review!'}
+              </h3>
+              <p className="text-xs text-[var(--store-text-muted)] leading-relaxed max-w-sm mx-auto">
+                {lang === 'ar' 
+                  ? 'تم إرسال تقييمك بنجاح وهو الآن قيد مراجعة الإدارة، وسيظهر في المتجر فور اعتماده.' 
+                  : 'Your review has been submitted and is currently pending admin approval.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { onClose(); setSubmitted(false); setComment(''); }}
+              className="px-6 py-2.5 rounded-xl bg-emerald-500 text-black font-bold text-sm hover:bg-emerald-400 transition-colors shadow-md active:scale-95 cursor-pointer"
+            >
+              {lang === 'ar' ? 'حسناً، إغلاق' : 'Close'}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <StarIcon className="w-5 h-5 text-amber-400 fill-amber-400" />
+                <h3 className="text-lg font-bold text-[var(--store-text)]">
+                  {lang === 'ar' ? 'شاركنا تقييمك وتجربتك' : 'Share Your Review'}
+                </h3>
+              </div>
+              <p className="text-xs text-[var(--store-text-muted)]">
+                {lang === 'ar' ? 'رأيك يهمنا ويساعد العملاء الآخرين في اختيار أفضل المنتجات' : 'Your feedback helps other customers'}
+              </p>
+            </div>
+
+            {/* Star Rating Selector */}
+            <div className="p-3.5 rounded-2xl bg-[var(--store-bg)] border border-[var(--store-border)] text-center space-y-2">
+              <span className="text-xs font-semibold text-[var(--store-text-muted)] block">
+                {lang === 'ar' ? 'اختر عدد النجوم:' : 'Select rating:'}
+              </span>
+              <div className="flex items-center justify-center gap-2" dir="ltr">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="p-1 transition-transform hover:scale-125 focus:outline-none cursor-pointer"
+                  >
+                    <StarIcon
+                      className={`w-7 h-7 transition-colors ${
+                        star <= (hoverRating || rating)
+                          ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                          : 'text-slate-600'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <div className="text-xs font-bold text-amber-400">
+                {getRatingLabel(hoverRating || rating)}
+              </div>
+            </div>
+
+            {/* Name Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[var(--store-text)] block">
+                {lang === 'ar' ? 'اسمك أو اللقب' : 'Your Name'}
+              </label>
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder={lang === 'ar' ? 'مثال: محمد، أمين، أو اسمك المستعار' : 'e.g. John'}
+                maxLength={40}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--store-bg)] border border-[var(--store-border)] text-sm text-[var(--store-text)] placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+            </div>
+
+            {/* Comment Textarea */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[var(--store-text)] block">
+                {lang === 'ar' ? 'رأيك أو تجربتك' : 'Your Review'}
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={lang === 'ar' ? 'اكتب رأيك بصراحة عن سرعة التسليم، جودة الخدمة، أو الدعم الفني...' : 'Write your feedback here...'}
+                rows={3}
+                maxLength={300}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--store-bg)] border border-[var(--store-border)] text-sm text-[var(--store-text)] placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
+              />
+              <div className="flex justify-between text-[10px] text-[var(--store-text-muted)]">
+                <span>{lang === 'ar' ? '🔒 يمر التقييم على الإدارة قبل نشره' : 'Reviewed by admin before publishing'}</span>
+                <span>{comment.length}/300</span>
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center font-medium">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-all shadow-md hover:shadow-emerald-500/25 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Submitting...'}</span>
+                </>
+              ) : (
+                <>
+                  <StarIcon className="w-4 h-4 fill-black" />
+                  <span>{lang === 'ar' ? 'إرسال التقييم للمراجعة' : 'Submit Review'}</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ReviewsCarousel() {
   const { t, lang } = useTranslation();
   const [reviews, setReviews] = useState<any[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     // Fetch approved reviews from all products
@@ -34,56 +251,95 @@ function ReviewsCarousel() {
     return () => unsub();
   }, []);
 
-  if (reviews.length === 0) return null;
-
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 mb-12">
-      <div className="flex items-center gap-2 mb-6">
-        <h2 className="text-2xl font-black text-[var(--store-text)]">{t('store.testimonials')}</h2>
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h2 className="text-2xl font-black text-[var(--store-text)]">{t('store.testimonials')}</h2>
+          {reviews.length > 0 && (
+            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold hidden sm:inline-flex items-center gap-1">
+              <StarIcon className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>{reviews.length} {lang === 'ar' ? 'تقييم موثق' : 'verified reviews'}</span>
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-black shadow-md hover:shadow-emerald-500/20 transition-all cursor-pointer active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{lang === 'ar' ? 'أضف تقييمك' : lang === 'fr' ? 'Laisser un avis' : 'Add Review'}</span>
+        </button>
       </div>
       
-      <style>{
-        `
-        @keyframes scrollReviews {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(calc(100% / 3)); }
-        }
-        .animate-scroll-reviews {
-          animation: scrollReviews 30s linear infinite;
-        }
-        .animate-scroll-reviews:hover {
-          animation-play-state: paused;
-        }
-        `
-      }</style>
-      <div className="relative overflow-hidden pb-4 group">
-        <div 
-          className="flex gap-4 sm:gap-6 w-max animate-scroll-reviews"
-        >
-          {/* Triple the array to create seamless infinite scroll */}
-          {[...reviews, ...reviews, ...reviews].map((review, i) => {
-            const customerFallback = lang === 'ar' ? 'مستخدم' : lang === 'fr' ? 'Client' : 'Customer';
-            const authorName = review.userName || review.customerName || customerFallback;
-            return (
-              <div key={`${review.id}-${i}`} className="w-72 sm:w-80 shrink-0 bg-[#161b22] border border-[#30363d] rounded-3xl p-6 relative flex flex-col">
-                <Quote className="absolute top-4 left-4 w-10 h-10 text-slate-700/50" />
-                <div className="flex flex-col items-center mb-4">
-                  <div className="w-16 h-16 rounded-full bg-slate-800 border-[3px] border-emerald-500 overflow-hidden mb-3">
-                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
-                  </div>
-                  <h3 className="font-bold text-white text-lg">{authorName}</h3>
-                  <div className="flex items-center gap-1 mt-1 text-amber-400">
-                    {[1,2,3,4,5].map(star => (
-                      <StarIcon key={star} className={`w-4 h-4 ${star <= review.rating ? 'fill-current' : 'text-slate-600'}`} />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-slate-300 text-center text-sm leading-relaxed font-medium">"{review.comment}"</p>
-              </div>
-            );
-          })}
+      {reviews.length === 0 ? (
+        <div className="p-8 rounded-3xl bg-[#161b22] border border-[#30363d] text-center space-y-3 max-w-md mx-auto my-4">
+          <StarIcon className="w-10 h-10 text-amber-400 mx-auto fill-amber-400/20" />
+          <h3 className="font-bold text-white text-base">
+            {lang === 'ar' ? 'كن أول من يشاركنا تجربته!' : 'Be the first to review!'}
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            {lang === 'ar' ? 'رأيك يهمنا ويساعد الآخرين. شاركنا تقييمك وسنكون سعداء بنشره في متجرنا بعد المراجعة.' : 'Share your feedback with us.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="px-5 py-2.5 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            {lang === 'ar' ? 'أضف تقييمك الآن ⭐' : 'Write a Review ⭐'}
+          </button>
         </div>
-      </div>
+      ) : (
+        <>
+          <style>{
+            `
+            @keyframes scrollReviews {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(calc(100% / 3)); }
+            }
+            .animate-scroll-reviews {
+              animation: scrollReviews 30s linear infinite;
+            }
+            .animate-scroll-reviews:hover {
+              animation-play-state: paused;
+            }
+            `
+          }</style>
+          <div className="relative overflow-hidden pb-4 group">
+            <div 
+              className="flex gap-4 sm:gap-6 w-max animate-scroll-reviews"
+            >
+              {/* Triple the array to create seamless infinite scroll */}
+              {[...reviews, ...reviews, ...reviews].map((review, i) => {
+                const customerFallback = lang === 'ar' ? 'مستخدم' : lang === 'fr' ? 'Client' : 'Customer';
+                const authorName = review.userName || review.customerName || customerFallback;
+                return (
+                  <div key={`${review.id}-${i}`} className="w-72 sm:w-80 shrink-0 bg-[#161b22] border border-[#30363d] rounded-3xl p-6 relative flex flex-col">
+                    <Quote className="absolute top-4 left-4 w-10 h-10 text-slate-700/50" />
+                    <div className="flex flex-col items-center mb-4">
+                      <div className="w-16 h-16 rounded-full bg-slate-800 border-[3px] border-emerald-500 overflow-hidden mb-3">
+                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=10b981&color=fff&size=128`} alt="avatar" className="w-full h-full object-cover" />
+                      </div>
+                      <h3 className="font-bold text-white text-lg">{authorName}</h3>
+                      <div className="flex items-center gap-1 mt-1 text-amber-400">
+                        {[1,2,3,4,5].map(star => (
+                          <StarIcon key={star} className={`w-4 h-4 ${star <= review.rating ? 'fill-current' : 'text-slate-600'}`} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-slate-300 text-center text-sm leading-relaxed font-medium">"{review.comment}"</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Add Review Modal */}
+      <AddReviewModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
     </section>
   );
 }
