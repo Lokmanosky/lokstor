@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign, CreditCard, Wallet, Zap, ShieldCheck, Sparkles } from 'lucide-react';
+import { Save, Upload, Image as ImageIcon, Loader2, Lock, User, Eye, EyeOff, CheckCircle2, XCircle, KeyRound, Bell, DollarSign, CreditCard, Wallet, Zap, ShieldCheck, Sparkles, RotateCw } from 'lucide-react';
 import { useStoreSettings, saveStoreSettings } from '@/lib/store-settings';
 import HeroPhrasesEditor from '@/components/admin/HeroPhrasesEditor';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { logAdminActivity } from '@/lib/admin-logger';
@@ -36,6 +36,58 @@ export default function SettingsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [forceRefreshLoading, setForceRefreshLoading] = useState(false);
+  const [forceRefreshConfirmOpen, setForceRefreshConfirmOpen] = useState(false);
+
+  const handleForceRefreshAll = async () => {
+    setForceRefreshConfirmOpen(false);
+    setForceRefreshLoading(true);
+    setStoreMsg(null);
+    try {
+      const token = user ? await user.getIdToken() : '';
+      const now = Date.now();
+
+      // 1. Call server API to clear in-memory cache and revalidate Next.js ISR
+      try {
+        await fetch('/api/admin/purge-cache', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } catch (err) {
+        console.warn('API purge call error, falling back to direct Firestore write:', err);
+      }
+
+      // 2. Direct Firestore update to broadcast immediately to all visitors via StoreSettingsProvider
+      await setDoc(doc(db, 'settings', 'store'), {
+        forceRefreshTimestamp: now,
+        lastForcedRefreshBy: user?.email || 'admin'
+      }, { merge: true });
+
+      // 3. Log the administrative action
+      await logAdminActivity({
+        category: 'settings',
+        actionType: 'update',
+        title: 'فرض التحديث القسري ومسح الكاش للجميع',
+        description: 'تم إرسال إشارة فورية لمسح الكاش (CacheStorage & ServiceWorker) وإعادة تحميل المتجر لدى جميع الزوار',
+        metadata: { timestamp: now, initiatedBy: user?.email }
+      });
+
+      setStoreMsg({
+        type: 'success',
+        text: '⚡ تم فرض التحديث القسري ومسح الكاش بنجاح! سيتم تحديث المتصفح تلقائياً لدى جميع الزوار فوراً.'
+      });
+    } catch (err: any) {
+      setStoreMsg({
+        type: 'error',
+        text: 'حدث خطأ أثناء إرسال أمر التحديث القسري: ' + (err?.message || 'خطأ غير معروف')
+      });
+    } finally {
+      setForceRefreshLoading(false);
+    }
+  };
 
   // Account settings
   const [displayName, setDisplayName] = useState('');
@@ -694,6 +746,63 @@ export default function SettingsPage() {
               )}
             </div>
 
+            {/* Force Hard Refresh & Cache Purge Section */}
+            <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-transparent border border-rose-500/30 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                    <RotateCw className={`w-5 h-5 ${forceRefreshLoading ? 'animate-spin' : ''}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-bold text-[var(--admin-text)]">
+                        فرض التحديث القسري وتطهير الكاش للجميع (Force Cache Purge)
+                      </h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-500/15 text-rose-500 border border-rose-500/30">
+                        ⚡ فوري لجميع المتصفحات
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--admin-text-muted)] mt-1.5 leading-relaxed">
+                      يقوم بفرض إعادة تحميل صفحات المتجر تلقائياً لجميع الزبائن والزوار الحاليين والجدد ومسح أي كاش محفوظ في هواتفهم وحواسيبهم (CacheStorage و ServiceWorker و PWA)، لإجبارهم على رؤية أحدث التعديلات والمنتجات فورياً دون الحاجة لأن يضغطوا يدوياً على تحديث الصفحة.
+                    </p>
+                    {currentSettings.forceRefreshTimestamp ? (
+                      <div className="mt-2 text-[11px] text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
+                        <span>🕒 آخر أمر تحديث قسري:</span>
+                        <span className="font-bold text-[var(--admin-text)]" dir="ltr">
+                          {new Date(currentSettings.forceRefreshTimestamp).toLocaleString('ar-DZ')}
+                        </span>
+                        {currentSettings.lastForcedRefreshBy && (
+                          <span className="text-[10px] text-slate-500">
+                            (بواسطة {currentSettings.lastForcedRefreshBy})
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-rose-500/20">
+                <span className="text-[11px] text-[var(--admin-text-muted)] flex items-center gap-1">
+                  <span>🛡️</span>
+                  <span>لا يؤثر نهائياً على سلات التسوق للعملاء ولا يسجل خروجهم من حساباتهم.</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setForceRefreshConfirmOpen(true)}
+                  disabled={forceRefreshLoading}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-md hover:shadow-rose-500/20 disabled:opacity-50 cursor-pointer active:scale-95 whitespace-nowrap"
+                >
+                  {forceRefreshLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCw className="w-4 h-4" />
+                  )}
+                  <span>{forceRefreshLoading ? 'جاري الفرض والتطهير...' : '⚡ فرض التحديث القسري لجميع المتصفحات الآن'}</span>
+                </button>
+              </div>
+            </div>
+
             <MsgBox msg={storeMsg} />
 
             <div className="pt-4 border-t border-[var(--admin-border)] flex justify-end">
@@ -830,6 +939,47 @@ export default function SettingsPage() {
             {accountLoading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
           </button>
         </form>
+      )}
+
+      {/* Force Refresh Confirmation Modal */}
+      {forceRefreshConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 flex items-center justify-center mx-auto">
+              <RotateCw className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-base font-bold text-[var(--admin-text)]">
+                تأكيد فرض التحديث القسري ومسح الكاش للجميع؟
+              </h3>
+              <p className="text-xs text-[var(--admin-text-muted)] leading-relaxed">
+                سيتم إرسال إشارة فورية لجميع متصفحات الزوار (الهواتف والحواسيب) لمسح ملفات الكاش (CacheStorage و ServiceWorker) وإعادة تحميل المتجر تلقائياً فوراً لتحميل أحدث نسخة.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[11px] text-[var(--admin-text-muted)] space-y-1">
+              <p className="font-semibold text-[var(--admin-text)]">ماذا سيحدث بعد الضغط؟</p>
+              <p>✓ يتم مسح الكاش المخزن لدى الزوار تلقائياً (CacheStorage & PWA).</p>
+              <p>✓ يتم تطهير وتحديث الكاش على السيرفر (Next.js ISR + RAM Cache).</p>
+              <p>✓ تبقى سلة مشتريات العملاء وبيانات تسجيل الدخول محفوظة دون مساس.</p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleForceRefreshAll}
+                className="flex-1 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors cursor-pointer active:scale-95 shadow-md shadow-rose-600/20"
+              >
+                نعم، افرض التحديث ومسح الكاش الآن
+              </button>
+              <button
+                type="button"
+                onClick={() => setForceRefreshConfirmOpen(false)}
+                className="px-4 py-2.5 rounded-lg border border-[var(--admin-border)] text-xs font-semibold text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

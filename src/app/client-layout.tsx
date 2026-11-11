@@ -1023,6 +1023,58 @@ function TelegramFloat() {
   );
 }
 
+function ForcedRefreshWatcher() {
+  const settings = useStoreSettings();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Never force refresh while the user is actively working inside admin panel
+    if (pathname?.startsWith('/admin')) return;
+    if (!settings?.forceRefreshTimestamp) return;
+    if (typeof window === 'undefined') return;
+
+    const KEY = 'lokstor_last_forced_refresh';
+    const lastHandled = Number(localStorage.getItem(KEY) || 0);
+
+    // Initial visit: record the current timestamp so we don't trigger an unnecessary reload on first entry
+    if (!localStorage.getItem(KEY)) {
+      localStorage.setItem(KEY, String(settings.forceRefreshTimestamp));
+      return;
+    }
+
+    // A newer forced refresh timestamp has arrived from the admin!
+    if (settings.forceRefreshTimestamp > lastHandled) {
+      localStorage.setItem(KEY, String(settings.forceRefreshTimestamp));
+
+      // 1. Purge CacheStorage (Service Worker & PWA offline cache)
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => caches.delete(name));
+        }).catch(() => {});
+      }
+
+      // 2. Force Service Worker update
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((r) => r.update());
+        }).catch(() => {});
+      }
+
+      // 3. Clear session storage flags
+      try {
+        sessionStorage.removeItem('lokstor_analytics_done');
+      } catch {}
+
+      // 4. Hard refresh after cache purge completes
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+    }
+  }, [settings?.forceRefreshTimestamp, pathname]);
+
+  return null;
+}
+
 export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
@@ -1080,6 +1132,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
 
   return (
     <StoreSettingsProvider>
+      <ForcedRefreshWatcher />
       {!isAdmin && <PullToRefresh />}
       {!isAdmin && <NavBar />}
       <main className={!isAdmin ? "flex-grow pb-20 md:pb-0" : "flex-grow w-full"}>{children}</main>

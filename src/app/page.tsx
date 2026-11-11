@@ -16,6 +16,10 @@ let memoryCache: HomepageCache | null = null;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 let isRefreshing = false;
 
+export function clearHomepageMemoryCache() {
+  memoryCache = null;
+}
+
 async function fetchFromFirestore(): Promise<HomepageCache> {
   let products: any[] = [];
   let categories: any[] = [];

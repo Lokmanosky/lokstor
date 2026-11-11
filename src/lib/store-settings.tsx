@@ -52,6 +52,8 @@ export interface StoreSettings {
   redotpayAccountName?: string;
   binanceUid?: string;
   binanceAddress?: string;
+  forceRefreshTimestamp?: number;
+  lastForcedRefreshBy?: string;
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
@@ -127,6 +129,8 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
           redotpayAccountName: combined.redotpayAccountName || 'Lokmanosky',
           binanceUid: combined.binanceUid || '427636242',
           binanceAddress: combined.binanceAddress || '0xf0782cc454c9f0b273a11aba636fac62f18b24dd',
+          forceRefreshTimestamp: combined.forceRefreshTimestamp,
+          lastForcedRefreshBy: combined.lastForcedRefreshBy,
         } as StoreSettings));
       }
     }, () => {});
