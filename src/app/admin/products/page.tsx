@@ -18,7 +18,8 @@ import {
   Check, 
   Boxes,
   RotateCcw,
-  GripVertical
+  GripVertical,
+  Save
 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n-context';
@@ -40,6 +41,91 @@ export default function ProductsPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+
+  // Quick Status change states
+  const [statusChanges, setStatusChanges] = useState<Record<string, 'published' | 'draft' | 'archived'>>({});
+  const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
+  const [batchSaving, setBatchSaving] = useState(false);
+
+  // Handle status selection change
+  const handleStatusChange = (productId: string, newStatus: 'published' | 'draft' | 'archived', originalStatus: string) => {
+    if (newStatus === originalStatus) {
+      setStatusChanges(prev => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+    } else {
+      setStatusChanges(prev => ({
+        ...prev,
+        [productId]: newStatus
+      }));
+    }
+  };
+
+  // Save single product status
+  const handleSaveSingleStatus = async (productId: string, productName: string) => {
+    const newStatus = statusChanges[productId];
+    if (!newStatus) return;
+    setSavingStatusId(productId);
+    try {
+      await updateDoc(doc(db, 'products', productId), {
+        status: newStatus,
+        updatedAt: Date.now()
+      });
+      await logAdminActivity({
+        category: 'products',
+        actionType: 'update',
+        title: `تعديل حالة المنتج: ${productName}`,
+        description: `تم تغيير حالة المنتج "${productName}" إلى "${newStatus === 'published' ? 'منشور' : newStatus === 'draft' ? 'مسودة' : 'مؤرشف'}" مباشرة من الجدول`,
+        targetId: productId,
+        targetName: productName,
+        metadata: { newStatus }
+      });
+      setStatusChanges(prev => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+      showNotification(`✓ تم حفظ حالة "${productName}" إلى (${newStatus === 'published' ? 'منشور' : newStatus === 'draft' ? 'مسودة' : 'مؤرشف'}) بنجاح!`);
+    } catch (err: any) {
+      showNotification('فشل حفظ الحالة: ' + err?.message, 'error');
+    } finally {
+      setSavingStatusId(null);
+    }
+  };
+
+  // Save all changed product statuses
+  const handleSaveAllStatuses = async () => {
+    const entries = Object.entries(statusChanges);
+    if (entries.length === 0) return;
+    setBatchSaving(true);
+    try {
+      const batch = writeBatch(db);
+      entries.forEach(([id, st]) => {
+        batch.update(doc(db, 'products', id), {
+          status: st,
+          updatedAt: Date.now()
+        });
+      });
+      await batch.commit();
+
+      await logAdminActivity({
+        category: 'products',
+        actionType: 'update',
+        title: `تعديل حالة ${entries.length} منتجات دفعة واحدة`,
+        description: `تم حفظ تعديلات الحالة لـ ${entries.length} منتجات بنجاح من الجدول الرئيسي`,
+        metadata: { count: entries.length, changes: statusChanges }
+      });
+
+      showNotification(`✓ تم حفظ جميع تعديلات الحالة بنجاح (${entries.length} منتجات)!`);
+      setStatusChanges({});
+    } catch (err: any) {
+      showNotification('فشل الحفظ الجماعي: ' + err?.message, 'error');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'products'), (snap) => {
@@ -361,6 +447,35 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Pending Status Changes Banner */}
+      {Object.keys(statusChanges).length > 0 && (
+        <div className="p-3 sm:p-4 rounded-xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent border-2 border-emerald-500/40 flex flex-wrap items-center justify-between gap-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5 text-sm font-bold text-emerald-500">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+            <span>لديك {Object.keys(statusChanges).length} منتج تم تعديل حالته وبانتظار الحفظ</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStatusChanges({})}
+              disabled={batchSaving}
+              className="px-3 py-1.5 rounded-lg border border-[var(--admin-border)] text-xs text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-hover)] transition-colors cursor-pointer"
+            >
+              إلغاء التعديلات
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAllStatuses}
+              disabled={batchSaving}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all shadow-md disabled:opacity-50 cursor-pointer active:scale-95"
+            >
+              {batchSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>حفظ جميع التعديلات ({Object.keys(statusChanges).length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Products Table ─────────────────────────────────────────────────── */}
       <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-md shadow-sm">
         <div className="overflow-x-auto">
@@ -497,19 +612,66 @@ export default function ProductsPage() {
                         </div>
                       </td>
 
-                      {/* Status */}
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-xs ${
-                            status === 'published'
-                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                              : status === 'draft'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
-                          }`}
-                        >
-                          {status === 'published' ? 'منشور' : status === 'draft' ? 'مسودة' : 'مؤرشف'}
-                        </span>
+                      {/* Status with Quick Inline Edit & Save */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {(() => {
+                          const currentEffectiveStatus = statusChanges[p.id!] !== undefined ? statusChanges[p.id!] : status;
+                          const isDirty = statusChanges[p.id!] !== undefined && statusChanges[p.id!] !== status;
+                          const isSavingThis = savingStatusId === p.id;
+                          const isRtl = lang === 'ar';
+
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              {/* Status Select Badge */}
+                              <div className="relative inline-block">
+                                <select
+                                  value={currentEffectiveStatus}
+                                  onChange={(e) => handleStatusChange(p.id!, e.target.value as any, status)}
+                                  disabled={isSavingThis}
+                                  className={`text-xs font-bold rounded-lg py-1 border cursor-pointer appearance-none transition-all outline-none ${
+                                    isRtl ? 'pr-2.5 pl-6' : 'pl-2.5 pr-6'
+                                  } ${
+                                    isDirty
+                                      ? 'ring-2 ring-amber-500 border-amber-500 bg-amber-500/15 text-amber-400 font-extrabold shadow-xs'
+                                      : currentEffectiveStatus === 'published'
+                                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 hover:border-blue-500/60'
+                                      : currentEffectiveStatus === 'draft'
+                                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 hover:border-amber-500/60'
+                                      : 'bg-slate-500/10 text-slate-400 border-slate-500/30 hover:border-slate-500/60'
+                                  }`}
+                                  title="اضغط لتغيير حالة المنتج مباشرة"
+                                >
+                                  <option value="published" className="bg-[var(--admin-card)] text-blue-400">منشور</option>
+                                  <option value="draft" className="bg-[var(--admin-card)] text-amber-400">مسودة</option>
+                                  <option value="archived" className="bg-[var(--admin-card)] text-slate-400">مؤرشف</option>
+                                </select>
+                                <span className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[9px] opacity-70 ${
+                                  isRtl ? 'left-2' : 'right-2'
+                                }`}>
+                                  ▼
+                                </span>
+                              </div>
+
+                              {/* Inline Save Button (appears when status is changed) */}
+                              {isDirty && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveSingleStatus(p.id!, p.name)}
+                                  disabled={isSavingThis}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-md cursor-pointer active:scale-95 animate-in fade-in zoom-in-95"
+                                  title="حفظ حالة هذا المنتج"
+                                >
+                                  {isSavingThis ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Save className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>حفظ</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Actions */}
