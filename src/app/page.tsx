@@ -1,8 +1,7 @@
 import HomePageClient from './HomePageClient';
 import { adminDb } from '@/lib/firebaseAdmin';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 30;
 
 export default async function Page() {
   let products: any[] = [];
@@ -11,8 +10,13 @@ export default async function Page() {
 
   try {
     if (adminDb) {
-      // 1. Fetch Products
-      const pSnap = await adminDb.collection('products').orderBy('createdAt', 'desc').get();
+      // 1. Fetch Products, Categories, and Banners concurrently in parallel
+      const [pSnap, cSnap, bSnap] = await Promise.all([
+        adminDb.collection('products').orderBy('createdAt', 'desc').get(),
+        adminDb.collection('storeCategories').get(),
+        adminDb.collection('storeBanners').get()
+      ]);
+
       pSnap.docs.forEach((d: any) => {
         const data = d.data();
         if (data.status === 'draft' || data.status === 'archived') return;
@@ -27,13 +31,11 @@ export default async function Page() {
         return bT - aT;
       });
 
-      // 2. Fetch Categories
-      const cSnap = await adminDb.collection('storeCategories').get();
+      // 2. Process Categories
       cSnap.docs.forEach((d: any) => categories.push({ id: d.id, ...d.data() }));
       categories.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
-      // 3. Fetch Banners
-      const bSnap = await adminDb.collection('storeBanners').get();
+      // 3. Process Banners
       bSnap.docs.forEach((d: any) => {
         const data = d.data();
         if (data.status === 'draft' || data.status === 'archived') return;

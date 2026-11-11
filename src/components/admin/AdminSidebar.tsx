@@ -119,7 +119,8 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
         <div className="pb-2 mb-2 border-b border-[var(--admin-border)]">
           <Link
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs"
+            prefetch={true}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs cursor-pointer select-none"
             title={t('nav.backToStore')}
             onClick={() => { if (isMobile) setOpen(false); }}
           >

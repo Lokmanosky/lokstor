@@ -2,6 +2,7 @@
 
 import { LogOut, Store, Bell, Menu, Sun, Moon, ExternalLink, Globe, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useEffect, useState } from 'react';
@@ -12,10 +13,18 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 interface Props { sidebarOpen: boolean; setSidebarOpen: (v: boolean) => void; isLoginPage?: boolean; }
 
 export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }: Props) {
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
   const [theme, setTheme] = useState('light');
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const { lang, setLang, t } = useTranslation();
+
+  // Prefetch storefront immediately on mount so navigation is instant
+  useEffect(() => {
+    try {
+      router.prefetch('/');
+    } catch {}
+  }, [router]);
 
   useEffect(() => {
     const saved = (localStorage.getItem('adminTheme') || localStorage.getItem('store-theme') || 'light') as 'light' | 'dark';
@@ -91,7 +100,8 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
         {isLoginPage ? (
           <Link
             href="/"
-            className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-[var(--admin-hover)] text-[var(--admin-text)] rounded-md hover:opacity-80 transition-opacity flex-shrink-0"
+            prefetch={true}
+            className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-[var(--admin-hover)] text-[var(--admin-text)] rounded-md hover:opacity-80 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
           >
             <ArrowRight className="w-3.5 h-3.5" />
             <span>{t('nav.backToStore')}</span>
@@ -99,8 +109,9 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
         ) : (
           <Link
             href="/"
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs flex-shrink-0"
-            title="العودة لصفحة المتجر"
+            prefetch={true}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 active:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs flex-shrink-0 cursor-pointer select-none"
+            title={t('nav.backToStore') || 'العودة لصفحة المتجر'}
           >
             <Store className="w-3.5 h-3.5 text-emerald-500" />
             <span>{t('admin.store')}</span>
