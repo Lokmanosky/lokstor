@@ -254,28 +254,45 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const submitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert('يجب تسجيل الدخول لإضافة تقييم');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('open-login-modal'));
+      }
       return;
     }
-    if (!newReview.name.trim() || !newReview.comment.trim()) return alert('يرجى كتابة الاسم والتعليق');
+    if (!newReview.name.trim() || !newReview.comment.trim()) {
+      alert(lang === 'ar' ? 'يرجى كتابة الاسم والتعليق' : 'Please enter your name and comment');
+      return;
+    }
     setIsSubmittingReview(true);
     try {
-      await addDoc(collection(db, 'reviews'), {
-        userId: user.uid,
-        productId: product?.id,
-        userName: newReview.name,
-        rating: newReview.rating,
-        comment: newReview.comment,
-        status: 'pending',
-        createdAt: Date.now()
+      const token = await user.getIdToken();
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          productId: product?.id,
+          userName: newReview.name.trim(),
+          rating: Number(newReview.rating),
+          comment: newReview.comment.trim()
+        })
       });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || (lang === 'ar' ? 'حدث خطأ أثناء إرسال التقييم' : 'Failed to submit review'));
+      }
+
       setReviewSubmitted(true);
       setNewReview({ rating: 5, comment: '', name: user?.displayName || '' });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('حدث خطأ');
+      alert(err?.message || (lang === 'ar' ? 'حدث خطأ أثناء إرسال التقييم' : 'Failed to submit review'));
+    } finally {
+      setIsSubmittingReview(false);
     }
-    setIsSubmittingReview(false);
   };
 
   // ── Discount Code State ─────────────────────────────
@@ -1036,6 +1053,30 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-3 font-bold">
             <Check className="w-5 h-5" />
             {t('product.reviewSubmitted')}
+          </div>
+        ) : !user ? (
+          <div className="bg-[var(--store-bg)] border border-[var(--store-border)] p-6 rounded-2xl text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <LogIn className="w-6 h-6" />
+            </div>
+            <h4 className="font-bold text-sm text-[var(--store-text)]">
+              {lang === 'ar' ? 'تسجيل الدخول مطلوب لإضافة تقييم' : lang === 'fr' ? 'Connexion requise pour laisser un avis' : 'Login required to leave a review'}
+            </h4>
+            <p className="text-xs text-[var(--store-text-muted)] max-w-sm mx-auto">
+              {lang === 'ar' ? 'لضمان مصداقية التقييمات ومنع التقييمات العشوائية، يرجى تسجيل الدخول إلى حسابك أولاً.' : 'To ensure genuine customer reviews, please log in before writing a review.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('open-login-modal'));
+                }
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-colors shadow-md active:scale-95 cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{lang === 'ar' ? 'تسجيل الدخول / إنشاء حساب' : lang === 'fr' ? 'Connexion / S\'inscrire' : 'Log In / Register'}</span>
+            </button>
           </div>
         ) : (
           <form onSubmit={submitReview} className="bg-[var(--store-bg)] border border-[var(--store-border)] p-5 rounded-2xl space-y-4">

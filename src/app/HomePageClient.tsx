@@ -36,8 +36,19 @@ function AddReviewModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
   if (!isOpen) return null;
 
+  const handleOpenLogin = () => {
+    onClose();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-login-modal'));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      setError(lang === 'ar' ? 'يجب تسجيل الدخول أولاً' : 'Please log in first');
+      return;
+    }
     if (!userName.trim()) {
       setError(lang === 'ar' ? 'يرجى كتابة اسمك' : lang === 'fr' ? 'Veuillez saisir votre nom' : 'Please enter your name');
       return;
@@ -51,21 +62,29 @@ function AddReviewModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     setError('');
 
     try {
-      await addDoc(collection(db, 'reviews'), {
-        userName: userName.trim(),
-        customerName: userName.trim(),
-        rating: Number(rating),
-        comment: comment.trim(),
-        status: 'pending', // Under admin review before publishing
-        userId: user?.uid || null,
-        userEmail: user?.email || null,
-        createdAt: Date.now()
+      const token = await user.getIdToken();
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userName: userName.trim(),
+          rating: Number(rating),
+          comment: comment.trim()
+        })
       });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || (lang === 'ar' ? 'حدث خطأ أثناء إرسال التقييم' : 'Failed to submit review'));
+      }
 
       setSubmitted(true);
     } catch (err: any) {
       console.error('Failed to submit review:', err);
-      setError(lang === 'ar' ? 'حدث خطأ أثناء إرسال التقييم، حاول مجدداً' : 'Failed to submit review');
+      setError(err?.message || (lang === 'ar' ? 'حدث خطأ أثناء إرسال التقييم، حاول مجدداً' : 'Failed to submit review'));
     } finally {
       setLoading(false);
     }
@@ -120,6 +139,41 @@ function AddReviewModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               {lang === 'ar' ? 'حسناً، إغلاق' : 'Close'}
             </button>
           </div>
+        ) : !user ? (
+          <div className="text-center py-6 space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <LogIn className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-[var(--store-text)]">
+                {lang === 'ar' ? 'تسجيل الدخول مطلوب' : lang === 'fr' ? 'Connexion requise' : 'Login Required'}
+              </h3>
+              <p className="text-xs text-[var(--store-text-muted)] leading-relaxed max-w-sm mx-auto">
+                {lang === 'ar' 
+                  ? 'لضمان مصداقية التقييمات ومنع التقييمات العشوائية، يشترط تسجيل الدخول أولاً قبل كتابة التقييم.' 
+                  : lang === 'fr'
+                  ? 'Pour garantir la crédibilité des avis, vous devez vous connecter avant de publier.'
+                  : 'To ensure review authenticity, please log in before writing a review.'}
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={handleOpenLogin}
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{lang === 'ar' ? 'تسجيل الدخول / إنشاء حساب' : lang === 'fr' ? 'Connexion / S\'inscrire' : 'Log In / Register'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl border border-[var(--store-border)] text-xs text-[var(--store-text-muted)] hover:text-[var(--store-text)] transition-colors cursor-pointer"
+              >
+                {lang === 'ar' ? 'إلغاء' : lang === 'fr' ? 'Annuler' : 'Cancel'}
+              </button>
+            </div>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -132,6 +186,21 @@ function AddReviewModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               <p className="text-xs text-[var(--store-text-muted)]">
                 {lang === 'ar' ? 'رأيك يهمنا ويساعد العملاء الآخرين في اختيار أفضل المنتجات' : 'Your feedback helps other customers'}
               </p>
+            </div>
+
+            {/* Authenticated User Badge */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 text-black font-bold flex items-center justify-center text-[11px] shrink-0">
+                  {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                </div>
+                <span className="font-semibold text-emerald-400 truncate">
+                  {user.displayName || user.email}
+                </span>
+              </div>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold shrink-0">
+                {lang === 'ar' ? 'حساب موثق ✓' : 'Verified ✓'}
+              </span>
             </div>
 
             {/* Star Rating Selector */}

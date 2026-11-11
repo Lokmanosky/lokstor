@@ -53,7 +53,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasOnly(['userId', 'productId', 'rating', 'comment', 'createdAt', 'userName', 'status'])
+        && request.resource.data.keys().hasOnly(['userId', 'productId', 'rating', 'comment', 'createdAt', 'userName', 'customerName', 'userEmail', 'status'])
         && request.resource.data.comment is string
         && request.resource.data.comment.size() <= 1000;
       allow update, delete: if isAdmin();
