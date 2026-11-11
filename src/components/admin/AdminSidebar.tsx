@@ -1,25 +1,39 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   LayoutDashboard, ShoppingCart, Package,
   Settings, ChevronLeft, AlertTriangle, Boxes,
-  Sun, Moon, Store, FolderOpen, Star, Megaphone, Tag, History
+  Sun, Moon, Store, FolderOpen, Star, Megaphone, Tag, History, Loader2
 } from 'lucide-react';
 
 interface Props { open: boolean; setOpen: (v: boolean) => void; isMobile?: boolean; }
 
 export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
+  const router = useRouter();
   const pathname = usePathname();
   const { t, lang } = useTranslation();
+  const [isNavigatingToStore, startTransition] = useTransition();
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
   const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    try { router.prefetch('/'); } catch {}
+  }, [router]);
+
+  const handleNavigateToStore = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isMobile) setOpen(false);
+    startTransition(() => {
+      router.push('/');
+    });
+  };
 
   useEffect(() => {
     const saved = (localStorage.getItem('adminTheme') || localStorage.getItem('store-theme') || 'light') as 'light' | 'dark';
@@ -120,12 +134,24 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           <Link
             href="/"
             prefetch={true}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 transition-all shadow-xs cursor-pointer select-none"
+            onClick={handleNavigateToStore}
+            className={`flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl border transition-all shadow-xs cursor-pointer select-none active:scale-95 ${
+              isNavigatingToStore
+                ? 'bg-emerald-500/25 text-emerald-500 border-emerald-500 animate-pulse'
+                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+            }`}
             title={t('nav.backToStore')}
-            onClick={() => { if (isMobile) setOpen(false); }}
           >
-            <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
-            {(open || isMobile) && <span className="flex-1">{t('nav.backToStore')}</span>}
+            {isNavigatingToStore ? (
+              <Loader2 className="w-[18px] h-[18px] flex-shrink-0 animate-spin text-emerald-500" />
+            ) : (
+              <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
+            )}
+            {(open || isMobile) && (
+              <span className="flex-1">
+                {isNavigatingToStore ? (lang === 'ar' ? 'جارٍ الفتح...' : 'Opening...') : t('nav.backToStore')}
+              </span>
+            )}
           </Link>
         </div>
         {navItems.map(({ href, label, icon: Icon, badge }) => {
