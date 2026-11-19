@@ -24,7 +24,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    try { router.prefetch('/'); } catch {}
+    try { router.prefetch('/'); } catch { }
   }, [router]);
 
   const handleNavigateToStore = (e: React.MouseEvent) => {
@@ -72,7 +72,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
     try {
       localStorage.setItem('adminTheme', newTheme);
       localStorage.setItem('store-theme', newTheme);
-    } catch {}
+    } catch { }
     window.dispatchEvent(new CustomEvent('lokstor-theme-change', { detail: newTheme }));
   };
 
@@ -91,9 +91,8 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
   ];
 
   return (
-    <aside className={`fixed top-0 ${lang === 'ar' ? 'right-0 border-l' : 'left-0 border-r'} h-full z-50 bg-[var(--admin-sidebar)] border-[var(--admin-border)] flex flex-col transition-all duration-300 ${
-      isMobile ? (open ? 'w-64 translate-x-0' : (lang === 'ar' ? 'w-64 translate-x-full' : 'w-64 -translate-x-full')) : (open ? 'w-64' : 'w-16')
-    }`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <aside className={`fixed top-0 ${lang === 'ar' ? 'right-0 border-l' : 'left-0 border-r'} h-full z-50 bg-[var(--admin-sidebar)] border-[var(--admin-border)] flex flex-col transition-all duration-300 ${isMobile ? (open ? 'w-64 translate-x-0' : (lang === 'ar' ? 'w-64 translate-x-full' : 'w-64 -translate-x-full')) : (open ? 'w-64' : 'w-16')
+      }`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Sidebar Header */}
       <div className={`h-16 flex items-center border-b border-[var(--admin-border)] px-4 ${(!isMobile && !open) ? 'justify-center' : 'justify-between'}`}>
         {!isMobile ? (
@@ -133,13 +132,11 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
         <div className="pb-2 mb-2 border-b border-[var(--admin-border)]">
           <Link
             href="/"
-            prefetch={true}
             onClick={handleNavigateToStore}
-            className={`flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl border transition-all shadow-xs cursor-pointer select-none active:scale-95 ${
-              isNavigatingToStore
+            className={`flex items-center gap-3 px-3 py-2.5 text-sm font-bold rounded-xl border transition-all shadow-xs cursor-pointer select-none active:scale-95 ${isNavigatingToStore
                 ? 'bg-emerald-500/25 text-emerald-500 border-emerald-500 animate-pulse'
                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-            }`}
+              }`}
             title={t('nav.backToStore')}
           >
             {isNavigatingToStore ? (
@@ -162,10 +159,9 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
             <Link
               key={href}
               href={href}
-              onClick={() => { if(isMobile) setOpen(false); }}
-              className={`admin-sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative rounded-md ${
-                isActive ? `active ${activeBorder} border-[var(--admin-sidebar-active)]` : `${activeBorder} border-transparent hover:bg-[var(--admin-hover)]`
-              }`}
+              onClick={() => { if (isMobile) setOpen(false); }}
+              className={`admin-sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-all duration-200 group relative rounded-md ${isActive ? `active ${activeBorder} border-[var(--admin-sidebar-active)]` : `${activeBorder} border-transparent hover:bg-[var(--admin-hover)]`
+                }`}
             >
               <Icon className="w-[18px] h-[18px] flex-shrink-0 transition-colors" />
               {showLabel && (
@@ -194,7 +190,7 @@ export default function AdminSidebar({ open, setOpen, isMobile }: Props) {
           href="/"
           className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-md border border-[var(--admin-border)] hover:bg-[var(--admin-hover)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] transition-all group"
           title={t('nav.backToStore')}
-          onClick={() => { if(isMobile) setOpen(false); }}
+          onClick={() => { if (isMobile) setOpen(false); }}
         >
           <Store className="w-[18px] h-[18px] flex-shrink-0 text-emerald-500" />
           {(open || isMobile) && <span className="flex-1">{t('nav.backToStore')}</span>}

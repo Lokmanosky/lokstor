@@ -27,12 +27,6 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
     });
   };
 
-  // Prefetch storefront immediately on mount so navigation is instant
-  useEffect(() => {
-    try {
-      router.prefetch('/');
-    } catch {}
-  }, [router]);
 
   useEffect(() => {
     const saved = (localStorage.getItem('adminTheme') || localStorage.getItem('store-theme') || 'light') as 'light' | 'dark';
@@ -108,7 +102,6 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
         {isLoginPage ? (
           <Link
             href="/"
-            prefetch={true}
             onClick={handleNavigateToStore}
             className="flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-[var(--admin-hover)] text-[var(--admin-text)] rounded-md hover:opacity-80 active:scale-95 transition-all flex-shrink-0 cursor-pointer"
           >
@@ -118,7 +111,6 @@ export default function AdminTopBar({ sidebarOpen, setSidebarOpen, isLoginPage }
         ) : (
           <Link
             href="/"
-            prefetch={true}
             onClick={handleNavigateToStore}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all shadow-xs flex-shrink-0 cursor-pointer select-none active:scale-95 ${
               isNavigatingToStore
