@@ -60,6 +60,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [requiresCustomerInfo, setRequiresCustomerInfo] = useState<boolean>(false);
   const [requiredFields, setRequiredFields] = useState<GameFieldRequirement[]>([]);
+  // Dollar pricing toggle: locked/hidden by default for new products until explicitly enabled
+  const [enableUsdPricing, setEnableUsdPricing] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isEdit || !productId) { setLoading(false); return; }
@@ -135,6 +137,14 @@ export default function ProductForm({ productId }: ProductFormProps) {
           setRequiresCustomerInfo(true);
         } else {
           setRequiresCustomerInfo(false);
+        }
+
+        if (data.enableUsdPricing !== undefined) {
+          setEnableUsdPricing(Boolean(data.enableUsdPricing));
+        } else if ((data.priceUsd && Number(data.priceUsd) > 0) || (data.variants && data.variants.some(v => v.priceUsd && Number(v.priceUsd) > 0))) {
+          setEnableUsdPricing(true);
+        } else {
+          setEnableUsdPricing(false);
         }
 
         if (data.requiredFields && data.requiredFields.length > 0) {
@@ -710,9 +720,11 @@ export default function ProductForm({ productId }: ProductFormProps) {
 
     const activeRate = Number(form.dollarRate || settings.dollarRate || 250);
     const computedPrice = hasVariants && variants.length > 0 ? Number(variants[0].price || 0) : Number(form.price || 0);
-    const computedPriceUsd = hasVariants && variants.length > 0
-      ? Number(variants[0].priceUsd !== undefined ? variants[0].priceUsd : (variants[0].price ? Math.round((variants[0].price / activeRate) * 100) / 100 : 0))
-      : Number(form.priceUsd !== undefined ? form.priceUsd : (form.price ? Math.round((form.price / activeRate) * 100) / 100 : 0));
+    const computedPriceUsd = enableUsdPricing
+      ? (hasVariants && variants.length > 0
+          ? Number(variants[0].priceUsd !== undefined ? variants[0].priceUsd : (variants[0].price ? Math.round((variants[0].price / activeRate) * 100) / 100 : 0))
+          : Number(form.priceUsd !== undefined ? form.priceUsd : (form.price ? Math.round((form.price / activeRate) * 100) / 100 : 0)))
+      : undefined;
 
     const payload: Record<string, any> = {
       ...form,
@@ -721,14 +733,19 @@ export default function ProductForm({ productId }: ProductFormProps) {
       price: computedPrice,
       priceUsd: computedPriceUsd,
       dollarRate: activeRate,
+      enableUsdPricing: Boolean(enableUsdPricing),
       priceUnspecified: Boolean(form.priceUnspecified),
       hasVariants: Boolean(hasVariants && variants.length > 0),
       variants: hasVariants ? variants.filter(v => v.name.trim()).map(v => ({
         ...v,
         price: Number(v.price || 0),
-        priceUsd: Number(v.priceUsd !== undefined ? v.priceUsd : (v.price ? Math.round((v.price / activeRate) * 100) / 100 : 0)),
+        priceUsd: enableUsdPricing 
+          ? Number(v.priceUsd !== undefined ? v.priceUsd : (v.price ? Math.round((v.price / activeRate) * 100) / 100 : 0))
+          : undefined,
         originalPrice: v.originalPrice ? Number(v.originalPrice) : undefined,
-        originalPriceUsd: v.originalPriceUsd !== undefined ? Number(v.originalPriceUsd) : (v.originalPrice ? Math.round((Number(v.originalPrice) / activeRate) * 100) / 100 : undefined),
+        originalPriceUsd: enableUsdPricing
+          ? (v.originalPriceUsd !== undefined ? Number(v.originalPriceUsd) : (v.originalPrice ? Math.round((Number(v.originalPrice) / activeRate) * 100) / 100 : undefined))
+          : undefined,
       })) : [],
       requiresCustomerInfo: Boolean(requiresCustomerInfo),
       requiredFields: requiresCustomerInfo ? requiredFields.filter(f => f.label.trim()) : [],
@@ -958,68 +975,88 @@ export default function ProductForm({ productId }: ProductFormProps) {
                   </div>
                 </div>
 
-                {/* Price unspecified toggle */}
-                <label className="inline-flex items-center gap-2 text-xs cursor-pointer select-none bg-[var(--admin-card)] px-3 py-1.5 rounded-xl border border-[var(--admin-border)] hover:border-amber-500/50 transition-colors shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(form.priceUnspecified)}
-                    onChange={e => set('priceUnspecified', e.target.checked)}
-                    className="rounded border-[var(--admin-border)] text-amber-500 focus:ring-amber-500 w-4 h-4 cursor-pointer"
-                  />
-                  <span className="font-bold text-amber-600 dark:text-amber-400">سعر غير محدد (حسب الطلب)</span>
-                </label>
-              </div>
-
-              {/* سعر صرف الدولار المعتمد للمنتج (Dollar Exchange Rate) */}
-              <div className="p-3.5 rounded-xl bg-[var(--admin-card)] border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--admin-text)]">
-                    <DollarSign className="w-4 h-4 text-emerald-500" />
-                    <span>سعر صرف الدولار للمنتج (1$ = د.ج):</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--admin-text-muted)]">
-                    التحويل الفوري بين الدفع بالدينار (الذهبية/CIB) وبالدولار (Binance USDT / RedotPay)
-                  </p>
-                </div>
-
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative w-36">
+                  {/* Enable USD Pricing Toggle */}
+                  <label className={`inline-flex items-center gap-1.5 text-xs cursor-pointer select-none px-3 py-1.5 rounded-xl border transition-all shrink-0 ${
+                    enableUsdPricing 
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-xs' 
+                      : 'bg-[var(--admin-card)] border-[var(--admin-border)] text-[var(--admin-text-muted)] hover:border-emerald-500/30'
+                  }`}>
                     <input
-                      type="number"
-                      min={1}
-                      step="any"
-                      value={form.dollarRate || 250}
-                      onChange={e => handleDollarRateChange(Number(e.target.value))}
-                      className={inputCls + ' text-center font-bold font-mono text-emerald-600 dark:text-emerald-400 pl-8 text-sm'}
-                      title="سعر صرف الدولار بالدينار"
+                      type="checkbox"
+                      checked={enableUsdPricing}
+                      onChange={e => setEnableUsdPricing(e.target.checked)}
+                      className="rounded border-[var(--admin-border)] text-emerald-500 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                     />
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
-                      د.ج
-                    </span>
-                  </div>
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span className="font-bold">تفعيل السعر بالدولار ($ USD)</span>
+                  </label>
 
-                  {/* Quick Preset Buttons */}
-                  <div className="flex items-center gap-1">
-                    {[240, 245, 250, 255, 260].map(r => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => handleDollarRateChange(r)}
-                        className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
-                          Number(form.dollarRate || 250) === r
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:border-emerald-500/40'
-                        }`}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Price unspecified toggle */}
+                  <label className="inline-flex items-center gap-2 text-xs cursor-pointer select-none bg-[var(--admin-card)] px-3 py-1.5 rounded-xl border border-[var(--admin-border)] hover:border-amber-500/50 transition-colors shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.priceUnspecified)}
+                      onChange={e => set('priceUnspecified', e.target.checked)}
+                      className="rounded border-[var(--admin-border)] text-amber-500 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="font-bold text-amber-600 dark:text-amber-400">سعر غير محدد (حسب الطلب)</span>
+                  </label>
                 </div>
               </div>
 
-              {/* Price inputs: DZD and USD side-by-side */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* سعر صرف الدولار المعتمد للمنتج (يظهر فقط عند تفعيل السعر بالدولار) */}
+              {enableUsdPricing && (
+                <div className="p-3.5 rounded-xl bg-[var(--admin-card)] border border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in duration-200">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--admin-text)]">
+                      <DollarSign className="w-4 h-4 text-emerald-500" />
+                      <span>سعر صرف الدولار للمنتج (1$ = د.ج):</span>
+                    </div>
+                    <p className="text-[11px] text-[var(--admin-text-muted)]">
+                      التحويل الفوري بين الدفع بالدينار (الذهبية/CIB) وبالدولار (Binance USDT / RedotPay)
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative w-36">
+                      <input
+                        type="number"
+                        min={1}
+                        step="any"
+                        value={form.dollarRate || 250}
+                        onChange={e => handleDollarRateChange(Number(e.target.value))}
+                        className={inputCls + ' text-center font-bold font-mono text-emerald-600 dark:text-emerald-400 pl-8 text-sm'}
+                        title="سعر صرف الدولار بالدينار"
+                      />
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--admin-text-muted)] pointer-events-none">
+                        د.ج
+                      </span>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex items-center gap-1">
+                      {[240, 245, 250, 255, 260].map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => handleDollarRateChange(r)}
+                          className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                            Number(form.dollarRate || 250) === r
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-[var(--admin-bg)] border border-[var(--admin-border)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:border-emerald-500/40'
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Price inputs: DZD and optionally USD */}
+              <div className={`grid grid-cols-1 ${enableUsdPricing ? 'sm:grid-cols-2' : ''} gap-4`}>
                 {/* DZD Price */}
                 <div>
                   <label className={labelCls}>
@@ -1041,36 +1078,38 @@ export default function ProductForm({ productId }: ProductFormProps) {
                   </div>
                 </div>
 
-                {/* USD Price */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className={labelCls + ' mb-0'}>
-                      السعر بالدولار ($ USD)
-                    </label>
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
-                      (1$ = {currentDollarRate} د.ج)
-                    </span>
+                {/* USD Price (Only if enabled) */}
+                {enableUsdPricing && (
+                  <div className="animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className={labelCls + ' mb-0'}>
+                        السعر بالدولار ($ USD)
+                      </label>
+                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                        (1$ = {currentDollarRate} د.ج)
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        className={inputCls + (form.priceUnspecified ? ' opacity-60 bg-amber-500/5 border-amber-500/30' : '') + ' pr-8 font-mono font-bold text-base text-emerald-600 dark:text-emerald-400'}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        disabled={Boolean(form.priceUnspecified)}
+                        value={form.priceUnspecified || !form.priceUsd ? '' : form.priceUsd}
+                        onChange={e => handleUsdPriceChange(e.target.value)}
+                        placeholder={form.priceUnspecified ? 'غير محدد' : '0.00'}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
+                        $
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <input
-                      className={inputCls + (form.priceUnspecified ? ' opacity-60 bg-amber-500/5 border-amber-500/30' : '') + ' pr-8 font-mono font-bold text-base text-emerald-600 dark:text-emerald-400'}
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      disabled={Boolean(form.priceUnspecified)}
-                      value={form.priceUnspecified || !form.priceUsd ? '' : form.priceUsd}
-                      onChange={e => handleUsdPriceChange(e.target.value)}
-                      placeholder={form.priceUnspecified ? 'غير محدد' : '0.00'}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
-                      $
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Original Price (Before discount) in DZD and USD */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-emerald-500/10">
+              <div className={`grid grid-cols-1 ${enableUsdPricing ? 'sm:grid-cols-2' : ''} gap-4 pt-2 border-t border-emerald-500/10`}>
                 <div>
                   <label className={labelCls}>السعر الأصلي بالدينار (اختياري - يظهر مشطوباً)</label>
                   <div className="relative">
@@ -1089,24 +1128,26 @@ export default function ProductForm({ productId }: ProductFormProps) {
                   </div>
                 </div>
 
-                <div>
-                  <label className={labelCls}>السعر الأصلي بالدولار ($ USD)</label>
-                  <div className="relative">
-                    <input
-                      className={inputCls + ' pr-8 font-mono text-emerald-600 dark:text-emerald-400'}
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      disabled={Boolean(form.priceUnspecified)}
-                      value={form.priceUnspecified ? '' : (form.originalPriceUsd !== undefined ? form.originalPriceUsd : '')}
-                      onChange={e => handleOriginalUsdChange(e.target.value ? Number(e.target.value) : undefined)}
-                      placeholder="مثال: 12.00"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
-                      $
-                    </span>
+                {enableUsdPricing && (
+                  <div className="animate-in fade-in duration-200">
+                    <label className={labelCls}>السعر الأصلي بالدولار ($ USD)</label>
+                    <div className="relative">
+                      <input
+                        className={inputCls + ' pr-8 font-mono text-emerald-600 dark:text-emerald-400'}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        disabled={Boolean(form.priceUnspecified)}
+                        value={form.priceUnspecified ? '' : (form.originalPriceUsd !== undefined ? form.originalPriceUsd : '')}
+                        onChange={e => handleOriginalUsdChange(e.target.value ? Number(e.target.value) : undefined)}
+                        placeholder="مثال: 12.00"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-emerald-500 pointer-events-none">
+                        $
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -1180,20 +1221,39 @@ export default function ProductForm({ productId }: ProductFormProps) {
                 <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[var(--admin-text-muted)] font-medium px-1">
                     <span className="font-bold">قائمة الباقات المتاحة ({variants.length} باقة):</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Toggle USD Pricing Shortcut */}
                       <button
                         type="button"
-                        onClick={recalculateVariantsByDollarRate}
-                        className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1 transition-all"
-                        title="إعادة حساب أسعار الباقات بالدينار حسب سعر صرف الدولار الحالي"
+                        onClick={() => setEnableUsdPricing(prev => !prev)}
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${
+                          enableUsdPricing
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-xs'
+                            : 'bg-[var(--admin-card)] text-[var(--admin-text-muted)] border-[var(--admin-border)] hover:border-emerald-500/30'
+                        }`}
+                        title="إظهار أو قفل/إخفاء السعر بالدولار ($ USD) في الباقات"
                       >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>تحويل الأسعار بسعر الدولار ({currentDollarRate} د.ج)</span>
+                        <DollarSign className="w-3 h-3" />
+                        <span>{enableUsdPricing ? 'السعر بالدولار ($) مفعل' : 'تفعيل السعر بالدولار ($)'}</span>
                       </button>
+
+                      {/* Convert to Dollar Rate Button (Only if USD pricing is enabled) */}
+                      {enableUsdPricing && (
+                        <button
+                          type="button"
+                          onClick={recalculateVariantsByDollarRate}
+                          className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1 transition-all animate-in fade-in duration-200"
+                          title="إعادة حساب أسعار الباقات بالدينار حسب سعر صرف الدولار الحالي"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>تحويل الأسعار بسعر الدولار ({currentDollarRate} د.ج)</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={addVariant}
-                        className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
+                        className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>إضافة باقة جديدة</span>
@@ -1259,7 +1319,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         </div>
 
                         {/* Variant Price (DZD + USD + Original) */}
-                        <div className="w-full sm:w-80 grid grid-cols-2 sm:grid-cols-3 gap-1.5 shrink-0 items-center">
+                        <div className={`w-full ${enableUsdPricing ? 'sm:w-80 grid-cols-2 sm:grid-cols-3' : 'sm:w-56 grid-cols-2'} grid gap-1.5 shrink-0 items-center`}>
                           {/* DZD Price */}
                           <div className="relative">
                             <input
@@ -1274,23 +1334,25 @@ export default function ProductForm({ productId }: ProductFormProps) {
                             <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--admin-text-muted)] font-bold pointer-events-none">د.ج</span>
                           </div>
 
-                          {/* USD Price */}
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={!v.priceUsd ? '' : v.priceUsd}
-                              onChange={e => handleVariantPriceUsdChange(idx, e.target.value)}
-                              placeholder="السعر ($)"
-                              className={inputCls + ' text-xs font-mono font-bold w-full pr-5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'}
-                              title="السعر بالدولار ($ USD) - يتغير تلقائياً مع الدينار"
-                            />
-                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-emerald-500 font-bold pointer-events-none">$</span>
-                          </div>
+                          {/* USD Price (Only if USD pricing is enabled) */}
+                          {enableUsdPricing && (
+                            <div className="relative animate-in fade-in duration-200">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={!v.priceUsd ? '' : v.priceUsd}
+                                onChange={e => handleVariantPriceUsdChange(idx, e.target.value)}
+                                placeholder="السعر ($)"
+                                className={inputCls + ' text-xs font-mono font-bold w-full pr-5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'}
+                                title="السعر بالدولار ($ USD) - يتغير تلقائياً مع الدينار"
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-emerald-500 font-bold pointer-events-none">$</span>
+                            </div>
+                          )}
 
                           {/* Original DZD (Optional) */}
-                          <div className="relative col-span-2 sm:col-span-1">
+                          <div className={`relative ${enableUsdPricing ? 'col-span-2 sm:col-span-1' : ''}`}>
                             <input
                               type="number"
                               min={0}
@@ -1308,7 +1370,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
                         <button
                           type="button"
                           onClick={() => removeVariant(idx)}
-                          className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0 self-end sm:self-auto"
+                          className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0 self-end sm:self-auto cursor-pointer"
                           title="حذف هذه الباقة"
                         >
                           <Trash2 className="w-4 h-4" />

@@ -25,6 +25,7 @@ export interface Product {
   price: number; // Price in DZD (د.ج)
   priceUsd?: number; // Price in USD ($)
   dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
+  enableUsdPricing?: boolean; // When false or omitted, USD pricing is locked/hidden
   originalPrice?: number;
   originalPriceUsd?: number;
   currency: string; // 'dzd'
