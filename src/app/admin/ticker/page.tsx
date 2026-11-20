@@ -23,12 +23,19 @@ import { logAdminActivity } from '@/lib/admin-logger';
 
 const QUICK_EMOJIS = ['🎧', '⭐', '🚀', '✨', '🔥', '⚡', '🎁', '💎', '🔒', '🏷️', '📢', '🎮', '💡', '🏆'];
 
-const FIELD_COLORS = [
-  { label: 'الخانة 1', colorClass: 'text-amber-500', bgClass: 'bg-amber-500/10 border-amber-500/20' },
-  { label: 'الخانة 2', colorClass: 'text-emerald-500', bgClass: 'bg-emerald-500/10 border-emerald-500/20' },
-  { label: 'الخانة 3', colorClass: 'text-purple-500', bgClass: 'bg-purple-500/10 border-purple-500/20' },
-  { label: 'الخانة 4', colorClass: 'text-rose-500', bgClass: 'bg-rose-500/10 border-rose-500/20' },
+export const TICKER_COLOR_OPTIONS = [
+  { id: 'amber', name: 'أصفر / كهرماني', textClass: 'text-amber-500 dark:text-amber-400', dotBg: 'bg-amber-500' },
+  { id: 'emerald', name: 'أخضر زمردي', textClass: 'text-emerald-500 dark:text-emerald-400', dotBg: 'bg-emerald-500' },
+  { id: 'purple', name: 'بنفسجي', textClass: 'text-purple-500 dark:text-purple-400', dotBg: 'bg-purple-500' },
+  { id: 'rose', name: 'وردي', textClass: 'text-rose-500 dark:text-rose-400', dotBg: 'bg-rose-500' },
+  { id: 'blue', name: 'أزرق', textClass: 'text-blue-500 dark:text-blue-400', dotBg: 'bg-blue-500' },
+  { id: 'cyan', name: 'سماوي', textClass: 'text-cyan-500 dark:text-cyan-400', dotBg: 'bg-cyan-400' },
+  { id: 'orange', name: 'برتقالي', textClass: 'text-orange-500 dark:text-orange-400', dotBg: 'bg-orange-500' },
+  { id: 'red', name: 'أحمر', textClass: 'text-red-500 dark:text-red-400', dotBg: 'bg-red-500' },
+  { id: 'slate', name: 'أبيض / محايد', textClass: 'text-slate-700 dark:text-slate-200', dotBg: 'bg-slate-300' },
 ];
+
+const DEFAULT_SLOT_COLORS = ['amber', 'emerald', 'purple', 'rose'];
 
 export default function AdminTickerPage() {
   const currentSettings = useStoreSettings();
@@ -37,10 +44,10 @@ export default function AdminTickerPage() {
   const [tickerSpeed, setTickerSpeed] = useState<number>(25);
   const [previewRTL, setPreviewRTL] = useState<boolean>(true);
   const [items, setItems] = useState<TickerItem[]>([
-    { text: '', icon: '🎧' },
-    { text: '', icon: '⭐' },
-    { text: '', icon: '🚀' },
-    { text: '', icon: '✨' },
+    { text: '', icon: '🎧', color: 'amber' },
+    { text: '', icon: '⭐', color: 'emerald' },
+    { text: '', icon: '🚀', color: 'purple' },
+    { text: '', icon: '✨', color: 'rose' },
   ]);
 
   const [saving, setSaving] = useState(false);
@@ -58,19 +65,28 @@ export default function AdminTickerPage() {
       ? currentSettings.tickerItems
       : DEFAULT_TICKER_ITEMS;
 
-    // Ensure we always have exactly 4 items
+    // Ensure we always have exactly 4 items with persistent slot colors
     const padded: TickerItem[] = [];
     for (let i = 0; i < 4; i++) {
+      const fallbackColor = DEFAULT_SLOT_COLORS[i] || 'amber';
       if (sourceItems[i]) {
-        padded.push({ text: sourceItems[i].text || '', icon: sourceItems[i].icon || DEFAULT_TICKER_ITEMS[i]?.icon || '✨' });
+        padded.push({
+          text: sourceItems[i].text || '',
+          icon: sourceItems[i].icon || DEFAULT_TICKER_ITEMS[i]?.icon || '✨',
+          color: sourceItems[i].color || fallbackColor
+        });
       } else {
-        padded.push({ text: DEFAULT_TICKER_ITEMS[i]?.text || '', icon: DEFAULT_TICKER_ITEMS[i]?.icon || '✨' });
+        padded.push({
+          text: DEFAULT_TICKER_ITEMS[i]?.text || '',
+          icon: DEFAULT_TICKER_ITEMS[i]?.icon || '✨',
+          color: fallbackColor
+        });
       }
     }
     setItems(padded);
   }, [currentSettings]);
 
-  const handleItemChange = (index: number, field: 'text' | 'icon', value: string) => {
+  const handleItemChange = (index: number, field: 'text' | 'icon' | 'color', value: string) => {
     setItems(prev => {
       const copy = [...prev];
       copy[index] = { ...copy[index], [field]: value };
@@ -92,10 +108,11 @@ export default function AdminTickerPage() {
     setMessage(null);
 
     try {
-      // Clean up text
-      const cleanedItems = items.map(item => ({
+      // Clean up text and ensure color is preserved
+      const cleanedItems = items.map((item, idx) => ({
         text: (item.text || '').trim(),
         icon: (item.icon || '').trim(),
+        color: item.color || DEFAULT_SLOT_COLORS[idx] || 'amber',
       }));
 
       const finalSpeed = Math.max(8, Math.min(60, Number(tickerSpeed) || 25));
@@ -106,12 +123,12 @@ export default function AdminTickerPage() {
         tickerSpeed: finalSpeed,
       });
 
-      setMessage({ type: 'success', text: 'تم حفظ إعدادات الشريط الإعلاني وسرعته بنجاح! التحديث يظهر الآن مباشرة للزوار 🚀' });
+      setMessage({ type: 'success', text: 'تم حفظ إعدادات الشريط الإعلاني وسرعته وألوانه بنجاح! التحديث يظهر الآن مباشرة للزوار 🚀' });
       await logAdminActivity({
         category: 'ticker',
         actionType: 'update',
         title: 'تعديل الشريط الإعلاني',
-        description: `تم تحديث عبارات الشريط الإعلاني (${tickerEnabled ? 'مفعّل' : 'معطّل'}) والسرعة (${finalSpeed}s) بنجاح`,
+        description: `تم تحديث عبارات الشريط الإعلاني (${tickerEnabled ? 'مفعّل' : 'معطّل'}) وألوانه والسرعة (${finalSpeed}s) بنجاح`,
         metadata: { tickerEnabled, tickerSpeed: finalSpeed, itemsCount: cleanedItems.filter(i => i.text).length }
       });
       setTimeout(() => setMessage(null), 4000);
@@ -123,19 +140,19 @@ export default function AdminTickerPage() {
     }
   };
 
-  // Preview items
+  // Preview items with user-selected colors
   const previewItems = items
     .filter(i => i.text.trim().length > 0)
-    .map((item, idx) => ({
-      icon: item.icon,
-      text: item.text,
-      colorClass: [
-        'text-amber-500 dark:text-amber-400',
-        'text-emerald-500 dark:text-emerald-400',
-        'text-purple-500 dark:text-purple-400',
-        'text-rose-500 dark:text-rose-400',
-      ][idx % 4],
-    }));
+    .map((item, idx) => {
+      const selectedColor = TICKER_COLOR_OPTIONS.find(c => c.id === item.color) ||
+        TICKER_COLOR_OPTIONS.find(c => c.id === DEFAULT_SLOT_COLORS[idx % 4]) ||
+        TICKER_COLOR_OPTIONS[0];
+      return {
+        icon: item.icon,
+        text: item.text,
+        colorClass: selectedColor.textClass,
+      };
+    });
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -432,7 +449,9 @@ export default function AdminTickerPage() {
 
         <form onSubmit={handleSave} className="space-y-4">
           {items.map((item, idx) => {
-            const badgeMeta = FIELD_COLORS[idx] || FIELD_COLORS[0];
+            const currentColorId = item.color || DEFAULT_SLOT_COLORS[idx] || 'amber';
+            const currentColorObj = TICKER_COLOR_OPTIONS.find(c => c.id === currentColorId) || TICKER_COLOR_OPTIONS[0];
+
             return (
               <div
                 key={idx}
@@ -440,14 +459,22 @@ export default function AdminTickerPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md border ${badgeMeta.bgClass} ${badgeMeta.colorClass}`}>
-                      {badgeMeta.label}
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-md border bg-[var(--admin-card)] border-[var(--admin-border)] text-[var(--admin-text)]">
+                      الخانة {idx + 1}
                     </span>
                     <span className="text-xs text-[var(--admin-text-muted)]">
                       {idx === 0 && '(مثال: دعم متوفر 24/7)'}
                       {idx === 1 && '(مثال: أسعار تنافسية)'}
                       {idx === 2 && '(مثال: تسليم فوري وآمن)'}
                       {idx === 3 && '(مثال: مرحباً بك في متجرنا)'}
+                    </span>
+                  </div>
+
+                  {/* Selected Color indicator badge */}
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--admin-card)] border border-[var(--admin-border)] text-xs">
+                    <span className={`w-2.5 h-2.5 rounded-full ${currentColorObj.dotBg}`} />
+                    <span className={`font-semibold ${currentColorObj.textClass}`}>
+                      {currentColorObj.name}
                     </span>
                   </div>
                 </div>
@@ -480,8 +507,36 @@ export default function AdminTickerPage() {
                       value={item.text}
                       onChange={(e) => handleItemChange(idx, 'text', e.target.value)}
                       placeholder={`اكتب العبارة رقم ${idx + 1}...`}
-                      className="w-full bg-[var(--admin-card)] border border-[var(--admin-border)] text-[var(--admin-text)] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500 transition-colors shadow-2xs"
+                      className={`w-full bg-[var(--admin-card)] border border-[var(--admin-border)] text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500 transition-colors shadow-2xs font-bold ${currentColorObj.textClass}`}
                     />
+                  </div>
+                </div>
+
+                {/* Color Selector Palette */}
+                <div className="pt-2 border-t border-[var(--admin-border)]/50 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] text-[var(--admin-text-muted)] font-semibold pl-1">
+                      🎨 اختر لون هذه العبارة:
+                    </span>
+                    {TICKER_COLOR_OPTIONS.map((c) => {
+                      const isSelected = currentColorId === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleItemChange(idx, 'color', c.id)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[var(--admin-card)] border-emerald-500 shadow-xs ring-1 ring-emerald-500 scale-105'
+                              : 'bg-[var(--admin-card)] border-[var(--admin-border)] text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:border-gray-500'
+                          }`}
+                          title={c.name}
+                        >
+                          <span className={`w-2.5 h-2.5 rounded-full ${c.dotBg} shrink-0`} />
+                          <span className="text-[11px]">{c.name.split(' ')[0]}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

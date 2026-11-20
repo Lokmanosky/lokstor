@@ -7,6 +7,7 @@ import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 export interface TickerItem {
   text: string;
   icon?: string;
+  color?: string; // e.g. 'amber', 'emerald', 'purple', 'rose', 'blue', 'cyan', 'orange', 'red', 'slate'
 }
 
 export interface PaymentGatewaysConfig {
@@ -59,10 +60,10 @@ export interface StoreSettings {
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
-  { text: "دعم متوفر 24/7", icon: "🎧" },
-  { text: "أسعار تنافسية", icon: "⭐" },
-  { text: "تسليم فوري وآمن", icon: "🚀" },
-  { text: "مرحباً بك في متجرنا", icon: "✨" }
+  { text: "دعم متوفر 24/7", icon: "🎧", color: "amber" },
+  { text: "أسعار تنافسية", icon: "⭐", color: "emerald" },
+  { text: "تسليم فوري وآمن", icon: "🚀", color: "purple" },
+  { text: "مرحباً بك في متجرنا", icon: "✨", color: "rose" }
 ];
 
 const defaultSettings: StoreSettings = {

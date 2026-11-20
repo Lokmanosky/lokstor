@@ -40,20 +40,31 @@ export function TopTicker() {
 
   const rawList = (s.tickerItems && s.tickerItems.length > 0) ? s.tickerItems : DEFAULT_TICKER_ITEMS;
 
-  const colorClasses = [
-    "text-amber-600 dark:text-amber-400",
-    "text-emerald-600 dark:text-emerald-400",
-    "text-purple-600 dark:text-purple-400",
-    "text-rose-600 dark:text-rose-400"
-  ];
+  const COLOR_MAP: Record<string, string> = {
+    amber: "text-amber-600 dark:text-amber-400",
+    emerald: "text-emerald-600 dark:text-emerald-400",
+    purple: "text-purple-600 dark:text-purple-400",
+    rose: "text-rose-600 dark:text-rose-400",
+    blue: "text-blue-600 dark:text-blue-400",
+    cyan: "text-cyan-600 dark:text-cyan-400",
+    orange: "text-orange-600 dark:text-orange-400",
+    red: "text-red-600 dark:text-red-400",
+    slate: "text-slate-700 dark:text-slate-200"
+  };
+
+  const defaultColors = ["amber", "emerald", "purple", "rose"];
 
   const tickerItems = rawList
-    .filter(item => item && item.text && item.text.trim())
-    .map((item, i) => ({
-      icon: item.icon ? <span className="text-amber-500 text-sm leading-none drop-shadow-sm">{item.icon}</span> : null,
-      text: item.text,
-      colorClass: colorClasses[i % colorClasses.length]
-    }));
+    .map((item, originalIndex) => {
+      const colorKey = item?.color || defaultColors[originalIndex % defaultColors.length];
+      const colorClass = COLOR_MAP[colorKey] || COLOR_MAP.amber;
+      return {
+        icon: item?.icon ? <span className="text-amber-500 text-sm leading-none drop-shadow-sm">{item.icon}</span> : null,
+        text: item?.text || '',
+        colorClass
+      };
+    })
+    .filter(item => item.text.trim().length > 0);
 
   if (tickerItems.length === 0) return null;
 
