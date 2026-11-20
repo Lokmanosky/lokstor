@@ -55,6 +55,7 @@ export interface StoreSettings {
   binanceAddress?: string;
   forceRefreshTimestamp?: number;
   lastForcedRefreshBy?: string;
+  isLoaded?: boolean;
 }
 
 export const DEFAULT_TICKER_ITEMS: TickerItem[] = [
@@ -93,10 +94,33 @@ const defaultSettings: StoreSettings = {
 const StoreSettingsContext = createContext<StoreSettings>(defaultSettings);
 
 export function StoreSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
+  const [settings, setSettings] = useState<StoreSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('lokstor_cached_store_settings');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          return {
+            ...defaultSettings,
+            ...parsed,
+            isLoaded: true
+          };
+        }
+      } catch {}
+    }
+    return { ...defaultSettings, isLoaded: false };
+  });
 
   useEffect(() => {
-    // Real-time listener for public store settings
+    // Listen for local immediate updates within the same window
+    const handleLocalUpdate = (e: any) => {
+      if (e.detail) {
+        setSettings(prev => ({ ...prev, ...e.detail, isLoaded: true }));
+      }
+    };
+    window.addEventListener('lokstor_settings_updated', handleLocalUpdate);
+
+    // Real-time listener for public store settings from Firestore
     const unsub = onSnapshot(doc(db, 'settings', 'store'), async (snap) => {
       let privateData: any = {};
       try {
@@ -108,7 +132,7 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
 
       if (snap.exists()) {
         const combined = { ...snap.data(), ...privateData };
-        setSettings(prev => ({
+        const updatedSettings: StoreSettings = {
           ...defaultSettings,
           ...combined,
           tickerItems: combined.tickerItems && Array.isArray(combined.tickerItems) && combined.tickerItems.length > 0
@@ -134,11 +158,30 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
           binanceAddress: combined.binanceAddress || '0xf0782cc454c9f0b273a11aba636fac62f18b24dd',
           forceRefreshTimestamp: combined.forceRefreshTimestamp,
           lastForcedRefreshBy: combined.lastForcedRefreshBy,
-        } as StoreSettings));
+          isLoaded: true,
+        };
+
+        setSettings(updatedSettings);
+
+        // Cache publicly needed settings to localStorage for 0ms flash-free initial render
+        try {
+          localStorage.setItem('lokstor_cached_store_settings', JSON.stringify({
+            tickerItems: updatedSettings.tickerItems,
+            tickerEnabled: updatedSettings.tickerEnabled,
+            tickerSpeed: updatedSettings.tickerSpeed,
+            heroPhrases: updatedSettings.heroPhrases,
+            paymentGateways: updatedSettings.paymentGateways,
+            dollarRate: updatedSettings.dollarRate,
+            forceRefreshTimestamp: updatedSettings.forceRefreshTimestamp,
+          }));
+        } catch {}
       }
     }, () => {});
 
-    return () => unsub();
+    return () => {
+      unsub();
+      window.removeEventListener('lokstor_settings_updated', handleLocalUpdate);
+    };
   }, []);
 
   return (
@@ -169,6 +212,17 @@ export async function saveStoreSettings(settings: Partial<StoreSettings>) {
   if ('chargilyApiKey' in publicSettings) {
     privateSettings.chargilyApiKey = publicSettings.chargilyApiKey;
     delete publicSettings.chargilyApiKey;
+  }
+
+  // 1. Immediately update local cache to eliminate any lag or stale flash on refresh
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem('lokstor_cached_store_settings');
+      const current = cached ? JSON.parse(cached) : {};
+      const merged = { ...current, ...publicSettings };
+      localStorage.setItem('lokstor_cached_store_settings', JSON.stringify(merged));
+      window.dispatchEvent(new CustomEvent('lokstor_settings_updated', { detail: merged }));
+    } catch {}
   }
   
   await setDoc(doc(db, 'settings', 'store'), publicSettings, { merge: true });

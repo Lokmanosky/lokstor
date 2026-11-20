@@ -31,6 +31,13 @@ export function TopTicker() {
 
   if (s.tickerEnabled === false) return null;
 
+  // Prevent flashing old default phrases before custom settings load
+  if (!s.isLoaded) {
+    return (
+      <div className="bg-slate-100 dark:bg-[#131417] h-7 w-full flex items-center justify-center relative z-50 transition-colors animate-pulse" />
+    );
+  }
+
   const rawList = (s.tickerItems && s.tickerItems.length > 0) ? s.tickerItems : DEFAULT_TICKER_ITEMS;
 
   const colorClasses = [
