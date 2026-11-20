@@ -12,7 +12,10 @@ import {
   ExternalLink,
   Eye,
   Sliders,
-  Check
+  Check,
+  Gauge,
+  Zap,
+  ArrowLeftRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { useStoreSettings, saveStoreSettings, DEFAULT_TICKER_ITEMS, TickerItem } from '@/lib/store-settings';
@@ -31,6 +34,8 @@ export default function AdminTickerPage() {
   const currentSettings = useStoreSettings();
 
   const [tickerEnabled, setTickerEnabled] = useState(true);
+  const [tickerSpeed, setTickerSpeed] = useState<number>(25);
+  const [previewRTL, setPreviewRTL] = useState<boolean>(true);
   const [items, setItems] = useState<TickerItem[]>([
     { text: '', icon: '🎧' },
     { text: '', icon: '⭐' },
@@ -45,6 +50,9 @@ export default function AdminTickerPage() {
   useEffect(() => {
     if (currentSettings.tickerEnabled !== undefined) {
       setTickerEnabled(currentSettings.tickerEnabled);
+    }
+    if (typeof currentSettings.tickerSpeed === 'number') {
+      setTickerSpeed(currentSettings.tickerSpeed);
     }
     const sourceItems = (currentSettings.tickerItems && currentSettings.tickerItems.length > 0)
       ? currentSettings.tickerItems
@@ -73,7 +81,8 @@ export default function AdminTickerPage() {
   const handleResetDefaults = () => {
     setItems(DEFAULT_TICKER_ITEMS.map(i => ({ ...i })));
     setTickerEnabled(true);
-    setMessage({ type: 'success', text: 'تمت استعادة العبارات الافتراضية، اضغط "حفظ التغييرات" لاعتمادها' });
+    setTickerSpeed(25);
+    setMessage({ type: 'success', text: 'تمت استعادة العبارات والسرعة الافتراضية، اضغط "حفظ التغييرات" لاعتمادها' });
     setTimeout(() => setMessage(null), 4000);
   };
 
@@ -89,18 +98,21 @@ export default function AdminTickerPage() {
         icon: (item.icon || '').trim(),
       }));
 
+      const finalSpeed = Math.max(8, Math.min(60, Number(tickerSpeed) || 25));
+
       await saveStoreSettings({
         tickerItems: cleanedItems,
         tickerEnabled,
+        tickerSpeed: finalSpeed,
       });
 
-      setMessage({ type: 'success', text: 'تم حفظ إعدادات الشريط الإعلاني بنجاح! التحديث يظهر الآن مباشرة للزوار 🚀' });
+      setMessage({ type: 'success', text: 'تم حفظ إعدادات الشريط الإعلاني وسرعته بنجاح! التحديث يظهر الآن مباشرة للزوار 🚀' });
       await logAdminActivity({
         category: 'ticker',
         actionType: 'update',
         title: 'تعديل الشريط الإعلاني',
-        description: `تم تحديث عبارات الشريط الإعلاني (${tickerEnabled ? 'مفعّل' : 'معطّل'}) بنجاح`,
-        metadata: { tickerEnabled, itemsCount: cleanedItems.filter(i => i.text).length }
+        description: `تم تحديث عبارات الشريط الإعلاني (${tickerEnabled ? 'مفعّل' : 'معطّل'}) والسرعة (${finalSpeed}s) بنجاح`,
+        metadata: { tickerEnabled, tickerSpeed: finalSpeed, itemsCount: cleanedItems.filter(i => i.text).length }
       });
       setTimeout(() => setMessage(null), 4000);
     } catch (err: any) {
@@ -237,16 +249,44 @@ export default function AdminTickerPage() {
 
       {/* Live Preview Box */}
       <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <h3 className="font-bold text-xs sm:text-sm text-[var(--admin-text)]">
-              معاينة حية ومباشرة (Live Preview)
-            </h3>
+            <div>
+              <h3 className="font-bold text-xs sm:text-sm text-[var(--admin-text)]">
+                معاينة حية ومباشرة (Live Preview)
+              </h3>
+              <p className="text-[11px] text-[var(--admin-text-muted)]">
+                تتحرك العبارات أمامك تماماً كما يراها الزائر في المتجر
+              </p>
+            </div>
           </div>
-          <span className="text-[11px] text-[var(--admin-text-muted)]">
-            تتحرك العبارات أمامك تماماً كما يراها الزائر
-          </span>
+
+          {/* Language / Motion Direction Toggle in Preview */}
+          <div className="flex items-center gap-1.5 self-start sm:self-auto bg-[var(--admin-bg)] border border-[var(--admin-border)] p-1 rounded-xl text-xs">
+            <button
+              type="button"
+              onClick={() => setPreviewRTL(true)}
+              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                previewRTL
+                  ? 'bg-emerald-500 text-white shadow-xs'
+                  : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]'
+              }`}
+            >
+              <span>العربية (يمين ⟵ يسار)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewRTL(false)}
+              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                !previewRTL
+                  ? 'bg-emerald-500 text-white shadow-xs'
+                  : 'text-[var(--admin-text-muted)] hover:text-[var(--admin-text)]'
+              }`}
+            >
+              <span>EN / FR (يسار ⟵ يمين)</span>
+            </button>
+          </div>
         </div>
 
         {/* The Live Marquee */}
@@ -260,7 +300,8 @@ export default function AdminTickerPage() {
               .marquee-preview-wrapper {
                 display: flex;
                 width: max-content;
-                animation: marquee-preview 22s linear infinite;
+                animation: marquee-preview ${tickerSpeed}s linear infinite;
+                animation-direction: ${previewRTL ? 'reverse' : 'normal'};
               }
               .marquee-preview-wrapper:hover {
                 animation-play-state: paused;
@@ -277,7 +318,7 @@ export default function AdminTickerPage() {
             ) : (
               <div className="marquee-preview-wrapper">
                 {/* Block 1 */}
-                <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir="rtl">
+                <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir={previewRTL ? 'rtl' : 'ltr'}>
                   {previewItems.map((item, i) => (
                     <div key={i} className="flex items-center gap-2 font-bold whitespace-nowrap shrink-0">
                       {item.icon && <span className="text-sm drop-shadow-xs">{item.icon}</span>}
@@ -286,7 +327,7 @@ export default function AdminTickerPage() {
                   ))}
                 </div>
                 {/* Block 2 (duplicate for seamless loop) */}
-                <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir="rtl" aria-hidden="true">
+                <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir={previewRTL ? 'rtl' : 'ltr'} aria-hidden="true">
                   {previewItems.map((item, i) => (
                     <div key={`dup-${i}`} className="flex items-center gap-2 font-bold whitespace-nowrap shrink-0">
                       {item.icon && <span className="text-sm drop-shadow-xs">{item.icon}</span>}
@@ -296,6 +337,84 @@ export default function AdminTickerPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Speed & Motion Control Card */}
+      <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-500 flex items-center justify-center shrink-0 shadow-xs">
+              <Gauge className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-[var(--admin-text)]">
+                التحكم في سرعة حركة الشريط الإعلاني
+              </h2>
+              <p className="text-xs text-[var(--admin-text-muted)] mt-0.5">
+                حدد سرعة تحرك العبارات عبر الشريط، ويتم عكس الاتجاه تلقائياً بحسب اللغة (يمين في العربية، ويسار في اللغات الأجنبية)
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap shrink-0">
+            {tickerSpeed} ثانية
+          </span>
+        </div>
+
+        {/* Speed Quick Presets */}
+        <div className="space-y-2 pt-1">
+          <label className="text-xs font-bold text-[var(--admin-text-muted)] block">
+            إعدادات سريعة جاهزة:
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              { label: 'بطيء وهادئ 🐢', seconds: 40, desc: '40 ثانية' },
+              { label: 'متوسط ⚡ (موصى به)', seconds: 25, desc: '25 ثانية' },
+              { label: 'سريع وحيوي 🚀', seconds: 16, desc: '16 ثانية' },
+              { label: 'فائق السرعة 🏎️', seconds: 10, desc: '10 ثوانٍ' },
+            ].map(preset => (
+              <button
+                key={preset.seconds}
+                type="button"
+                onClick={() => setTickerSpeed(preset.seconds)}
+                className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  tickerSpeed === preset.seconds
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
+                    : 'border-[var(--admin-border)] bg-[var(--admin-bg)] text-[var(--admin-text)] hover:border-emerald-500/40 text-xs'
+                }`}
+              >
+                <div className="font-bold text-xs">{preset.label}</div>
+                <div className="text-[10px] text-[var(--admin-text-muted)] mt-0.5">{preset.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Range Slider */}
+        <div className="space-y-2 pt-3 border-t border-[var(--admin-border)]">
+          <div className="flex items-center justify-between text-xs font-bold text-[var(--admin-text)]">
+            <span className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>تعديل يدوي دقيق للسرعة:</span>
+            </span>
+            <span className="text-[11px] text-emerald-500 font-extrabold">
+              {tickerSpeed <= 12 ? '🏎️ فائق السرعة' : tickerSpeed <= 18 ? '🚀 سريع' : tickerSpeed <= 30 ? '⚡ متوسط' : '🐢 بطيء'}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={8}
+            max={60}
+            step={1}
+            value={tickerSpeed}
+            onChange={(e) => setTickerSpeed(Number(e.target.value))}
+            className="w-full accent-emerald-500 cursor-pointer h-2 bg-[var(--admin-border)] rounded-lg"
+          />
+          <div className="flex justify-between text-[10px] text-[var(--admin-text-muted)] px-1">
+            <span>8 ثوانٍ (سريع جداً)</span>
+            <span>25 ثانية (المعتدل)</span>
+            <span>60 ثانية (أهدأ سرعة)</span>
           </div>
         </div>
       </div>

@@ -43,6 +43,7 @@ export interface StoreSettings {
   adminNotificationEmail?: string;
   tickerItems?: TickerItem[];
   tickerEnabled?: boolean;
+  tickerSpeed?: number; // duration in seconds (8s - 60s, default 25)
   dollarRate?: number; // USD exchange rate in DZD (e.g. 250)
   paymentGateways?: PaymentGatewaysConfig;
   heroPhrases?: HeroPhrasesConfig;
@@ -72,6 +73,7 @@ const defaultSettings: StoreSettings = {
   adminNotificationEmail: 'admin@lokstor.dz',
   tickerItems: DEFAULT_TICKER_ITEMS,
   tickerEnabled: true,
+  tickerSpeed: 25,
   dollarRate: 250,
   paymentGateways: {
     chargilyEnabled: true,
@@ -113,6 +115,7 @@ export function StoreSettingsProvider({ children }: { children: ReactNode }) {
             ? combined.tickerItems
             : DEFAULT_TICKER_ITEMS,
           tickerEnabled: combined.tickerEnabled !== undefined ? combined.tickerEnabled : true,
+          tickerSpeed: typeof combined.tickerSpeed === 'number' ? combined.tickerSpeed : 25,
           paymentGateways: {
             chargilyEnabled: combined.paymentGateways?.chargilyEnabled ?? true,
             oneclickEnabled: combined.paymentGateways?.oneclickEnabled ?? true,

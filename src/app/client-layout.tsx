@@ -27,6 +27,7 @@ const GoogleIcon = () => (
 
 export function TopTicker() {
   const s = useStoreSettings();
+  const { lang } = useTranslation();
 
   if (s.tickerEnabled === false) return null;
 
@@ -54,17 +55,23 @@ export function TopTicker() {
   const multiplier = Math.max(2, Math.ceil(8 / tickerItems.length));
   const fullBlockItems = Array.from({ length: multiplier }, () => tickerItems).flat();
 
+  // Speed in seconds (default 25s, clamped between 8s and 60s)
+  const speed = Math.max(8, Math.min(60, Number(s.tickerSpeed) || 25));
+  // In Arabic, reverse direction so it flows naturally for RTL (opposite of English/French)
+  const isRTL = lang === 'ar';
+
   return (
     <div className="bg-slate-100 dark:bg-[#131417] text-[11px] sm:text-xs py-1.5 overflow-hidden flex items-center relative z-50 transition-colors" dir="ltr">
       <style>{`
-        @keyframes marquee-left {
+        @keyframes marquee-scroll {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
         .marquee-wrapper {
           display: flex;
           width: max-content;
-          animation: marquee-left 30s linear infinite;
+          animation: marquee-scroll ${speed}s linear infinite;
+          animation-direction: ${isRTL ? 'reverse' : 'normal'};
         }
         .marquee-wrapper:hover {
           animation-play-state: paused;
@@ -72,7 +79,7 @@ export function TopTicker() {
       `}</style>
       <div className="marquee-wrapper">
         {/* First block */}
-        <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir="rtl">
+        <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir={isRTL ? 'rtl' : 'ltr'}>
           {fullBlockItems.map((item, i) => (
             <div key={`blk1-${i}`} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
               {item.icon}
@@ -81,7 +88,7 @@ export function TopTicker() {
           ))}
         </div>
         {/* Second block (duplicate for seamless loop) */}
-        <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir="rtl" aria-hidden="true">
+        <div className="flex flex-nowrap items-center gap-8 sm:gap-14 pr-8 sm:pr-14" dir={isRTL ? 'rtl' : 'ltr'} aria-hidden="true">
           {fullBlockItems.map((item, i) => (
             <div key={`blk2-${i}`} className="flex items-center gap-2 font-bold hover:opacity-80 transition-opacity cursor-default whitespace-nowrap shrink-0">
               {item.icon}
